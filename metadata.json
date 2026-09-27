@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix Remix Laundrea",
+  "description": "Platform layanan pickup \u0026 delivery pakaian bersih dengan portal Customer, Kurir, dan Admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
