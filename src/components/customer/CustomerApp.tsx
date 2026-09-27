@@ -28,6 +28,9 @@ export const CustomerApp: React.FC = () => {
   const [selectedPlanForOrder, setSelectedPlanForOrder] = useState<PlanType | undefined>(undefined);
   const [selectedVoucherForOrder, setSelectedVoucherForOrder] = useState<string | undefined>(undefined);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);
+
+  const userName = localStorage.getItem('laundrea_cust_name') || 'Yaya';
 
   // If not verified yet, display either the landing page or the WhatsApp verification flow
   if (!isCustomerVerified) {
@@ -85,18 +88,109 @@ export const CustomerApp: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 text-white text-xs font-semibold">
-              <Phone className="w-3.5 h-3.5 text-[#ffbd59]" />
-              <span className="text-[11px] truncate max-w-[120px]">{customerPhone}</span>
-            </div>
+          <div className="relative">
             <button
-              onClick={() => setShowLogoutConfirm(true)}
-              title="Keluar"
-              className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              id="btn-customer-header-profile"
+              type="button"
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              aria-expanded={isProfileMenuOpen}
+              aria-haspopup="true"
+              title="Menu Profil & Akun"
+              className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+                isProfileMenuOpen
+                  ? 'bg-white text-[#cd6184] border-white ring-2 ring-white/30'
+                  : 'bg-white/15 hover:bg-white/25 border-white/20 text-white'
+              }`}
             >
-              <LogOut className="w-4 h-4" />
+              <User className="w-4.5 h-4.5" />
             </button>
+
+            {/* Profile / Account Dropdown Menu */}
+            {isProfileMenuOpen && (
+              <>
+                {/* Backdrop to close menu */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsProfileMenuOpen(false)}
+                />
+
+                <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white rounded-2xl shadow-xl border border-[#ffecf2] p-3 text-[#254117] z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {/* User Mini Card */}
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#ffecf2]/60 border border-[#ffecf2] mb-2">
+                    <div className="w-10 h-10 rounded-full bg-[#cd6184] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                      {userName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-gray-900 truncate">{userName}</p>
+                        <span className="text-[9px] font-bold bg-[#ffbd59]/30 text-[#254117] px-1.5 py-0.2 rounded-md">
+                          Pelanggan
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 font-medium truncate flex items-center gap-1 mt-0.5">
+                        <Phone className="w-3 h-3 text-[#cd6184]" />
+                        <span>{customerPhone}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Menu links */}
+                  <div className="space-y-0.5 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        setActiveTab('profile');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#ffecf2]/40 text-[#254117] transition-colors text-left cursor-pointer"
+                    >
+                      <User className="w-4 h-4 text-[#cd6184]" />
+                      <span>Profil & Alamat Saya</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        setActiveTab('history');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#ffecf2]/40 text-[#254117] transition-colors text-left cursor-pointer"
+                    >
+                      <Clock className="w-4 h-4 text-[#97a273]" />
+                      <span>Riwayat Pesanan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        setActiveTab('loyalty');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-[#ffecf2]/40 text-[#254117] transition-colors text-left cursor-pointer"
+                    >
+                      <Award className="w-4 h-4 text-[#ffbd59]" />
+                      <span>Voucher & Poin Loyalitas</span>
+                    </button>
+                  </div>
+
+                  <div className="my-2 border-t border-gray-100" />
+
+                  {/* Logout Option */}
+                  <button
+                    type="button"
+                    id="btn-menu-logout"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      setShowLogoutConfirm(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 text-xs font-bold transition-colors text-left cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 text-red-500" />
+                    <span>Keluar dari Akun</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>

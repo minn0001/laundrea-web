@@ -22,6 +22,7 @@ import {
   Tag,
   X,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface CustomerOrderPageProps {
@@ -60,18 +61,50 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const [notes, setNotes] = useState('Pakaian katun & kemeja kerja');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qris');
 
-  // Today + 1 day as default pickup date
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const defaultDate = tomorrow.toISOString().split('T')[0];
-  const [scheduleDate, setScheduleDate] = useState(defaultDate);
-  const [scheduleTime, setScheduleTime] = useState('10:00 - 12:00');
+  // Pickup schedule states: Mandatory before user can proceed
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formAttempted, setFormAttempted] = useState(false);
+
+  const getTomorrowStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  const getDayAfterTomorrowStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().split('T')[0];
+  };
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId) || plans[0];
   const isKg = selectedPlan.unit === 'kg';
   const minQty = selectedPlan.minOrder || 1;
   const currentPrice = selectedPlan.price * estimatedQuantity;
+
+  // Validation rules: All fields required before proceeding EXCEPT voucher
+  const isPlanValid = Boolean(selectedPlanId);
+  const isQuantityValid = typeof estimatedQuantity === 'number' && estimatedQuantity >= minQty;
+  const isHandoverValid = Boolean(handoverMethod);
+  const isReturnValid = Boolean(returnMethod);
+  const isDateValid = Boolean(scheduleDate && scheduleDate.trim().length > 0);
+  const isTimeValid = Boolean(scheduleTime && scheduleTime.trim().length > 0);
+  const isNameValid = Boolean(customerName && customerName.trim().length > 0);
+  const isAddressValid = Boolean(customerAddress && customerAddress.trim().length > 0);
+  const isNotesValid = Boolean(notes && notes.trim().length > 0);
+
+  const isFormValid =
+    isPlanValid &&
+    isQuantityValid &&
+    isHandoverValid &&
+    isReturnValid &&
+    isDateValid &&
+    isTimeValid &&
+    isNameValid &&
+    isAddressValid &&
+    isNotesValid;
 
   // Voucher states & logic
   const activeCustomerVouchers = customerVouchers.filter((v) => !v.isUsed);
@@ -154,11 +187,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
 
   const handleContinueToConfirmation = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName.trim()) return;
-    if (
-      (handoverMethod === 'pickup_by_courier' || returnMethod === 'deliver_to_me') &&
-      !customerAddress.trim()
-    ) {
+    setFormAttempted(true);
+    if (!isFormValid) {
       return;
     }
     setCheckoutStep('confirm');
@@ -253,6 +283,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 1
               </span>
               <span>Pilihan Paket Layanan</span>
+              <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -335,6 +366,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   2
                 </span>
                 <span>Perkiraan Berat / Jumlah</span>
+                <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
               </h2>
               <span className="text-xs font-bold text-[#cd6184]">
                 {selectedPlan.name}
@@ -423,6 +455,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 3
               </span>
               <span>Metode Penyerahan Pakaian</span>
+              <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -497,6 +530,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 4
               </span>
               <span>Metode Pengembalian Pakaian</span>
+              <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -564,38 +598,94 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
             </div>
           </div>
 
-          {/* Section 5: Pickup/Schedule & Contact Details */}
+          {/* Section 5: Pickup/Schedule & Contact Details (Mandatory) */}
           <div className="space-y-4">
-            <h2 className="text-base font-bold text-[#254117] flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
-                5
-              </span>
-              <span>{scheduleLabel} & Data Pemesan</span>
+            <h2 className="text-base font-bold text-[#254117] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
+                  5
+                </span>
+                <span>{scheduleLabel} & Data Pemesan</span>
+                <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
+              </div>
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Date & Time */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4">
+              <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-xs">
                 <div>
-                  <label htmlFor={dateInputId} className="block text-xs font-semibold text-[#254117] mb-1.5 flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-[#cd6184]" />
-                    <span>Pilihan Tanggal</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor={dateInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-[#cd6184]" />
+                      <span>Pilihan Tanggal Penjemputan</span>
+                      <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
+                    </label>
+                    {isDateValid && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" /> Terpilih
+                      </span>
+                    )}
+                  </div>
                   <input
                     id={dateInputId}
                     type="date"
+                    min={new Date().toISOString().split('T')[0]}
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#cd6184]"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-medium focus:outline-none transition-colors ${
+                      formAttempted && !isDateValid
+                        ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                        : 'border-gray-200 focus:border-[#cd6184]'
+                    }`}
                     required
                   />
+                  {/* Quick Select Buttons */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[11px] text-gray-500 font-medium">Pilihan cepat:</span>
+                    <button
+                      type="button"
+                      onClick={() => setScheduleDate(getTomorrowStr())}
+                      className={`px-2.5 py-1 text-[11px] rounded-lg border font-semibold transition-all cursor-pointer ${
+                        scheduleDate === getTomorrowStr()
+                          ? 'bg-[#cd6184] text-white border-[#cd6184] shadow-2xs'
+                          : 'bg-gray-50 hover:bg-[#ffecf2] border-gray-200 text-[#254117]'
+                      }`}
+                    >
+                      Besok
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScheduleDate(getDayAfterTomorrowStr())}
+                      className={`px-2.5 py-1 text-[11px] rounded-lg border font-semibold transition-all cursor-pointer ${
+                        scheduleDate === getDayAfterTomorrowStr()
+                          ? 'bg-[#cd6184] text-white border-[#cd6184] shadow-2xs'
+                          : 'bg-gray-50 hover:bg-[#ffecf2] border-gray-200 text-[#254117]'
+                      }`}
+                    >
+                      Lusa
+                    </button>
+                  </div>
+                  {formAttempted && !isDateValid && (
+                    <p className="text-[11px] text-red-500 font-medium mt-1.5 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      Silakan tentukan tanggal penjemputan terlebih dahulu.
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#254117] mb-1.5 flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-[#cd6184]" />
-                    <span>Pilihan Jam Layanan</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-[#254117] flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-[#cd6184]" />
+                      <span>Pilihan Jam Layanan</span>
+                      <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
+                    </label>
+                    {isTimeValid && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" /> Terpilih
+                      </span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {['09:00 - 11:00', '11:00 - 13:00', '13:00 - 15:00', '15:00 - 17:00'].map((slot) => (
                       <button
@@ -604,7 +694,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                         onClick={() => setScheduleTime(slot)}
                         className={`py-2 px-2 text-xs rounded-lg font-medium border text-center transition-all cursor-pointer ${
                           scheduleTime === slot
-                            ? 'border-[#cd6184] bg-[#ffecf2] text-[#cd6184] font-bold'
+                            ? 'border-[#cd6184] bg-[#ffecf2] text-[#cd6184] font-bold shadow-2xs'
                             : 'border-gray-200 hover:bg-gray-50 text-[#254117]/80'
                         }`}
                       >
@@ -612,71 +702,116 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       </button>
                     ))}
                   </div>
+                  {formAttempted && !isTimeValid && (
+                    <p className="text-[11px] text-red-500 font-medium mt-1.5 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      Silakan tentukan slot jam penjemputan di atas.
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Customer Info */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-3">
+              <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-3.5 shadow-xs">
                 <div>
-                  <label htmlFor={nameInputId} className="block text-xs font-semibold text-[#254117] mb-1 flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-[#cd6184]" />
-                    <span>Nama Lengkap</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label htmlFor={nameInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-[#cd6184]" />
+                      <span>Nama Lengkap</span>
+                      <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
+                    </label>
+                  </div>
                   <input
                     id={nameInputId}
                     type="text"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="Nama lengkap Anda"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#cd6184]"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-medium focus:outline-none transition-colors ${
+                      formAttempted && !isNameValid
+                        ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                        : 'border-gray-200 focus:border-[#cd6184]'
+                    }`}
                     required
                   />
+                  {formAttempted && !isNameValid && (
+                    <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      Silakan isi nama lengkap pemesan.
+                    </p>
+                  )}
                 </div>
 
-                {(handoverMethod === 'pickup_by_courier' || returnMethod === 'deliver_to_me') && (
-                  <div>
-                    <label htmlFor={addressInputId} className="block text-xs font-semibold text-[#254117] mb-1 flex items-center gap-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label htmlFor={addressInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-[#cd6184]" />
-                      <span>Alamat Lengkap (untuk Kurir)</span>
+                      <span>Alamat Lengkap (Penjemputan & Pengantaran)</span>
+                      <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                     </label>
-                    <textarea
-                      id={addressInputId}
-                      rows={2}
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                      placeholder="Nama jalan, nomor rumah/unit, patokan..."
-                      className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:border-[#cd6184]"
-                      required
-                    />
                   </div>
-                )}
+                  <textarea
+                    id={addressInputId}
+                    rows={2}
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    placeholder="Nama jalan, nomor rumah/unit, patokan..."
+                    className={`w-full px-3.5 py-2 rounded-xl border text-sm font-medium focus:outline-none transition-colors ${
+                      formAttempted && !isAddressValid
+                        ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                        : 'border-gray-200 focus:border-[#cd6184]'
+                    }`}
+                    required
+                  />
+                  {formAttempted && !isAddressValid && (
+                    <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      Silakan isi alamat lengkap penjemputan/pengantaran.
+                    </p>
+                  )}
+                </div>
 
                 <div>
-                  <label htmlFor={notesInputId} className="block text-xs font-semibold text-[#254117] mb-1 flex items-center gap-1">
-                    <FileText className="w-3.5 h-3.5 text-[#254117]/60" />
-                    <span>Catatan Tambahan (opsional)</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label htmlFor={notesInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5 text-[#cd6184]" />
+                      <span>Catatan Cucian / Instruksi Khusus</span>
+                      <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
+                    </label>
+                  </div>
                   <input
                     id={notesInputId}
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Contoh: Tolong pisahkan kemeja putih"
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium focus:outline-none focus:border-[#cd6184]"
+                    placeholder="Contoh: Pakaian katun & kemeja kerja, jangan gunakan pemutih"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium focus:outline-none transition-colors ${
+                      formAttempted && !isNotesValid
+                        ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                        : 'border-gray-200 focus:border-[#cd6184]'
+                    }`}
+                    required
                   />
+                  {formAttempted && !isNotesValid && (
+                    <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      Silakan isi catatan atau instruksi cucian.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section 5: Voucher / Kupon Diskon */}
+          {/* Section 6: Voucher / Kupon Diskon (Opsional) */}
           <div className="bg-[#ffecf2]/60 rounded-3xl p-5 sm:p-6 border border-[#cd6184]/25 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-[#254117] flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
-                  5
+                  6
                 </span>
                 <span>Gunakan Voucher / Kupon Diskon</span>
+                <span className="text-xs font-normal text-gray-500">(Opsional)</span>
               </h2>
               {appliedVoucher && (
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
@@ -842,16 +977,66 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
             </p>
           </div>
 
+          {/* Validation warning if required fields are not filled yet */}
+          {(!isFormValid || formAttempted) && !isFormValid && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 flex items-start gap-3 text-xs shadow-xs animate-in fade-in duration-200">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold text-amber-900 flex items-center gap-1.5">
+                  <span className="text-red-500 font-bold text-sm leading-none select-none">*</span>
+                  <span>Lengkapi kolom bertanda bintang (*) untuk melanjutkan:</span>
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {!isDateValid && (
+                    <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                      • Tanggal Penjemputan
+                    </span>
+                  )}
+                  {!isTimeValid && (
+                    <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                      • Jam Layanan
+                    </span>
+                  )}
+                  {!isNameValid && (
+                    <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                      • Nama Lengkap
+                    </span>
+                  )}
+                  {!isAddressValid && (
+                    <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                      • Alamat Lengkap
+                    </span>
+                  )}
+                  {!isNotesValid && (
+                    <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                      • Catatan Cucian
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Continue button */}
           <div className="pt-2">
             <button
               id="btn-continue-confirmation"
               type="submit"
-              className="w-full py-4 px-6 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-base shadow-lg shadow-[#cd6184]/30 flex items-center justify-center gap-3 transition-all cursor-pointer"
+              disabled={!isFormValid}
+              className={`w-full py-4 px-6 rounded-2xl font-bold text-base flex items-center justify-center gap-3 transition-all ${
+                isFormValid
+                  ? 'bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white shadow-lg shadow-[#cd6184]/30 cursor-pointer'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300 shadow-none'
+              }`}
             >
               <span>Lanjut ke Konfirmasi Pesanan</span>
               <ChevronRight className="w-5 h-5" />
             </button>
+            {!isFormValid && (
+              <p className="text-center text-[11px] text-gray-500 mt-2 font-medium">
+                Pilih jadwal penjemputan dan lengkapi data pemesan untuk mengaktifkan tombol ini
+              </p>
+            )}
           </div>
         </form>
       ) : (

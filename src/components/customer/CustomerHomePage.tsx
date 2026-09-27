@@ -97,9 +97,9 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
   return (
     <div id="customer-home-page" className="w-full space-y-4">
       {/* Top Greeting & Location Header */}
-      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#ffecf2] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div className="flex items-center justify-between md:justify-start gap-3">
-          <div className="flex items-center gap-3">
+      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#ffecf2] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3 overflow-hidden">
+        <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div
               onClick={onGoToProfile}
               className="w-11 h-11 rounded-full bg-[#ffecf2] border-2 border-[#cd6184]/40 flex items-center justify-center font-black text-[#cd6184] text-sm shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
@@ -107,8 +107,8 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
             >
               {userName.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-black text-gray-900 leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-black text-gray-900 leading-tight truncate">
                 Halo, {userName}! 👋
               </h1>
               <p className="text-[11px] text-gray-500 font-medium">
@@ -120,7 +120,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
           <button
             type="button"
             onClick={onGoToProfile}
-            className="md:hidden p-2 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-gray-500 hover:text-[#cd6184]"
+            className="md:hidden p-2 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-gray-500 hover:text-[#cd6184] shrink-0"
             title="Pengaturan Profil"
           >
             <User className="w-4 h-4" />
@@ -128,32 +128,26 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
         </div>
 
         {/* Address Chip */}
-        <div className="flex items-center gap-2">
+        <div className="w-full min-w-0 max-w-full md:w-auto">
           <div
+            id="card-customer-address-chip"
             onClick={onGoToProfile}
-            className="flex-1 md:w-80 flex items-center gap-2 px-3 py-2 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-left text-xs"
+            className="w-full min-w-0 max-w-full md:w-80 flex items-start sm:items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-left text-xs box-border overflow-hidden"
             title="Ubah Alamat di Profil"
           >
-            <MapPin className="w-3.5 h-3.5 text-[#cd6184] shrink-0" />
-            <div className="min-w-0 flex-1">
-              <span className="text-[10px] text-gray-400 block font-semibold leading-tight">
+            <div className="w-7 h-7 rounded-xl bg-[#ffecf2] flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+              <MapPin className="w-3.5 h-3.5 text-[#cd6184] shrink-0" />
+            </div>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <span className="text-[10px] text-gray-400 block font-semibold leading-tight mb-0.5">
                 Alamat Penjemputan:
               </span>
-              <span className="text-xs font-semibold text-gray-800 truncate block">
+              <p className="text-xs font-medium text-gray-800 break-words [overflow-wrap:anywhere] [word-break:break-word] line-clamp-2 leading-snug">
                 {userAddress}
-              </span>
+              </p>
             </div>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 mt-1 sm:mt-0" />
           </div>
-
-          <button
-            type="button"
-            onClick={onGoToProfile}
-            className="hidden md:flex p-2.5 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-gray-500 hover:text-[#cd6184]"
-            title="Pengaturan Profil"
-          >
-            <User className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
