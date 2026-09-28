@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Info,
   Lock,
+  Pencil,
 } from 'lucide-react';
 
 export const CourierApp: React.FC = () => {
@@ -44,6 +45,7 @@ export const CourierApp: React.FC = () => {
 
   // Detail view state
   const [weightInput, setWeightInput] = useState<string>('');
+  const [isEditingWeight, setIsEditingWeight] = useState<boolean>(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isShiftActive, setIsShiftActive] = useState(true);
@@ -119,6 +121,7 @@ export const CourierApp: React.FC = () => {
   const handleOpenDetail = (order: Order) => {
     setSelectedOrderId(order.id);
     setWeightInput(order.actualQuantity ? order.actualQuantity.toString() : '');
+    setIsEditingWeight(!order.actualQuantity);
     setSuccessMessage(null);
   };
 
@@ -137,6 +140,7 @@ export const CourierApp: React.FC = () => {
     setTimeout(() => {
       updateOrderWeight(selectedOrder.id, num);
       setIsUpdating(false);
+      setIsEditingWeight(false);
       setSuccessMessage('Berat berhasil disimpan, total harga diperbarui');
       setTimeout(() => setSuccessMessage(null), 4000);
     }, 400);
@@ -290,9 +294,10 @@ export const CourierApp: React.FC = () => {
             {selectedOrder.status === 'pickup' ? (
               <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#254117]">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#254117]">
                     <Scale className="w-4 h-4 text-[#cd6184]" />
                     <span>Timbang & Masukkan Berat Riil</span>
+                    <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                   </div>
                   <span className="text-xs font-semibold text-[#cd6184]">
                     Satuan: {selectedOrder.unit}
@@ -313,21 +318,39 @@ export const CourierApp: React.FC = () => {
                         value={weightInput}
                         onChange={(e) => setWeightInput(e.target.value)}
                         placeholder="Contoh: 4.8"
-                        className="w-full pl-4 pr-12 py-3 rounded-2xl border border-gray-200 text-lg font-black text-[#254117] focus:outline-none focus:border-[#cd6184]"
+                        disabled={!isEditingWeight || isUpdating}
+                        readOnly={!isEditingWeight}
+                        className={`w-full pl-4 pr-12 py-3 rounded-2xl border text-lg font-black transition-colors ${
+                          !isEditingWeight
+                            ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed select-none'
+                            : 'bg-white text-[#254117] border-gray-200 focus:outline-none focus:border-[#cd6184]'
+                        }`}
                         required
                       />
-                      <span className="absolute right-4 top-3.5 text-sm font-bold text-[#254117]/60">
+                      <span className={`absolute right-4 top-3.5 text-sm font-bold ${!isEditingWeight ? 'text-gray-400' : 'text-[#254117]/60'}`}>
                         {selectedOrder.unit}
                       </span>
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={isUpdating || !weightInput}
-                      className="py-3.5 px-5 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-md disabled:opacity-50 cursor-pointer"
-                    >
-                      {isUpdating ? 'Menyimpan...' : 'Simpan Berat'}
-                    </button>
+                    {!isEditingWeight ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingWeight(true)}
+                        className="py-3.5 px-5 rounded-2xl bg-white border-2 border-[#cd6184] text-[#cd6184] hover:bg-[#ffecf2] font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
+                        title="Edit berat riil"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={isUpdating || !weightInput.trim() || parseFloat(weightInput) <= 0}
+                        className="py-3.5 px-5 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      >
+                        {isUpdating ? 'Menyimpan...' : 'Simpan Berat'}
+                      </button>
+                    )}
                   </div>
 
                   {/* Real-time price calculation helper */}

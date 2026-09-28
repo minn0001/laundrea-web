@@ -85,12 +85,9 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
 
       {/* Profil Header Pengguna */}
       <div className="flex items-center gap-4">
-        {/* Avatar / Lencana bulat mascot */}
-        <div className="relative w-16 h-16 rounded-full bg-[#ffecf2] border-2 border-[#cd6184]/40 flex items-center justify-center overflow-hidden shadow-xs shrink-0">
-          <div className="w-12 h-12 rounded-full bg-[#cd6184] text-white flex flex-col items-center justify-center text-center font-black">
-            <span className="text-xs font-bold leading-none uppercase">Laundrea</span>
-            <span className="text-[9px] font-medium opacity-90">Laundry</span>
-          </div>
+        {/* Avatar Profil Pengguna */}
+        <div className="w-16 h-16 rounded-full bg-[#ffecf2] border-2 border-[#cd6184]/40 flex items-center justify-center font-black text-[#cd6184] text-2xl shadow-xs shrink-0 select-none">
+          {userName.charAt(0).toUpperCase()}
         </div>
 
         <div className="flex-1 min-w-0">

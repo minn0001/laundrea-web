@@ -319,6 +319,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCustomerPhone(phone);
     localStorage.setItem('laundrea_cust_verified', 'true');
     localStorage.setItem('laundrea_current_role', 'customer');
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/staff')) {
+      window.history.pushState({}, '', '/');
+      window.dispatchEvent(new Event('popstate'));
+    }
   };
 
   const logoutCustomer = () => {
@@ -326,6 +330,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('laundrea_cust_verified');
     localStorage.setItem('laundrea_cust_verified', 'false');
     localStorage.removeItem('laundrea_current_role');
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/');
+      window.dispatchEvent(new Event('popstate'));
+    }
   };
 
   const loginCourier = (username: string) => {
@@ -334,6 +342,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCourierUsername(username || 'kurir_dimas');
     localStorage.setItem('laundrea_courier_logged_in', 'true');
     localStorage.setItem('laundrea_current_role', 'courier');
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/staff')) {
+      window.history.pushState({}, '', '/staff');
+      window.dispatchEvent(new Event('popstate'));
+    }
   };
 
   const logoutCourier = () => {
@@ -341,6 +353,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('laundrea_courier_logged_in');
     localStorage.setItem('laundrea_courier_logged_in', 'false');
     localStorage.removeItem('laundrea_current_role');
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/staff')) {
+      window.history.pushState({}, '', '/staff');
+      window.dispatchEvent(new Event('popstate'));
+    }
   };
 
   const loginAdmin = (username: string) => {
@@ -349,6 +365,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAdminUsername(username || 'owner_laundrea');
     localStorage.setItem('laundrea_admin_logged_in', 'true');
     localStorage.setItem('laundrea_current_role', 'admin');
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/staff')) {
+      window.history.pushState({}, '', '/staff');
+      window.dispatchEvent(new Event('popstate'));
+    }
   };
 
   const logoutAdmin = () => {
@@ -356,6 +376,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('laundrea_admin_logged_in');
     localStorage.setItem('laundrea_admin_logged_in', 'false');
     localStorage.removeItem('laundrea_current_role');
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/staff')) {
+      window.history.pushState({}, '', '/staff');
+      window.dispatchEvent(new Event('popstate'));
+    }
   };
 
   const claimLoyaltyVoucher = (): CustomerVoucher | null => {
