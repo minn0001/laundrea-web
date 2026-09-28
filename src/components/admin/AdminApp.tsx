@@ -39,7 +39,7 @@ export const AdminApp: React.FC = () => {
           >
             {mobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <BrandWordmark size="sm" variant="light" />
+          <BrandWordmark size="header" showLogo variant="light" />
         </div>
         <span className="text-xs font-semibold text-[#ffbd59]">Admin Panel</span>
       </div>

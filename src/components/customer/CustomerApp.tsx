@@ -81,7 +81,7 @@ export const CustomerApp: React.FC = () => {
       <header className="bg-[#254117] text-white p-3.5 sm:p-4 sticky top-0 z-30 shadow-xs">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <BrandWordmark size="sm" variant="light" />
+            <BrandWordmark size="header" showLogo variant="light" />
           </div>
 
           <div className="relative">

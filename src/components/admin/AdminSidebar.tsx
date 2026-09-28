@@ -50,8 +50,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     <aside className="w-64 bg-[#254117] text-white flex flex-col justify-between shrink-0 h-full border-r border-[#254117]/80 shadow-2xl md:shadow-none">
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Brand Wordmark & Optional Mobile Close */}
-        <div className="p-5 border-b border-white/10 flex items-center justify-between">
-          <BrandWordmark size="md" variant="light" />
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+          <BrandWordmark size="header" showLogo variant="light" />
           {onCloseMobile && (
             <button
               onClick={onCloseMobile}
