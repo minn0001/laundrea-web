@@ -8,9 +8,22 @@ export function useRouter() {
     return '/';
   });
 
+  const isStaff = pathname.startsWith('/staff');
+
+  // Immediately synchronize document.title on initial load and render
+  if (typeof document !== 'undefined') {
+    const targetTitle = isStaff ? 'Laundrea Staff' : 'Laundrea';
+    if (document.title !== targetTitle) {
+      document.title = targetTitle;
+    }
+  }
+
   useEffect(() => {
     const handleLocationChange = () => {
-      setPathname(window.location.pathname || '/');
+      const current = window.location.pathname || '/';
+      setPathname(current);
+      const isStaffRoute = current.startsWith('/staff');
+      document.title = isStaffRoute ? 'Laundrea Staff' : 'Laundrea';
     };
 
     window.addEventListener('popstate', handleLocationChange);
@@ -19,17 +32,24 @@ export function useRouter() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = isStaff ? 'Laundrea Staff' : 'Laundrea';
+    }
+  }, [isStaff]);
+
   const navigate = useCallback((to: string) => {
     if (typeof window !== 'undefined') {
       if (window.location.pathname !== to) {
         window.history.pushState({}, '', to);
         setPathname(to);
+        const nextIsStaff = to.startsWith('/staff');
+        document.title = nextIsStaff ? 'Laundrea Staff' : 'Laundrea';
         window.dispatchEvent(new Event('popstate'));
       }
     }
   }, []);
 
-  const isStaff = pathname.startsWith('/staff');
-
   return { pathname, navigate, isStaff };
 }
+

@@ -176,10 +176,6 @@ export const CourierApp: React.FC = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <BrandWordmark size="sm" variant="light" />
-            <div className="h-4 w-[1px] bg-white/30" />
-            <span className="text-[11px] font-bold text-[#ffbd59] uppercase tracking-wider">
-              Portal Kurir
-            </span>
           </div>
 
           <div className="flex items-center gap-2">

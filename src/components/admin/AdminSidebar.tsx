@@ -51,12 +51,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Brand Wordmark & Optional Mobile Close */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between">
-          <div className="flex flex-col items-start">
-            <BrandWordmark size="md" variant="light" />
-            <span className="text-[11px] font-semibold text-[#ffbd59] uppercase tracking-wider mt-1">
-              Panel Manajemen
-            </span>
-          </div>
+          <BrandWordmark size="md" variant="light" />
           {onCloseMobile && (
             <button
               onClick={onCloseMobile}

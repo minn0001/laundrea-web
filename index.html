@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Laundrea</title>
+    <script>
+      try {
+        if (window.location.pathname.startsWith('/staff')) {
+          document.title = 'Laundrea Staff';
+        } else {
+          document.title = 'Laundrea';
+        }
+      } catch (e) {}
+    </script>
     <meta name="description" content="Platform layanan pickup & delivery pakaian bersih dengan portal Customer, Kurir, dan Admin." />
     <meta property="og:title" content="Laundrea" />
     <meta property="og:description" content="Platform layanan pickup & delivery pakaian bersih dengan portal Customer, Kurir, dan Admin." />
