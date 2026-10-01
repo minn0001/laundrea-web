@@ -83,7 +83,7 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
             onClick={() => setActiveStaffRole('courier')}
             className={`flex-1 py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
               activeStaffRole === 'courier'
-                ? : 'bg-[#254117] text-[#ffbd59] shadow-md'
+                ? 'bg-[#254117] text-[#ffbd59] shadow-md'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
             }`}
           >
@@ -125,7 +125,7 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
                     </span>
                   </div>
                 </div>
-                <<span className="text-[10px] font-bold text-[#254117] bg-[#ffbd59]/25 px-2 py-0.5 rounded-full border border-[#ffbd59]/40">
+                <span className="text-[10px] font-bold text-[#254117] bg-[#ffbd59]/25 px-2 py-0.5 rounded-full border border-[#ffbd59]/40">
                   ID Lapangan
                 </span>
               </div>
