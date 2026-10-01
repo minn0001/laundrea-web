@@ -141,23 +141,23 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
     <div id="customer-tracking-page" className="w-full space-y-3 sm:space-y-4">
       {/* Top status bar */}
       <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-xs space-y-2 sm:space-y-3">
-        {/* Row 1 (Status + Order ID badge) and Row 2 (+ Pesanan Baru button on own line full-width on mobile) */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          {/* Row 1: STATUS PESANAN label + order ID badge */}
-          <div className="flex items-center gap-2">
+        {/* Top 2-column layout: Left column (Status label stacked above Order ID badge) + Right column (+ Pesanan Baru button matched in height) */}
+        <div className="flex items-stretch justify-between gap-3">
+          {/* Left Column: Stacked vertically */}
+          <div className="flex flex-col justify-between py-0.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#cd6184]">
               Status Pesanan
             </span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#ffecf2] text-[#cd6184] font-black">
+            <span className="inline-block text-xs px-2.5 py-0.5 rounded-full bg-[#ffecf2] text-[#cd6184] font-black w-fit mt-1">
               {currentOrder.orderNumber}
             </span>
           </div>
 
-          {/* Row 2: + Pesanan Baru button (full-width on mobile, auto on desktop) */}
+          {/* Right Column: + Pesanan Baru button matching combined height */}
           <button
             id="btn-tracking-new-order"
             onClick={onNewOrderClick}
-            className="w-full sm:w-auto text-xs font-bold px-3.5 py-2 sm:py-1.5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs active:scale-[0.99]"
+            className="self-stretch text-xs font-bold px-3.5 sm:px-4 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs active:scale-[0.99] whitespace-nowrap shrink-0"
           >
             <span>+ Pesanan Baru</span>
           </button>
@@ -349,15 +349,15 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
 
       {/* Official Verified Pricing & Weight - Locked and Read-only for Customer */}
       <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-xs space-y-3 sm:space-y-4">
-        <div className="border-b pb-2.5 sm:pb-3 space-y-1 sm:space-y-1.5">
-          <div className="flex items-center justify-between">
+        <div className="border-b pb-2.5 sm:pb-3 space-y-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-1.5 sm:gap-2">
             <div className="flex items-center gap-2">
-              <Scale className="w-4 h-4 text-[#cd6184]" />
-              <h3 className="text-sm font-bold text-[#254117]">
+              <Scale className="w-4 h-4 text-[#cd6184] shrink-0" />
+              <h3 className="text-sm font-bold text-[#254117] leading-snug">
                 Verifikasi Timbangan & Harga Akhir
               </h3>
             </div>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 self-start">
               <Lock className="w-3 h-3 text-emerald-600" />
               <span>Resmi & Tetap</span>
             </span>

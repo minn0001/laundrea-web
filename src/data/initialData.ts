@@ -18,13 +18,13 @@ export const INITIAL_PLANS: Plan[] = [
     name: 'Regular',
     price: 12000,
     unit: 'kg',
-    turnaroundTime: 'Ready in 2 days',
+    turnaroundTime: 'Siap dalam 2 hari',
     minOrder: 3,
     features: [
-      'Wash + dry + fold',
-      'Eco-friendly detergent',
-      'Free pickup & delivery',
-      'Min. order 3 kg',
+      'Cuci + keringkan + lipat',
+      'Deterjen ramah lingkungan',
+      'Antar-jemput gratis',
+      'Min. pemesanan 3 kg',
     ],
   },
   {
@@ -32,15 +32,15 @@ export const INITIAL_PLANS: Plan[] = [
     name: 'Express',
     price: 24000,
     unit: 'kg',
-    turnaroundTime: 'Ready same day',
+    turnaroundTime: 'Siap di hari yang sama',
     isPopular: true,
     minOrder: 3,
     features: [
-      'Wash + dry + fold',
-      'Eco-friendly detergent',
-      'Free pickup & delivery',
-      'Priority queue',
-      'Min. order 3 kg',
+      'Cuci + keringkan + lipat',
+      'Deterjen ramah lingkungan',
+      'Antar-jemput gratis',
+      'Antrean prioritas pengerjaan',
+      'Min. pemesanan 3 kg',
     ],
   },
   {
@@ -48,13 +48,13 @@ export const INITIAL_PLANS: Plan[] = [
     name: 'Per Item',
     price: 25000,
     unit: 'pcs',
-    turnaroundTime: 'Ready in 2×24 hours',
+    turnaroundTime: 'Siap dalam 2×24 jam',
     minOrder: 1,
     features: [
-      'Jackets, suits, dresses, rugs',
-      'Special item care',
-      'Free pickup & delivery',
-      'Price estimate before processing',
+      'Jaket, jas, gaun, karpet',
+      'Perawatan serat kain khusus',
+      'Antar-jemput gratis',
+      'Estimasi biaya sebelum proses cuci',
     ],
   },
 ];
@@ -414,10 +414,10 @@ export const INITIAL_CUSTOMER_VOUCHERS: CustomerVoucher[] = [
 ];
 
 export const INITIAL_OPERATIONAL_COSTS: OperationalCostItem[] = [
-  { id: 'cost-1', category: 'Detergent & Softener Eco-Friendly', amount: 850000, date: '2026-09-01' },
-  { id: 'cost-2', category: 'Fuel & Courier Operational Stipend', amount: 1200000, date: '2026-09-05' },
-  { id: 'cost-3', category: 'Water & Electricity Utility', amount: 950000, date: '2026-09-07' },
-  { id: 'cost-4', category: 'Eco Packaging & Garment Covers', amount: 450000, date: '2026-09-08' },
+  { id: 'cost-1', category: 'Deterjen & Pelembut Ramah Lingkungan', amount: 850000, date: '2026-09-01' },
+  { id: 'cost-2', category: 'Bahan Bakar & Tunjangan Kurir', amount: 1200000, date: '2026-09-05' },
+  { id: 'cost-3', category: 'Listrik & Air Gerai', amount: 950000, date: '2026-09-07' },
+  { id: 'cost-4', category: 'Kemasan Ramah Lingkungan & Hanger', amount: 450000, date: '2026-09-08' },
 ];
 
 export const INITIAL_SYSTEM_PERMISSIONS: PermissionItem[] = [

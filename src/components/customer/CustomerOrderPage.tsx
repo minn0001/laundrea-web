@@ -236,7 +236,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   return (
     <div id="customer-order-flow" className="w-full">
       {/* Top back button */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-2 mb-6">
         {checkoutStep === 'confirm' ? (
           <button
             type="button"
@@ -257,8 +257,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
           </button>
         ) : null}
 
-        <div className="text-right">
-          <span className="text-xs font-semibold text-[#cd6184] bg-[#ffecf2] px-3 py-1 rounded-full">
+        <div className="sm:text-right">
+          <span className="text-[11px] sm:text-xs font-semibold text-[#cd6184] bg-[#ffecf2] px-2.5 sm:px-3 py-1 rounded-full inline-block whitespace-nowrap">
             {checkoutStep === 'select' ? 'Langkah 1 dari 2: Konfigurasi Pesanan' : 'Langkah 2 dari 2: Konfirmasi Pesanan'}
           </span>
         </div>

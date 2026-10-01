@@ -155,10 +155,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  // Helper to ensure plan text is in Indonesian if old cached English exists
+  const translatePlanIfEnglish = (p: Plan): Plan => {
+    let turnaround = p.turnaroundTime;
+    if (turnaround === 'Ready in 2 days') turnaround = 'Siap dalam 2 hari';
+    if (turnaround === 'Ready same day') turnaround = 'Siap di hari yang sama';
+    if (turnaround === 'Ready in 2×24 hours') turnaround = 'Siap dalam 2×24 jam';
+
+    const features = p.features.map((f) => {
+      if (f === 'Wash + dry + fold') return 'Cuci + keringkan + lipat';
+      if (f === 'Eco-friendly detergent') return 'Deterjen ramah lingkungan';
+      if (f === 'Free pickup & delivery') return 'Antar-jemput gratis';
+      if (f === 'Min. order 3 kg') return 'Min. pemesanan 3 kg';
+      if (f === 'Priority queue') return 'Antrean prioritas pengerjaan';
+      if (f === 'Jackets, suits, dresses, rugs') return 'Jaket, jas, gaun, karpet';
+      if (f === 'Special item care') return 'Perawatan serat kain khusus';
+      if (f === 'Price estimate before processing') return 'Estimasi biaya sebelum proses cuci';
+      return f;
+    });
+
+    return { ...p, turnaroundTime: turnaround, features };
+  };
+
   // Main datasets with local storage persistence
   const [plans, setPlans] = useState<Plan[]>(() => {
     const saved = localStorage.getItem('laundrea_plans');
-    return saved ? JSON.parse(saved) : INITIAL_PLANS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(translatePlanIfEnglish);
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return INITIAL_PLANS;
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
@@ -193,7 +225,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [operationalCosts, setOperationalCosts] = useState<OperationalCostItem[]>(() => {
     const saved = localStorage.getItem('laundrea_costs');
-    return saved ? JSON.parse(saved) : INITIAL_OPERATIONAL_COSTS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((c: OperationalCostItem) => {
+            let cat = c.category;
+            if (cat === 'Detergent & Softener Eco-Friendly') cat = 'Deterjen & Pelembut Ramah Lingkungan';
+            if (cat === 'Fuel & Courier Operational Stipend') cat = 'Bahan Bakar & Tunjangan Kurir';
+            if (cat === 'Water & Electricity Utility') cat = 'Listrik & Air Gerai';
+            if (cat === 'Eco Packaging & Garment Covers') cat = 'Kemasan Ramah Lingkungan & Hanger';
+            return { ...c, category: cat };
+          });
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return INITIAL_OPERATIONAL_COSTS;
   });
 
   // System Management State (Admin & Courier accounts only: 1 Super Admin, 2 Admin Kasir/Operasional, 2 Kurir)

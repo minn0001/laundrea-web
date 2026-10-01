@@ -273,8 +273,7 @@ export const CourierApp: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Package className="w-3.5 h-3.5 text-[#254117]/60 shrink-0" />
                   <span>
-                    Paket: <strong className="text-[#254117]">{selectedOrder.planName}</strong> (
-                    Tarif: Rp {selectedOrder.unitPrice.toLocaleString('id-ID')}/{selectedOrder.unit})
+                    Paket: <strong className="text-[#254117]">{selectedOrder.planName}</strong> (Tarif: Rp {selectedOrder.unitPrice.toLocaleString('id-ID')}/{selectedOrder.unit})
                   </span>
                 </div>
 

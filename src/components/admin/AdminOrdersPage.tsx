@@ -376,11 +376,11 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
 
             {/* Status Update Control (Admin Exclusive) */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-[#254117]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-1 sm:gap-2">
+                <label className="block text-xs font-bold text-[#254117] leading-snug">
                   Ubah Status Cucian (Wewenang Admin Gerai):
                 </label>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ffecf2] text-[#cd6184]">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ffecf2] text-[#cd6184] self-start shrink-0">
                   Admin Gerai
                 </span>
               </div>

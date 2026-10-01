@@ -134,13 +134,13 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
 
         {/* 10-Stamp Visual Grid */}
         <div className="space-y-2.5 sm:space-y-3">
-          <div className="flex items-center justify-between text-xs font-bold text-[#254117]">
-            <span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs font-bold text-[#254117] gap-1 sm:gap-2">
+            <span className="leading-snug">
               {stampsCount >= targetStamps
                 ? '✓ 10 Stempel telah terkumpul! Voucher siap diklaim.'
                 : `${stampsCount % targetStamps} dari 10 stempel terkumpul`}
             </span>
-            <span className="text-[#97a273]">
+            <span className="text-[#97a273] text-left">
               {stampsCount >= targetStamps
                 ? 'Voucher Hadiah Tersedia'
                 : `${stampsRemaining} stempel lagi untuk klaim voucher`}
@@ -210,7 +210,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                   ? 'Voucher Cuci Gratis Siap Diklaim!'
                   : 'Kumpulkan 10 Stempel untuk Klaim Voucher'}
               </h3>
-              <p className="text-xs text-[#254117]/75 mt-0.5 max-w-md leading-relaxed">
+              <p className="text-[10.5px] sm:text-xs text-[#254117]/75 mt-0.5 max-w-md leading-relaxed">
                 Tukarkan 10 stempel Anda dengan 1 voucher cuci gratis (diskon hingga Rp 35.000). Voucher yang diklaim langsung dapat digunakan di menu pemesanan!
               </p>
             </div>

@@ -27,22 +27,92 @@ export const AdminFinancialReportsPage: React.FC = () => {
   const [newCostAmount, setNewCostAmount] = useState<number>(350000);
   const [downloadToast, setDownloadToast] = useState(false);
 
-  // Total gross revenue from orders
-  const grossRevenue = orders.reduce((sum, ord) => {
+  // Helper to extract clean YYYY-MM-DD from order
+  const getOrderDate = (ord: (typeof orders)[0]): string => {
+    if (ord.pickupDate && ord.pickupDate.length >= 10) {
+      return ord.pickupDate.slice(0, 10);
+    }
+    if (ord.statusTimestamps?.booked) {
+      return ord.statusTimestamps.booked.slice(0, 10);
+    }
+    return '';
+  };
+
+  const todayReal = new Date().toISOString().slice(0, 10);
+  const allRecordedDates = [
+    ...orders.map(getOrderDate),
+    ...operationalCosts.map((c) => c.date?.slice(0, 10) || ''),
+  ].filter(Boolean);
+
+  // If there are transactions matching today's calendar date, anchor to today;
+  // otherwise anchor to the most recent date recorded (e.g. 2026-09-08 for demo data)
+  const anchorDateStr = allRecordedDates.includes(todayReal)
+    ? todayReal
+    : allRecordedDates.length > 0
+    ? [...allRecordedDates].sort().reverse()[0]
+    : todayReal;
+
+  // Check if a date string falls inside the active dateFilter
+  const isDateInFilter = (dateStr: string): boolean => {
+    if (!dateStr) return false;
+    const cleanDate = dateStr.slice(0, 10);
+    if (dateFilter === 'today') {
+      return cleanDate === anchorDateStr;
+    }
+    if (dateFilter === '7days') {
+      const anchor = new Date(anchorDateStr);
+      const past7 = new Date(anchor);
+      past7.setDate(past7.getDate() - 6);
+      const past7Str = past7.toISOString().slice(0, 10);
+      return cleanDate >= past7Str && cleanDate <= anchorDateStr;
+    }
+    if (dateFilter === 'month') {
+      return cleanDate.slice(0, 7) === anchorDateStr.slice(0, 7);
+    }
+    if (dateFilter === 'custom') {
+      if (!customStartDate && !customEndDate) return true;
+      if (customStartDate && cleanDate < customStartDate) return false;
+      if (customEndDate && cleanDate > customEndDate) return false;
+      return true;
+    }
+    return true;
+  };
+
+  const getPeriodLabel = () => {
+    if (dateFilter === 'today') return `Hari Ini (${anchorDateStr})`;
+    if (dateFilter === '7days') return `7 Hari Terakhir (s.d. ${anchorDateStr})`;
+    if (dateFilter === 'month') {
+      const monthNames = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      const monthIdx = parseInt(anchorDateStr.slice(5, 7), 10) - 1;
+      return `Bulan ${monthNames[monthIdx] || ''} ${anchorDateStr.slice(0, 4)}`;
+    }
+    if (dateFilter === 'custom') return `${customStartDate || 'Awal'} s.d. ${customEndDate || 'Akhir'}`;
+    return 'Semua Periode';
+  };
+
+  // Dynamically filtered orders and operational costs based on active period filter
+  const filteredOrders = orders.filter((ord) => isDateInFilter(getOrderDate(ord)));
+  const filteredCosts = operationalCosts.filter((item) => isDateInFilter(item.date));
+
+  // Recalculated Gross Revenue
+  const grossRevenue = filteredOrders.reduce((sum, ord) => {
     return sum + (ord.actualPrice || ord.estimatedPrice);
   }, 0);
 
-  // Total operational cost
-  const totalCost = operationalCosts.reduce((sum, item) => sum + item.amount, 0);
+  // Recalculated Total Operational Cost
+  const totalCost = filteredCosts.reduce((sum, item) => sum + item.amount, 0);
 
-  // Net Profit & Margin
+  // Recalculated Net Profit & Margin
   const netProfit = grossRevenue - totalCost;
   const netMargin = grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 100) : 0;
-  const averageOrderValue = orders.length > 0 ? Math.round(grossRevenue / orders.length) : 0;
+  const averageOrderValue = filteredOrders.length > 0 ? Math.round(grossRevenue / filteredOrders.length) : 0;
 
-  // Breakdown by plan
+  // Breakdown by plan for filtered orders
   const planRevenue: Record<string, { revenue: number; count: number }> = {};
-  orders.forEach((ord) => {
+  filteredOrders.forEach((ord) => {
     const val = ord.actualPrice || ord.estimatedPrice;
     if (!planRevenue[ord.planName]) {
       planRevenue[ord.planName] = { revenue: 0, count: 0 };
@@ -90,6 +160,7 @@ export const AdminFinancialReportsPage: React.FC = () => {
     // Generate CSV file content and trigger browser download
     const csvContent = [
       'Laporan Keuangan Laundrea',
+      `Periode Laporan: ${getPeriodLabel()}`,
       `Tanggal Unduh: ${new Date().toLocaleDateString('id-ID')}`,
       '',
       `Total Pendapatan Kotor,Rp ${grossRevenue}`,
@@ -97,10 +168,11 @@ export const AdminFinancialReportsPage: React.FC = () => {
       `Estimasi Laba Bersih,Rp ${netProfit}`,
       `Margin Keuntungan,${netMargin}%`,
       `Rata-rata Nilai Order,Rp ${averageOrderValue}`,
+      `Jumlah Pesanan,${filteredOrders.length}`,
       '',
-      'Daftar Pengeluaran Operasional:',
+      'Daftar Pengeluaran Operasional Periode Ini:',
       'Kategori,Nominal,Tanggal',
-      ...operationalCosts.map((c) => `"${c.category}",${c.amount},"${c.date}"`),
+      ...filteredCosts.map((c) => `"${c.category}",${c.amount},"${c.date}"`),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -190,21 +262,31 @@ export const AdminFinancialReportsPage: React.FC = () => {
         </div>
 
         {dateFilter === 'custom' && (
-          <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs">
-            <span className="text-[#254117]/70 font-medium">Dari:</span>
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
-              className="p-2 border border-gray-200 rounded-xl text-xs font-semibold text-[#254117]"
-            />
-            <span className="text-[#254117]/70 font-medium">Sampai:</span>
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
-              className="p-2 border border-gray-200 rounded-xl text-xs font-semibold text-[#254117]"
-            />
+          <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs animate-in fade-in">
+            <span className="text-[#254117] font-bold">Pilih Rentang Tanggal:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[#254117]/70 font-medium">Dari:</span>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="p-2 border border-gray-300 rounded-xl text-xs font-semibold text-[#254117] focus:outline-none focus:border-[#cd6184] bg-white cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[#254117]/70 font-medium">Sampai:</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="p-2 border border-gray-300 rounded-xl text-xs font-semibold text-[#254117] focus:outline-none focus:border-[#cd6184] bg-white cursor-pointer"
+              />
+            </div>
+            {customStartDate > customEndDate && (
+              <span className="text-red-500 font-semibold text-[11px]">
+                *Tanggal awal tidak boleh melebihi tanggal akhir
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -221,7 +303,9 @@ export const AdminFinancialReportsPage: React.FC = () => {
               Rp {grossRevenue.toLocaleString('id-ID')}
             </div>
           </div>
-          <p className="text-[11px] text-[#254117]/60 mt-2">Dari {orders.length} pesanan tercatat</p>
+          <p className="text-[11px] text-[#254117]/60 mt-2">
+            Dari {filteredOrders.length} pesanan tercatat ({getPeriodLabel()})
+          </p>
         </div>
 
         {/* Operational Expense */}
@@ -234,7 +318,9 @@ export const AdminFinancialReportsPage: React.FC = () => {
               Rp {totalCost.toLocaleString('id-ID')}
             </div>
           </div>
-          <p className="text-[11px] text-[#254117]/60 mt-2">Deterjen, bensin, listrik & kemasan</p>
+          <p className="text-[11px] text-[#254117]/60 mt-2">
+            {filteredCosts.length} pengeluaran operasional ({getPeriodLabel()})
+          </p>
         </div>
 
         {/* Net Profit & Margin */}
@@ -262,7 +348,9 @@ export const AdminFinancialReportsPage: React.FC = () => {
               Rp {averageOrderValue.toLocaleString('id-ID')}
             </div>
           </div>
-          <p className="text-[11px] text-[#97a273] font-semibold mt-2">Tingkat transaksi per pelanggan</p>
+          <p className="text-[11px] text-[#97a273] font-semibold mt-2">
+            {filteredOrders.length > 0 ? `Berdasarkan ${filteredOrders.length} transaksi` : 'Belum ada transaksi di periode ini'}
+          </p>
         </div>
       </div>
 
@@ -357,33 +445,39 @@ export const AdminFinancialReportsPage: React.FC = () => {
           </h3>
 
           <div className="space-y-3">
-            {Object.entries(planRevenue).map(([planName, stats]) => {
-              const share = grossRevenue > 0 ? Math.round((stats.revenue / grossRevenue) * 100) : 0;
+            {Object.keys(planRevenue).length === 0 ? (
+              <div className="p-6 text-center text-xs text-[#254117]/60 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                Tidak ada pesanan masuk pada periode {getPeriodLabel()}.
+              </div>
+            ) : (
+              Object.entries(planRevenue).map(([planName, stats]) => {
+                const share = grossRevenue > 0 ? Math.round((stats.revenue / grossRevenue) * 100) : 0;
 
-              return (
-                <div key={planName} className="p-3.5 bg-gray-50 rounded-2xl space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-[#254117] text-sm">{planName}</span>
-                    <span className="font-extrabold text-[#cd6184]">
-                      Rp {stats.revenue.toLocaleString('id-ID')} ({share}%)
-                    </span>
-                  </div>
+                return (
+                  <div key={planName} className="p-3.5 bg-gray-50 rounded-2xl space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-[#254117] text-sm">{planName}</span>
+                      <span className="font-extrabold text-[#cd6184]">
+                        Rp {stats.revenue.toLocaleString('id-ID')} ({share}%)
+                      </span>
+                    </div>
 
-                  {/* Progress bar */}
-                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      style={{ width: `${share}%` }}
-                      className="h-full bg-[#cd6184] rounded-full"
-                    />
-                  </div>
+                    {/* Progress bar */}
+                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        style={{ width: `${share}%` }}
+                        className="h-full bg-[#cd6184] rounded-full"
+                      />
+                    </div>
 
-                  <div className="flex justify-between text-[11px] text-[#254117]/60">
-                    <span>{stats.count} pesanan diproses</span>
-                    <span>Rata-rata: Rp {Math.round(stats.revenue / stats.count).toLocaleString('id-ID')}/order</span>
+                    <div className="flex justify-between text-[11px] text-[#254117]/60">
+                      <span>{stats.count} pesanan diproses</span>
+                      <span>Rata-rata: Rp {Math.round(stats.revenue / stats.count).toLocaleString('id-ID')}/order</span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -434,22 +528,28 @@ export const AdminFinancialReportsPage: React.FC = () => {
           {/* Cost items list */}
           <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
             <span className="text-[11px] font-bold text-[#254117]/60 block">
-              Riwayat Pengeluaran Terakhir:
+              Riwayat Pengeluaran ({filteredCosts.length} item pada periode terpilih):
             </span>
-            {operationalCosts.map((item) => (
-              <div
-                key={item.id}
-                className="p-2.5 bg-gray-50 rounded-xl flex items-center justify-between text-xs"
-              >
-                <div>
-                  <span className="font-semibold text-[#254117] block">{item.category}</span>
-                  <span className="text-[10px] text-gray-400">{item.date}</span>
-                </div>
-                <span className="font-bold text-[#cd6184]">
-                  Rp {item.amount.toLocaleString('id-ID')}
-                </span>
+            {filteredCosts.length === 0 ? (
+              <div className="p-4 text-center text-xs text-[#254117]/60 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                Tidak ada pengeluaran operasional pada periode {getPeriodLabel()}.
               </div>
-            ))}
+            ) : (
+              filteredCosts.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-2.5 bg-gray-50 rounded-xl flex items-center justify-between text-xs"
+                >
+                  <div>
+                    <span className="font-semibold text-[#254117] block">{item.category}</span>
+                    <span className="text-[10px] text-gray-400">{item.date}</span>
+                  </div>
+                  <span className="font-bold text-[#cd6184]">
+                    Rp {item.amount.toLocaleString('id-ID')}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

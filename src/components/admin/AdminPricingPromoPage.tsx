@@ -65,12 +65,14 @@ export const AdminPricingPromoPage: React.FC = () => {
 
       {/* 1. Editable Plans Section */}
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-[#254117] flex items-center gap-2">
-          <span>Kelola 3 Paket Layanan</span>
-          <span className="text-xs font-normal text-[#254117]/60">
-            (Klik &ldquo;Ubah Tarif&rdquo; untuk mengedit)
-          </span>
-        </h2>
+        <div>
+          <h2 className="text-lg font-bold text-[#254117]">
+            Kelola 3 Paket Layanan
+          </h2>
+          <p className="text-xs text-[#254117]/65 mt-0.5">
+            (Klik &ldquo;Ubah Tarif & Poin&rdquo; pada masing-masing kartu untuk mengedit)
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {plans.map((plan) => {
@@ -87,7 +89,7 @@ export const AdminPricingPromoPage: React.FC = () => {
                       <h3 className="text-base font-bold text-[#254117]">{plan.name}</h3>
                       {plan.isPopular && (
                         <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-[#ffbd59] text-[#254117] text-[10px] font-extrabold uppercase">
-                          Most Popular
+                          PALING POPULER
                         </span>
                       )}
                     </div>
