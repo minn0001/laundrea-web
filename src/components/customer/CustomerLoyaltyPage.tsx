@@ -16,6 +16,7 @@ import {
   CheckCheck,
   PlusCircle,
   Tag,
+  Plus,
 } from 'lucide-react';
 
 interface CustomerLoyaltyPageProps {
@@ -93,10 +94,10 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
 
           <button
             onClick={onOrderNowClick}
-            className="px-3.5 py-2 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-[0.99]"
+            className="px-3.5 py-2 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.99]"
           >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Pesan Baru</span>
-            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -240,19 +241,19 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
 
       {/* User's Claimed Vouchers Section */}
       <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border border-gray-200/80 shadow-xs space-y-3 sm:space-y-4">
-        <div className="flex items-center justify-between border-b pb-3">
-          <div className="flex items-center gap-2">
-            <Ticket className="w-5 h-5 text-[#cd6184]" />
-            <div>
+        <div className="flex items-center justify-between border-b pb-3 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Ticket className="w-5 h-5 text-[#cd6184] shrink-0" />
+            <div className="min-w-0">
               <h3 className="text-base font-bold text-[#254117]">
                 Koleksi Voucher Saya
               </h3>
-              <p className="text-xs text-[#254117]/60">
+              <p className="text-xs text-[#254117]/60 truncate">
                 Gunakan voucher aktif saat mengisi formulir di Menu Pesan
               </p>
             </div>
           </div>
-          <span className="text-xs font-bold text-[#cd6184] bg-[#ffecf2] px-2.5 py-1 rounded-full">
+          <span className="text-[11px] sm:text-xs font-bold text-[#cd6184] bg-[#ffecf2] px-2.5 py-1 rounded-full whitespace-nowrap shrink-0">
             {activeVouchers.length} Voucher Aktif
           </span>
         </div>

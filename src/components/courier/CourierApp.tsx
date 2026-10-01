@@ -49,6 +49,7 @@ export const CourierApp: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isShiftActive, setIsShiftActive] = useState(true);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   if (!isCourierLoggedIn) {
     return <CourierLogin onLogin={loginCourier} />;
@@ -178,17 +179,72 @@ export const CourierApp: React.FC = () => {
             <BrandWordmark size="header" showLogo variant="light" />
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-white/90 font-semibold">
-              {currentCourier.name.split(' ')[0]}
-            </span>
+          {/* Round Profile Icon matching Pelanggan (Customer) portal header style */}
+          <div className="relative">
             <button
-              onClick={logoutCourier}
-              title="Keluar"
-              className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              type="button"
+              id="btn-courier-profile-menu"
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              title="Profil Kurir"
+              className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+                isProfileMenuOpen
+                  ? 'bg-white text-[#cd6184] border-white ring-2 ring-white/30'
+                  : 'bg-white/15 hover:bg-white/25 border-white/20 text-white'
+              }`}
             >
-              <LogOut className="w-4 h-4" />
+              <User className="w-4.5 h-4.5" />
             </button>
+
+            {/* Courier Profile / Account Dropdown Menu */}
+            {isProfileMenuOpen && (
+              <>
+                {/* Backdrop to close menu */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsProfileMenuOpen(false)}
+                />
+
+                <div className="absolute right-0 mt-2 w-56 sm:w-64 bg-white rounded-2xl shadow-xl border border-[#ffecf2] p-3 text-[#254117] z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {/* Courier Info Card */}
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#ffecf2]/60 border border-[#ffecf2] mb-2">
+                    <div className="w-10 h-10 rounded-full bg-[#cd6184] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                      {currentCourier.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-gray-900 truncate">
+                          {currentCourier.name}
+                        </p>
+                        <span className="text-[9px] font-bold bg-[#97a273]/20 text-[#254117] px-1.5 py-0.2 rounded-md">
+                          Kurir
+                        </span>
+                      </div>
+                      {currentCourier.vehicle && (
+                        <p className="text-[10px] text-gray-500 font-medium truncate mt-0.5">
+                          {currentCourier.vehicle}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="my-1.5 border-t border-gray-100" />
+
+                  {/* Logout Option */}
+                  <button
+                    type="button"
+                    id="btn-courier-menu-logout"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      logoutCourier();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 text-xs font-bold transition-colors text-left cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 text-red-500" />
+                    <span>Keluar Akun</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -404,7 +460,7 @@ export const CourierApp: React.FC = () => {
                       <Truck className="w-4 h-4 text-amber-600" />
                       <span>Tugas Penjemputan Cucian</span>
                     </div>
-                    <p className="text-[11px] text-amber-800/90 leading-relaxed">
+                    <p className="text-[9.5px] sm:text-[11px] text-amber-800/90 leading-relaxed">
                       1. Datang ke alamat pelanggan & timbang pakaian di atas.<br />
                       2. Tekan tombol konfirmasi serah terima penjemputan di bawah untuk membawa cucian menuju gerai.
                     </p>
@@ -414,10 +470,19 @@ export const CourierApp: React.FC = () => {
                     type="button"
                     onClick={handleConfirmPickup}
                     disabled={isUpdating}
-                    className="w-full py-3.5 px-4 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full py-3.5 px-3 sm:px-4 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-[10.5px] sm:text-xs shadow-md flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isUpdating ? 'Memproses...' : 'Konfirmasi Cucian Telah Dijemput (Bawa ke Gerai)'}</span>
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>
+                      {isUpdating ? (
+                        'Memproses...'
+                      ) : (
+                        <>
+                          <span className="sm:hidden">Konfirmasi Cucian Dijemput (Bawa ke Gerai)</span>
+                          <span className="hidden sm:inline">Konfirmasi Cucian Telah Dijemput (Bawa ke Gerai)</span>
+                        </>
+                      )}
+                    </span>
                   </button>
                   <p className="text-[10px] text-center text-gray-500 italic">
                     *Tahap pencucian berikutnya hanya dapat dimulai oleh Admin setelah cucian tiba di gerai.
