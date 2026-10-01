@@ -245,10 +245,10 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           <div className="flex items-center gap-2 min-w-0">
             <Ticket className="w-5 h-5 text-[#cd6184] shrink-0" />
             <div className="min-w-0">
-              <h3 className="text-base font-bold text-[#254117]">
+              <h3 className="text-sm sm:text-base font-bold text-[#254117]">
                 Koleksi Voucher Saya
               </h3>
-              <p className="text-xs text-[#254117]/60 truncate">
+              <p className="text-[10.5px] sm:text-xs text-[#254117]/65 leading-tight">
                 Gunakan voucher aktif saat mengisi formulir di Menu Pesan
               </p>
             </div>

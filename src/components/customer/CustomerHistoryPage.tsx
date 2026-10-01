@@ -388,6 +388,32 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                 <span className="text-[#254117]/70">Ongkir Antar-Jemput</span>
                 <span className="text-emerald-600 font-bold">GRATIS</span>
               </div>
+
+              {/* Voucher Discount Breakdown */}
+              {Boolean(selectedOrderForDetail.voucherDiscount && selectedOrderForDetail.voucherDiscount > 0) && (
+                <>
+                  <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold text-[#254117]/80">
+                    <span className="text-[#254117]/70">Subtotal</span>
+                    <span className="text-[#254117]">
+                      Rp{' '}
+                      {(
+                        selectedOrderForDetail.subtotalPrice ||
+                        (selectedOrderForDetail.actualPrice || selectedOrderForDetail.estimatedPrice) +
+                          (selectedOrderForDetail.voucherDiscount || 0)
+                      ).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-gray-100 font-bold text-[#cd6184]">
+                    <span>
+                      Diskon Voucher ({selectedOrderForDetail.voucherCode || selectedOrderForDetail.voucherTitle || 'VOUCHER'})
+                    </span>
+                    <span>
+                      - Rp {selectedOrderForDetail.voucherDiscount?.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-between py-2 border-b-2 border-gray-200 text-sm">
                 <span className="font-bold text-[#254117]">Total Pembayaran</span>
                 <span className="font-black text-[#cd6184]">

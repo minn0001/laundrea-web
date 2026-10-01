@@ -62,7 +62,7 @@ export interface Order {
   notes?: string;
   deliveryScheduledTime?: string;
   paymentMethod?: PaymentMethod;
-  paymentStatus?: 'pending' | 'paid';
+  paymentStatus?: 'pending' | 'awaiting_verification' | 'paid';
   lastUpdatedLabel?: string;
   voucherCode?: string;
   voucherTitle?: string;

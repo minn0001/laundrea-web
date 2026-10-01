@@ -163,24 +163,59 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
           </button>
         </div>
 
-        {/* Row 3: Laundrea {currentOrder.planName} title with order-switcher dropdown below it on its own line if needed on mobile */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 pt-0.5 sm:pt-0">
+        {/* Row 3: Laundrea {currentOrder.planName} title with instant order-switcher pills */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-0.5 sm:pt-0">
           <h1 className="text-base sm:text-xl font-black text-[#254117] leading-tight">
             Laundrea {currentOrder.planName}
           </h1>
 
           {orders.length > 1 && (
-            <select
-              value={currentOrder.id}
-              onChange={(e) => setActiveCustomerOrderId(e.target.value)}
-              className="w-full sm:w-auto text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-[#ffecf2] border border-[#cd6184]/30 text-[#254117] focus:outline-none cursor-pointer sm:max-w-[170px] truncate"
-            >
-              {orders.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.orderNumber} ({o.status.toUpperCase()})
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              <span className="text-[10px] text-[#254117]/60 font-semibold whitespace-nowrap hidden sm:inline">
+                Pilih Pesanan:
+              </span>
+              {orders.map((o) => {
+                const isSelected = o.id === currentOrder.id;
+                const statusLabel =
+                  o.status === 'pickup'
+                    ? 'Jemput'
+                    : o.status === 'picked_up'
+                    ? 'Dijemput'
+                    : o.status === 'washing'
+                    ? 'Cuci'
+                    : o.status === 'drying'
+                    ? 'Kering'
+                    : o.status === 'ironing'
+                    ? 'Setrika'
+                    : o.status === 'ready'
+                    ? 'Siap'
+                    : 'Selesai';
+
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => setActiveCustomerOrderId(o.id)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 active:scale-95 ${
+                      isSelected
+                        ? 'bg-[#cd6184] text-white shadow-xs ring-1 ring-[#cd6184]'
+                        : 'bg-white hover:bg-[#ffecf2] text-[#254117] border border-gray-200'
+                    }`}
+                  >
+                    <span>{o.orderNumber.replace('LND-', '')}</span>
+                    <span
+                      className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold ${
+                        isSelected
+                          ? 'bg-white/25 text-white'
+                          : 'bg-[#ffecf2] text-[#cd6184]'
+                      }`}
+                    >
+                      {statusLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
@@ -546,10 +581,16 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
               className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
                 currentOrder.paymentStatus === 'paid'
                   ? 'bg-[#97a273]/20 text-[#97a273]'
+                  : currentOrder.paymentStatus === 'awaiting_verification'
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
                   : 'bg-[#ffbd59]/30 text-[#254117]'
               }`}
             >
-              {currentOrder.paymentStatus === 'paid' ? 'Lunas' : 'Menunggu'}
+              {currentOrder.paymentStatus === 'paid'
+                ? 'Lunas'
+                : currentOrder.paymentStatus === 'awaiting_verification'
+                ? 'Menunggu Verifikasi'
+                : 'Menunggu'}
             </span>
           </div>
 
@@ -590,16 +631,53 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
                 Terima kasih! Pembayaran Anda telah diverifikasi oleh sistem. Kode QRIS dan nomor Virtual Account telah ditutup untuk keamanan transaksi.
               </p>
             </div>
+          ) : currentOrder.paymentStatus === 'awaiting_verification' ? (
+            <div className="p-3.5 sm:p-4 bg-amber-50/90 border border-amber-300 rounded-xl sm:rounded-2xl space-y-2.5 animate-in fade-in">
+              <div className="flex items-center gap-2.5 text-amber-900">
+                <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Clock className="w-4 h-4 animate-spin-slow" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold block text-amber-900">
+                    Menunggu Verifikasi
+                  </span>
+                  <span className="text-[10px] text-amber-800/80">
+                    Pembayaran sedang diverifikasi oleh Admin
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-[#254117]/85 bg-white p-2.5 rounded-xl border border-amber-200 flex items-center justify-between">
+                <span>Total Biaya Ditagih</span>
+                <span className="font-black text-sm text-[#254117]">
+                  Rp {(currentOrder.actualPrice || currentOrder.estimatedPrice).toLocaleString('id-ID')}
+                </span>
+              </div>
+
+              {currentOrder.voucherCode && (
+                <div className="text-[10px] text-[#cd6184] font-bold flex items-center justify-between px-1">
+                  <span>Diskon Voucher ({currentOrder.voucherCode})</span>
+                  <span>-Rp {(currentOrder.voucherDiscount || 0).toLocaleString('id-ID')}</span>
+                </div>
+              )}
+
+              <div className="p-2.5 bg-amber-100/70 rounded-xl text-[10px] text-amber-900 leading-relaxed border border-amber-200/60">
+                Terima kasih! Konfirmasi pembayaran Anda telah kami terima. Admin sedang memeriksa mutasi rekening / e-wallet. Status pembayaran akan otomatis berubah menjadi <strong>LUNAS</strong> setelah diverifikasi oleh Admin.
+              </div>
+            </div>
           ) : (
             <>
               {currentOrder.paymentMethod === 'qris' && (
-                <div className="text-center space-y-2">
-                  <div className="w-32 h-32 mx-auto bg-[#ffecf2] p-2.5 rounded-2xl border border-[#cd6184]/30 flex flex-col items-center justify-center">
-                    <QrCode className="w-16 h-16 text-[#254117]" />
-                    <span className="text-[8px] font-bold text-[#cd6184] mt-1">QRIS STANDAR BI</span>
+                <div className="text-center space-y-2.5">
+                  <div className="mx-auto max-w-[240px] bg-white p-2.5 rounded-2xl border border-gray-200 shadow-xs flex flex-col items-center justify-center">
+                    <img
+                      src="/qris.png"
+                      alt="QRIS Pembayaran Laundrea"
+                      className="w-full h-auto object-contain rounded-xl"
+                    />
                   </div>
                   <p className="text-[11px] text-[#254117]/70">
-                    Pindai dengan GoPay, OVO, BCA, ShopeePay, atau mobile banking.
+                    Pindai dengan GoPay, OVO, Dana, BCA, ShopeePay, atau mobile banking.
                   </p>
                 </div>
               )}
@@ -634,7 +712,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
               <button
                 type="button"
                 id="btn-mark-order-paid-sim"
-                onClick={() => updateOrderPaymentStatus(currentOrder.id, 'paid')}
+                onClick={() => updateOrderPaymentStatus(currentOrder.id, 'awaiting_verification')}
                 className="w-full py-2.5 px-3 rounded-xl bg-[#254117] hover:bg-[#1b3010] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4 text-[#ffbd59]" />

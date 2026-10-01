@@ -15,6 +15,7 @@ import {
   Banknote,
   QrCode,
   Check,
+  AlertCircle,
 } from 'lucide-react';
 
 interface AdminOrdersPageProps {
@@ -30,6 +31,11 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
     return orders.find((o) => o.id === initialSelectedOrderId) || null;
   });
 
+  // Orders awaiting payment verification from customer
+  const awaitingVerificationOrders = orders.filter(
+    (o) => o.paymentStatus === 'awaiting_verification'
+  );
+
   // Filter orders
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -39,6 +45,7 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
 
     const matchesStatus =
       statusFilter === 'all' ||
+      (statusFilter === 'awaiting_verification' && order.paymentStatus === 'awaiting_verification') ||
       order.status === statusFilter ||
       (statusFilter === 'pickup' && order.status === 'picked_up');
 
@@ -67,13 +74,23 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
     }
   };
 
-  const handleTogglePayment = (orderId: string, currentStatus?: 'pending' | 'paid') => {
-    const nextStatus = currentStatus === 'paid' ? 'pending' : 'paid';
-    updateOrderPaymentStatus(orderId, nextStatus);
+  const handleConfirmPaymentLunas = (orderId: string) => {
+    updateOrderPaymentStatus(orderId, 'paid');
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({
         ...selectedOrder,
-        paymentStatus: nextStatus,
+        paymentStatus: 'paid',
+      });
+    }
+  };
+
+  const handleTogglePayment = (orderId: string, currentStatus?: string) => {
+    const nextStatus = currentStatus === 'paid' ? 'pending' : 'paid';
+    updateOrderPaymentStatus(orderId, nextStatus as any);
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder({
+        ...selectedOrder,
+        paymentStatus: nextStatus as any,
       });
     }
   };
@@ -128,6 +145,22 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
           >
             Semua ({orders.length})
           </button>
+          <button
+            onClick={() => setStatusFilter('awaiting_verification')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+              statusFilter === 'awaiting_verification'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
+            <span>Verifikasi Bayar</span>
+            {awaitingVerificationOrders.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                {awaitingVerificationOrders.length}
+              </span>
+            )}
+          </button>
           {allStatuses.map((item) => (
             <button
               key={item.id}
@@ -143,6 +176,73 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
           ))}
         </div>
       </div>
+
+      {/* Visible List: Orders with "Menunggu Verifikasi" Status */}
+      {awaitingVerificationOrders.length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold shrink-0">
+                <Clock className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-amber-950">
+                  Perlu Verifikasi Pembayaran ({awaitingVerificationOrders.length} Pesanan)
+                </h3>
+                <p className="text-[11px] text-amber-800">
+                  Pelanggan telah menekan &quot;Konfirmasi Saya Sudah Bayar&quot;. Cek mutasi QRIS / rekening lalu konfirmasi Lunas di bawah:
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-amber-200 text-amber-900 w-fit">
+              Menunggu Verifikasi Admin
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {awaitingVerificationOrders.map((ord) => (
+              <div
+                key={ord.id}
+                className="bg-white p-3.5 rounded-2xl border border-amber-200 shadow-2xs flex flex-col justify-between space-y-2.5"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-xs text-[#254117]">
+                      {ord.orderNumber}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-[#ffecf2] text-[#cd6184]">
+                      {ord.paymentMethod?.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-[#254117] mt-1">{ord.customerName}</p>
+                  <p className="text-[11px] text-[#254117]/70">{ord.planName} • {ord.unitPrice.toLocaleString('id-ID')}/{ord.unit}</p>
+                  <p className="text-xs font-black text-amber-900 mt-1">
+                    Rp {(ord.actualPrice || ord.estimatedPrice).toLocaleString('id-ID')}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrder(ord)}
+                    className="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-semibold bg-gray-100 hover:bg-gray-200 text-[#254117] transition-colors cursor-pointer text-center"
+                  >
+                    Detail
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmPaymentLunas(ord.id)}
+                    className="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center gap-1 shadow-2xs cursor-pointer text-center"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Tandai Lunas</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search Bar */}
       <div className="bg-white p-3 rounded-2xl border border-gray-200 flex items-center gap-2">
@@ -242,6 +342,12 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                           >
                             {getStatusLabel(order.status)}
                           </span>
+                          {order.paymentStatus === 'awaiting_verification' && (
+                            <span className="mt-1 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 w-fit">
+                              <Clock className="w-2.5 h-2.5 text-amber-600 animate-pulse" />
+                              <span>Verifikasi Bayar</span>
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-right font-bold text-[#254117]">
                           Rp {(order.actualPrice || order.estimatedPrice).toLocaleString('id-ID')}
@@ -335,23 +441,66 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
               </div>
             </div>
 
+            {/* Prominent Verification Alert inside Drawer */}
+            {selectedOrder.paymentStatus === 'awaiting_verification' && (
+              <div className="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-2xl space-y-2 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                    Menunggu Verifikasi Admin ({selectedOrder.paymentMethod?.toUpperCase()})
+                  </span>
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                    Perlu Aksi
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-snug">
+                  Pelanggan telah menekan &quot;Konfirmasi Saya Sudah Bayar&quot;. Cek mutasi rekening / e-wallet masuk: <strong>Rp {(selectedOrder.actualPrice || selectedOrder.estimatedPrice).toLocaleString('id-ID')}</strong>.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmPaymentLunas(selectedOrder.id)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Verifikasi & Konfirmasi Lunas</span>
+                </button>
+              </div>
+            )}
+
             {/* Payment Status Toggle */}
             <div className="flex items-center justify-between p-3 bg-[#ffecf2]/50 rounded-2xl border border-[#cd6184]/20">
               <div>
                 <span className="text-[11px] text-[#254117]/70 block font-medium">Status Pembayaran:</span>
                 <span className="text-xs font-bold text-[#254117] uppercase">
-                  {selectedOrder.paymentMethod} • {selectedOrder.paymentStatus === 'paid' ? 'LUNAS' : 'PENDING'}
+                  {selectedOrder.paymentMethod} •{' '}
+                  {selectedOrder.paymentStatus === 'paid'
+                    ? 'LUNAS'
+                    : selectedOrder.paymentStatus === 'awaiting_verification'
+                    ? 'MENUNGGU VERIFIKASI'
+                    : 'PENDING'}
                 </span>
               </div>
               <button
-                onClick={() => handleTogglePayment(selectedOrder.id, selectedOrder.paymentStatus)}
+                onClick={() => {
+                  if (selectedOrder.paymentStatus === 'awaiting_verification') {
+                    handleConfirmPaymentLunas(selectedOrder.id);
+                  } else {
+                    handleTogglePayment(selectedOrder.id, selectedOrder.paymentStatus);
+                  }
+                }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   selectedOrder.paymentStatus === 'paid'
                     ? 'bg-[#97a273] text-white'
+                    : selectedOrder.paymentStatus === 'awaiting_verification'
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-xs'
                     : 'bg-[#ffbd59] text-[#254117]'
                 }`}
               >
-                {selectedOrder.paymentStatus === 'paid' ? '✓ Lunas' : 'Tandai Lunas'}
+                {selectedOrder.paymentStatus === 'paid'
+                  ? '✓ Lunas'
+                  : selectedOrder.paymentStatus === 'awaiting_verification'
+                  ? 'Konfirmasi Lunas'
+                  : 'Tandai Lunas'}
               </button>
             </div>
 

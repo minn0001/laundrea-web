@@ -95,7 +95,10 @@ interface AppContextType {
   }) => Order;
   updateOrderWeight: (orderId: string, actualWeight: number) => void;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void;
-  updateOrderPaymentStatus: (orderId: string, paymentStatus: 'pending' | 'paid') => void;
+  updateOrderPaymentStatus: (
+    orderId: string,
+    paymentStatus: 'pending' | 'awaiting_verification' | 'paid'
+  ) => void;
   assignCourier: (orderId: string, courierId: string) => void;
   addCourier: (data: { name: string; phone: string; email?: string; vehicle?: string }) => void;
   toggleCourierStatus: (courierId: string) => void;
@@ -667,7 +670,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const updateOrderPaymentStatus = (orderId: string, paymentStatus: 'pending' | 'paid') => {
+  const updateOrderPaymentStatus = (
+    orderId: string,
+    paymentStatus: 'pending' | 'awaiting_verification' | 'paid'
+  ) => {
     setOrders((prev) =>
       prev.map((ord) => (ord.id === orderId ? { ...ord, paymentStatus } : ord))
     );

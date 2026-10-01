@@ -121,29 +121,201 @@ export const AdminFinancialReportsPage: React.FC = () => {
     planRevenue[ord.planName].count += 1;
   });
 
-  // Daily dummy bar dataset (7 days)
-  const dailyData = [
-    { label: 'Sen', revenue: 280000, cost: 95000 },
-    { label: 'Sel', revenue: 420000, cost: 120000 },
-    { label: 'Rab', revenue: 350000, cost: 110000 },
-    { label: 'Kam', revenue: 510000, cost: 140000 },
-    { label: 'Jum', revenue: 620000, cost: 160000 },
-    { label: 'Sab', revenue: 840000, cost: 210000 },
-    { label: 'Min', revenue: 690000, cost: 180000 },
-  ];
+  // Dynamically generate real chart data based on filtered transactions and timeframe
+  const generateRealChartData = () => {
+    if (timeframe === 'monthly') {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      const anchorYear = parseInt(anchorDateStr.slice(0, 4), 10);
+      const anchorMonthIdx = parseInt(anchorDateStr.slice(5, 7), 10) - 1;
 
-  // Monthly dummy bar dataset (6 months)
-  const monthlyData = [
-    { label: 'Apr', revenue: 8400000, cost: 2900000 },
-    { label: 'Mei', revenue: 9800000, cost: 3100000 },
-    { label: 'Jun', revenue: 11200000, cost: 3600000 },
-    { label: 'Jul', revenue: 12500000, cost: 3900000 },
-    { label: 'Agu', revenue: 14100000, cost: 4200000 },
-    { label: 'Sep', revenue: 15800000, cost: 4500000 },
-  ];
+      // Show 6 months ending at current anchor month
+      const monthsList: { label: string; revenue: number; cost: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const mIdx = (anchorMonthIdx - i + 12) % 12;
+        const y = anchorMonthIdx - i < 0 ? anchorYear - 1 : anchorYear;
+        const monthKey = `${y}-${String(mIdx + 1).padStart(2, '0')}`;
 
-  const chartData = timeframe === 'daily' ? dailyData : monthlyData;
-  const maxBarValue = Math.max(...chartData.map((d) => d.revenue)) * 1.15;
+        const rev = orders
+          .filter((ord) => getOrderDate(ord).startsWith(monthKey))
+          .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
+
+        const cst = operationalCosts
+          .filter((c) => (c.date || '').startsWith(monthKey))
+          .reduce((sum, c) => sum + c.amount, 0);
+
+        monthsList.push({
+          label: `${monthNames[mIdx]} '${String(y).slice(2)}`,
+          revenue: rev,
+          cost: cst,
+        });
+      }
+      return monthsList;
+    }
+
+    // Daily / Period-specific breakdown of the active filtered range
+    if (dateFilter === 'today') {
+      // Time buckets for today's orders & operations
+      const buckets = [
+        { label: '08:00', start: '06:00', end: '09:00' },
+        { label: '10:00', start: '09:01', end: '11:00' },
+        { label: '12:00', start: '11:01', end: '13:00' },
+        { label: '14:00', start: '13:01', end: '15:00' },
+        { label: '16:00', start: '15:01', end: '17:00' },
+        { label: '18:00', start: '17:01', end: '19:00' },
+        { label: '20:00', start: '19:01', end: '23:59' },
+      ];
+
+      return buckets.map((b) => {
+        const rev = filteredOrders
+          .filter((ord) => {
+            const timeStr = ord.pickupTime || ord.statusTimestamps?.booked || '';
+            const match = timeStr.match(/\b\d{2}:\d{2}\b/);
+            const t = match ? match[0] : '10:00';
+            return t >= b.start && t <= b.end;
+          })
+          .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
+
+        const cst = filteredCosts.length > 0 ? Math.round(totalCost / buckets.length) : 0;
+
+        return {
+          label: b.label,
+          revenue: rev,
+          cost: cst,
+        };
+      });
+    }
+
+    if (dateFilter === '7days') {
+      const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+      const anchor = new Date(anchorDateStr);
+      const points: { label: string; revenue: number; cost: number }[] = [];
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(anchor);
+        d.setDate(anchor.getDate() - i);
+        const dStr = d.toISOString().slice(0, 10);
+        const dayLabel = dayNames[d.getDay()];
+
+        const rev = filteredOrders
+          .filter((ord) => getOrderDate(ord) === dStr)
+          .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
+
+        const cst = filteredCosts
+          .filter((c) => (c.date || '').slice(0, 10) === dStr)
+          .reduce((sum, c) => sum + c.amount, 0);
+
+        points.push({
+          label: `${dayLabel} (${dStr.slice(8)})`,
+          revenue: rev,
+          cost: cst,
+        });
+      }
+      return points;
+    }
+
+    if (dateFilter === 'month') {
+      const yyyymm = anchorDateStr.slice(0, 7);
+      const buckets = [
+        { label: 'Minggu 1', start: `${yyyymm}-01`, end: `${yyyymm}-07` },
+        { label: 'Minggu 2', start: `${yyyymm}-08`, end: `${yyyymm}-14` },
+        { label: 'Minggu 3', start: `${yyyymm}-15`, end: `${yyyymm}-21` },
+        { label: 'Minggu 4', start: `${yyyymm}-22`, end: `${yyyymm}-28` },
+        { label: 'Minggu 5', start: `${yyyymm}-29`, end: `${yyyymm}-31` },
+      ];
+
+      return buckets.map((b) => {
+        const rev = filteredOrders
+          .filter((ord) => {
+            const d = getOrderDate(ord);
+            return d >= b.start && d <= b.end;
+          })
+          .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
+
+        const cst = filteredCosts
+          .filter((c) => {
+            const d = (c.date || '').slice(0, 10);
+            return d >= b.start && d <= b.end;
+          })
+          .reduce((sum, c) => sum + c.amount, 0);
+
+        return {
+          label: b.label,
+          revenue: rev,
+          cost: cst,
+        };
+      });
+    }
+
+    if (dateFilter === 'custom') {
+      const start = new Date(customStartDate || anchorDateStr);
+      const end = new Date(customEndDate || anchorDateStr);
+      const daysCount = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+
+      if (daysCount <= 7) {
+        const points: { label: string; revenue: number; cost: number }[] = [];
+        for (let i = 0; i < daysCount; i++) {
+          const d = new Date(start);
+          d.setDate(start.getDate() + i);
+          const dStr = d.toISOString().slice(0, 10);
+
+          const rev = filteredOrders
+            .filter((ord) => getOrderDate(ord) === dStr)
+            .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
+
+          const cst = filteredCosts
+            .filter((c) => (c.date || '').slice(0, 10) === dStr)
+            .reduce((sum, c) => sum + c.amount, 0);
+
+          points.push({
+            label: dStr.slice(5),
+            revenue: rev,
+            cost: cst,
+          });
+        }
+        return points;
+      } else {
+        const segments = 5;
+        const step = Math.ceil(daysCount / segments);
+        const points: { label: string; revenue: number; cost: number }[] = [];
+
+        for (let i = 0; i < segments; i++) {
+          const s = new Date(start);
+          s.setDate(start.getDate() + i * step);
+          const e = new Date(start);
+          e.setDate(start.getDate() + Math.min((i + 1) * step - 1, daysCount - 1));
+
+          const sStr = s.toISOString().slice(0, 10);
+          const eStr = e.toISOString().slice(0, 10);
+
+          const rev = filteredOrders
+            .filter((ord) => {
+              const d = getOrderDate(ord);
+              return d >= sStr && d <= eStr;
+            })
+            .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
+
+          const cst = filteredCosts
+            .filter((c) => {
+              const d = (c.date || '').slice(0, 10);
+              return d >= sStr && d <= eStr;
+            })
+            .reduce((sum, c) => sum + c.amount, 0);
+
+          points.push({
+            label: `${sStr.slice(5)}..${eStr.slice(8)}`,
+            revenue: rev,
+            cost: cst,
+          });
+        }
+        return points;
+      }
+    }
+
+    return [];
+  };
+
+  const chartData = generateRealChartData();
+  const maxBarValue = Math.max(...chartData.map((d) => Math.max(d.revenue, d.cost)), 50000) * 1.15;
 
   const handleAddCost = (e: React.FormEvent) => {
     e.preventDefault();
