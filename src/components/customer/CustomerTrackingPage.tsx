@@ -138,10 +138,12 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
   const isDelivery = currentOrder.returnMethod !== 'self_pickup';
 
   return (
-    <div id="customer-tracking-page" className="w-full space-y-4">
+    <div id="customer-tracking-page" className="w-full space-y-3 sm:space-y-4">
       {/* Top status bar */}
-      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-xs space-y-2 sm:space-y-3">
+        {/* Row 1 (Status + Order ID badge) and Row 2 (+ Pesanan Baru button on own line full-width on mobile) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          {/* Row 1: STATUS PESANAN label + order ID badge */}
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#cd6184]">
               Status Pesanan
@@ -151,17 +153,19 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
             </span>
           </div>
 
+          {/* Row 2: + Pesanan Baru button (full-width on mobile, auto on desktop) */}
           <button
             id="btn-tracking-new-order"
             onClick={onNewOrderClick}
-            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+            className="w-full sm:w-auto text-xs font-bold px-3.5 py-2 sm:py-1.5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs active:scale-[0.99]"
           >
             <span>+ Pesanan Baru</span>
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="text-lg sm:text-xl font-black text-[#254117] leading-tight">
+        {/* Row 3: Laundrea {currentOrder.planName} title with order-switcher dropdown below it on its own line if needed on mobile */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 pt-0.5 sm:pt-0">
+          <h1 className="text-base sm:text-xl font-black text-[#254117] leading-tight">
             Laundrea {currentOrder.planName}
           </h1>
 
@@ -169,7 +173,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
             <select
               value={currentOrder.id}
               onChange={(e) => setActiveCustomerOrderId(e.target.value)}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-[#ffecf2] border border-[#cd6184]/30 text-[#254117] focus:outline-none cursor-pointer max-w-[150px] truncate"
+              className="w-full sm:w-auto text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-[#ffecf2] border border-[#cd6184]/30 text-[#254117] focus:outline-none cursor-pointer sm:max-w-[170px] truncate"
             >
               {orders.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -182,11 +186,11 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
       </div>
 
       {/* Main 2-column responsive layout on desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
         {/* Left Column: Stepper & Stage Status */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* 5-Step Progress Stepper */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/80 shadow-xs space-y-4">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-xs space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Truck className="w-4 h-4 text-[#cd6184]" />
@@ -206,12 +210,12 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
           </div>
         </div>
 
-        {/* 5-Step horizontal stepper: Spacious, non-bold, zero collision */}
+        {/* 5-Step horizontal stepper */}
         <div className="relative pt-1 pb-1">
           {/* Subtle connecting track line behind circles */}
-          <div className="absolute top-[18px] left-[10%] right-[10%] h-[2px] bg-gray-200 -z-0" />
+          <div className="absolute top-[16px] sm:top-[18px] left-[10%] right-[10%] h-[2px] bg-gray-200 -z-0" />
           <div
-            className="absolute top-[18px] left-[10%] h-[2px] bg-[#97a273] transition-all duration-500 -z-0"
+            className="absolute top-[16px] sm:top-[18px] left-[10%] h-[2px] bg-[#97a273] transition-all duration-500 -z-0"
             style={{
               width:
                 currentOrder.status === 'delivered'
@@ -220,7 +224,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
             }}
           />
 
-          <div className="grid grid-cols-5 gap-1.5 sm:gap-2 relative z-10">
+          <div className="grid grid-cols-5 gap-1 sm:gap-2 relative z-10">
             {fiveStages.map((st, idx) => {
               const isCompleted =
                 idx < currentStageIndex || currentOrder.status === 'delivered';
@@ -228,10 +232,10 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
                 idx === currentStageIndex && currentOrder.status !== 'delivered';
 
               return (
-                <div key={st.id} className="flex flex-col items-center text-center px-0.5 min-w-0">
+                <div key={st.id} className="flex flex-col items-center text-center px-0 sm:px-0.5 min-w-0">
                   {/* Stepper Circle */}
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs transition-all duration-300 shadow-xs ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs transition-all duration-300 shadow-xs ${
                       isCompleted
                         ? 'bg-[#97a273] text-white ring-2 ring-white'
                         : isActive
@@ -244,15 +248,15 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
                     ) : isActive ? (
                       <RotateCw className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <span className="font-normal text-[11px]">{idx + 1}</span>
+                      <span className="font-normal text-[10px] sm:text-[11px]">{idx + 1}</span>
                     )}
                   </div>
 
-                  {/* Stage Name: Non-bold, plenty of breathing room */}
+                  {/* Stage Name: slightly reduced font on mobile so labels fit cleanly without awkward mid-word breaks */}
                   <span
-                    className={`mt-2 text-[9.5px] font-normal leading-tight block w-full text-center break-words ${
+                    className={`mt-1.5 sm:mt-2 text-[8px] sm:text-[9.5px] font-medium leading-snug block w-full text-center break-normal hyphens-none ${
                       isActive
-                        ? 'text-[#cd6184]'
+                        ? 'text-[#cd6184] font-bold'
                         : isCompleted
                         ? 'text-[#254117]'
                         : 'text-gray-400'
@@ -263,11 +267,11 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
 
                   {/* Stage badge */}
                   {currentOrder.statusTimestamps[st.id] ? (
-                    <span className="text-[8px] text-[#97a273] font-normal mt-1 bg-[#97a273]/10 px-1 py-0.5 rounded-md">
+                    <span className="text-[7.5px] sm:text-[8px] text-[#97a273] font-normal mt-1 bg-[#97a273]/10 px-1 py-0.5 rounded-md">
                       Selesai
                     </span>
                   ) : isActive ? (
-                    <span className="text-[8px] text-[#cd6184] font-normal mt-1 bg-[#ffecf2] px-1 py-0.5 rounded-md">
+                    <span className="text-[7.5px] sm:text-[8px] text-[#cd6184] font-normal mt-1 bg-[#ffecf2] px-1 py-0.5 rounded-md">
                       Proses
                     </span>
                   ) : null}
@@ -278,7 +282,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
         </div>
 
         {/* Final delivery/self-pickup sub-status indicator */}
-        <div className="p-3.5 rounded-2xl bg-[#ffecf2]/50 border border-[#cd6184]/20 space-y-2">
+        <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#ffecf2]/50 border border-[#cd6184]/20 space-y-2">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#cd6184]/15 text-[#cd6184] flex items-center justify-center shrink-0">
               {isDelivery ? <Truck className="w-4 h-4" /> : <Store className="w-4 h-4" />}
@@ -344,8 +348,8 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
       </div>
 
       {/* Official Verified Pricing & Weight - Locked and Read-only for Customer */}
-      <div className="bg-white p-4 rounded-3xl border border-gray-200/80 shadow-xs space-y-4">
-        <div className="border-b pb-3 space-y-1.5">
+      <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-xs space-y-3 sm:space-y-4">
+        <div className="border-b pb-2.5 sm:pb-3 space-y-1 sm:space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Scale className="w-4 h-4 text-[#cd6184]" />
@@ -366,7 +370,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
         {/* Clear price comparison: Initial Estimate -> Official Verified Final Price */}
         <div className="grid grid-cols-1 gap-2.5">
           {/* Initial Estimation Card */}
-          <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200">
+          <div className="p-3 rounded-xl sm:rounded-2xl bg-gray-50 border border-gray-200">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-[#254117]/60 font-semibold uppercase tracking-wider">
                 Perkiraan Awal Pelanggan
@@ -386,7 +390,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
           </div>
 
           {/* Official Final Price Card (Locked/Verified) */}
-          <div className="p-3.5 rounded-2xl bg-[#ffecf2] border border-[#cd6184]/40 relative overflow-hidden">
+          <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#ffecf2] border border-[#cd6184]/40 relative overflow-hidden">
             <div className="flex items-center justify-between gap-1">
               <span className="text-[10px] text-[#cd6184] font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#cd6184]" />
@@ -454,9 +458,9 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
       </div>
 
       {/* Right Column: Order Details & Payment summary */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
           {/* Summary Card */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/80 space-y-3 shadow-xs">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-200/80 space-y-2.5 sm:space-y-3 shadow-xs">
           <div className="flex items-center justify-between border-b pb-2">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-[#254117]">Informasi Pesanan</h3>
@@ -535,7 +539,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
         </div>
 
         {/* Payment Box */}
-        <div className="bg-white p-4 rounded-3xl border border-gray-200/80 shadow-xs space-y-3">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-xs space-y-2.5 sm:space-y-3">
           <div className="flex items-center justify-between border-b pb-2">
             <h3 className="text-sm font-bold text-[#254117]">Status Pembayaran</h3>
             <span
@@ -550,7 +554,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
           </div>
 
           {currentOrder.paymentStatus === 'paid' ? (
-            <div className="p-4 bg-[#97a273]/10 border border-[#97a273]/30 rounded-2xl space-y-2.5 animate-in fade-in">
+            <div className="p-3 sm:p-4 bg-[#97a273]/10 border border-[#97a273]/30 rounded-xl sm:rounded-2xl space-y-2 sm:space-y-2.5 animate-in fade-in">
               <div className="flex items-center gap-2.5 text-[#254117]">
                 <div className="w-8 h-8 rounded-full bg-[#97a273] text-white flex items-center justify-center shrink-0 shadow-xs">
                   <CheckCircle2 className="w-5 h-5" />

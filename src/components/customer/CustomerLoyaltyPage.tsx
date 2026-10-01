@@ -65,36 +65,35 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
   const usedVouchers = customerVouchers.filter((v) => v.isUsed);
 
   return (
-    <div id="customer-loyalty-page" className="w-full space-y-4">
+    <div id="customer-loyalty-page" className="w-full space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#cd6184]">
-              Laundrea Rewards
-            </span>
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${
-                tier === 'Gold'
-                  ? 'bg-[#ffbd59] text-[#254117]'
-                  : tier === 'Silver'
-                  ? 'bg-gray-200 text-[#254117]'
-                  : 'bg-[#ffecf2] text-[#cd6184]'
-              }`}
-            >
-              Member {tier}
-            </span>
-          </div>
+      <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-gray-200/80 shadow-xs space-y-2.5 sm:space-y-3">
+        {/* LAUNDREA REWARDS and Member Tier badge with breathing room and wrap support on mobile */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#cd6184]">
+            Laundrea Rewards
+          </span>
+          <span
+            className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider shadow-2xs ${
+              tier === 'Gold'
+                ? 'bg-[#ffbd59] text-[#254117]'
+                : tier === 'Silver'
+                ? 'bg-gray-200 text-[#254117]'
+                : 'bg-[#ffecf2] text-[#cd6184]'
+            }`}
+          >
+            Member {tier}
+          </span>
         </div>
 
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="text-xl font-black text-[#254117]">
+        <div className="flex items-center justify-between gap-2 pt-0.5 sm:pt-0">
+          <h1 className="text-lg sm:text-xl font-black text-[#254117]">
             Poin & Stempel
           </h1>
 
           <button
             onClick={onOrderNowClick}
-            className="px-3.5 py-2 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center gap-1"
+            className="px-3.5 py-2 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1 active:scale-[0.99]"
           >
             <span>Pesan Baru</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -103,8 +102,8 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
       </div>
 
       {/* Visual Stamp Card */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/80 shadow-xs space-y-4">
-        <div className="flex items-center justify-between gap-2 border-b pb-3">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border border-gray-200/80 shadow-xs space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b pb-3">
           <div>
             <span className="text-[11px] font-bold text-[#cd6184] uppercase tracking-wider">
               Kartu Stempel Loyalitas
@@ -113,20 +112,20 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               Progres Cuci Gratis
             </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between sm:justify-end gap-2">
             <button
               type="button"
               id="btn-add-test-stamp"
               onClick={addTestStamp}
               title="Klik untuk menambah 1 stempel uji coba"
-              className="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#254117] text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-gray-200"
+              className="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#254117] text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-gray-200 shrink-0"
             >
               <PlusCircle className="w-3.5 h-3.5 text-[#cd6184]" />
-              <span>+1 Stempel (Simulasi)</span>
+              <span>+1 Stempel</span>
             </button>
             <div className="text-right">
               <span className="text-[10px] text-[#254117]/60 block font-medium">Total Stempel</span>
-              <span className="text-xl font-black text-[#cd6184]">
+              <span className="text-lg sm:text-xl font-black text-[#cd6184]">
                 {stampsCount} Stempel
               </span>
             </div>
@@ -134,7 +133,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
         </div>
 
         {/* 10-Stamp Visual Grid */}
-        <div className="space-y-3">
+        <div className="space-y-2.5 sm:space-y-3">
           <div className="flex items-center justify-between text-xs font-bold text-[#254117]">
             <span>
               {stampsCount >= targetStamps
@@ -149,7 +148,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           </div>
 
           {/* Linear progress bar */}
-          <div className="w-full bg-[#ffecf2] h-3 rounded-full overflow-hidden p-0.5 border border-[#cd6184]/20">
+          <div className="w-full bg-[#ffecf2] h-2.5 sm:h-3 rounded-full overflow-hidden p-0.5 border border-[#cd6184]/20">
             <div
               className="bg-[#cd6184] h-full rounded-full transition-all duration-500"
               style={{
@@ -159,7 +158,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           </div>
 
           {/* 10 stamp circles */}
-          <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 sm:gap-3 pt-2">
+          <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 sm:gap-3 pt-1.5 sm:pt-2">
             {Array.from({ length: 10 }).map((_, index) => {
               const stampNumber = index + 1;
               const isCollected = (stampsCount % targetStamps >= stampNumber) || (stampsCount >= targetStamps && index < 10);
@@ -167,22 +166,22 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               return (
                 <div
                   key={stampNumber}
-                  className={`aspect-square rounded-2xl flex flex-col items-center justify-center border-2 transition-all ${
+                  className={`aspect-square rounded-xl sm:rounded-2xl flex flex-col items-center justify-center border-2 transition-all p-1 ${
                     isCollected
                       ? 'bg-[#ffecf2] border-[#cd6184] shadow-xs'
                       : 'bg-gray-50 border-dashed border-gray-300'
                   }`}
                 >
                   {isCollected ? (
-                    <div className="w-7 h-7 rounded-full bg-[#97a273] text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                      <Check className="w-4 h-4 stroke-[3]" />
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#97a273] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
                     </div>
                   ) : (
                     <span className="text-xs font-bold text-gray-400">
                       {stampNumber}
                     </span>
                   )}
-                  <span className="text-[9px] font-semibold text-[#254117]/60 mt-1">
+                  <span className="text-[8.5px] sm:text-[9px] font-semibold text-[#254117]/60 mt-0.5 sm:mt-1">
                     {stampNumber === 10 ? 'GRATIS' : `#${stampNumber}`}
                   </span>
                 </div>
@@ -192,10 +191,10 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
         </div>
 
         {/* Voucher Claim CTA Card */}
-        <div className="bg-gradient-to-r from-[#ffecf2] to-[#fff5f8] rounded-2xl p-4 sm:p-5 border-2 border-[#cd6184]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-gradient-to-r from-[#ffecf2] to-[#fff5f8] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border-2 border-[#cd6184]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#ffbd59] text-[#254117] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
-              <Gift className="w-6 h-6" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[#ffbd59] text-[#254117] flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+              <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -222,7 +221,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               id="btn-claim-voucher-10-stamps"
               disabled={stampsCount < 10}
               onClick={handleRedeemVoucher}
-              className={`w-full sm:w-auto px-5 py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 ${
+              className={`w-full sm:w-auto px-5 py-2.5 sm:py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 ${
                 stampsCount >= 10
                   ? 'bg-[#cd6184] hover:bg-[#b85373] text-white shadow-md active:scale-98'
                   : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-75'
@@ -240,7 +239,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
       </div>
 
       {/* User's Claimed Vouchers Section */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/80 shadow-xs space-y-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border border-gray-200/80 shadow-xs space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center gap-2">
             <Ticket className="w-5 h-5 text-[#cd6184]" />
@@ -271,7 +270,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             {customerVouchers.map((voucher) => (
               <div
                 key={voucher.id}
-                className={`relative rounded-2xl p-4 border-2 transition-all flex flex-col justify-between ${
+                className={`relative rounded-xl sm:rounded-2xl p-3 sm:p-4 border-2 transition-all flex flex-col justify-between ${
                   voucher.isUsed
                     ? 'bg-gray-50 border-gray-200 opacity-65'
                     : 'bg-[#fff9fa] border-[#cd6184]/40 hover:border-[#cd6184] shadow-xs'
@@ -301,7 +300,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                     {voucher.description}
                   </p>
 
-                  <div className="mt-3 flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-gray-200">
+                  <div className="mt-2.5 sm:mt-3 flex items-center justify-between bg-white px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl border border-gray-200">
                     <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-[#254117] tracking-wider">
                       <Tag className="w-3.5 h-3.5 text-[#cd6184]" />
                       <span>{voucher.code}</span>
@@ -327,7 +326,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                   </div>
                 </div>
 
-                <div className="mt-3.5 pt-3 border-t border-gray-100 flex items-center justify-between">
+                <div className="mt-3 pt-2.5 sm:pt-3 border-t border-gray-100 flex items-center justify-between">
                   <span className="text-[11px] text-[#254117]/60">
                     Berlaku s.d: <strong className="text-[#254117]">{voucher.expiryDate}</strong>
                   </span>
@@ -336,7 +335,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                     <button
                       type="button"
                       onClick={() => onOrderNowClick(voucher.code)}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#254117] hover:bg-[#1c3211] text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                      className="px-3 py-1.5 rounded-xl bg-[#254117] hover:bg-[#1c3211] text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-[0.99]"
                     >
                       <span>Pakai di Pesanan</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -418,9 +417,9 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
       )}
 
       {/* Member Benefits & Tier Matrix */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         <div
-          className={`p-5 rounded-3xl border-2 transition-all ${
+          className={`p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 transition-all ${
             tier === 'Bronze'
               ? 'border-[#cd6184] bg-white shadow-xs'
               : 'border-gray-200 bg-white opacity-85'
@@ -436,8 +435,8 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               </span>
             )}
           </div>
-          <h4 className="text-lg font-bold text-[#254117] mt-1">1 - 4 Pesanan</h4>
-          <ul className="mt-3 space-y-1.5 text-xs text-[#254117]/80">
+          <h4 className="text-base sm:text-lg font-bold text-[#254117] mt-1">1 - 4 Pesanan</h4>
+          <ul className="mt-2.5 sm:mt-3 space-y-1.5 text-xs text-[#254117]/80">
             <li className="flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-[#97a273]" />
               <span>Akumulasi stempel standar tiap pesanan</span>
@@ -454,7 +453,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
         </div>
 
         <div
-          className={`p-5 rounded-3xl border-2 transition-all ${
+          className={`p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 transition-all ${
             tier === 'Silver'
               ? 'border-[#cd6184] bg-white shadow-xs'
               : 'border-gray-200 bg-white opacity-85'
@@ -470,8 +469,8 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               </span>
             )}
           </div>
-          <h4 className="text-lg font-bold text-[#254117] mt-1">5 - 9 Pesanan</h4>
-          <ul className="mt-3 space-y-1.5 text-xs text-[#254117]/80">
+          <h4 className="text-base sm:text-lg font-bold text-[#254117] mt-1">5 - 9 Pesanan</h4>
+          <ul className="mt-2.5 sm:mt-3 space-y-1.5 text-xs text-[#254117]/80">
             <li className="flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-[#97a273]" />
               <span>Semua keuntungan Level Bronze</span>
@@ -488,7 +487,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
         </div>
 
         <div
-          className={`p-5 rounded-3xl border-2 transition-all ${
+          className={`p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 transition-all ${
             tier === 'Gold'
               ? 'border-[#cd6184] bg-white shadow-xs ring-2 ring-[#ffbd59]/40'
               : 'border-gray-200 bg-white opacity-85'
@@ -504,8 +503,8 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               </span>
             )}
           </div>
-          <h4 className="text-lg font-bold text-[#254117] mt-1">10+ Pesanan</h4>
-          <ul className="mt-3 space-y-1.5 text-xs text-[#254117]/80">
+          <h4 className="text-base sm:text-lg font-bold text-[#254117] mt-1">10+ Pesanan</h4>
+          <ul className="mt-2.5 sm:mt-3 space-y-1.5 text-xs text-[#254117]/80">
             <li className="flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-[#97a273]" />
               <span>Semua keuntungan Level Silver</span>
@@ -523,11 +522,11 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
       </div>
 
       {/* Rewards Earned & History Table */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-gray-200/80 shadow-xs space-y-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 border border-gray-200/80 shadow-xs space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center gap-2">
             <History className="w-5 h-5 text-[#cd6184]" />
-            <h3 className="text-base font-bold text-[#254117]">
+            <h3 className="text-sm sm:text-base font-bold text-[#254117]">
               Riwayat Stempel & Hadiah
             </h3>
           </div>
