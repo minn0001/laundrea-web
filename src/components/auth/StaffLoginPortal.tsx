@@ -83,7 +83,7 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
             onClick={() => setActiveStaffRole('courier')}
             className={`flex-1 py-2.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
               activeStaffRole === 'courier'
-                ? 'bg-sky-600 text-white shadow-md'
+                ? : 'bg-[#254117] text-[#ffbd59] shadow-md'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
             }`}
           >
@@ -113,11 +113,11 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-[#254117]/10 text-[#254117] flex items-center justify-center shrink-0">
                     <Truck className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-sky-800 uppercase tracking-wider block">
+                    <span className="text-xs font-bold text-[#254117] uppercase tracking-wider block">
                       Login Petugas Kurir
                     </span>
                     <span className="text-[10px] text-[#254117]/60 font-medium">
@@ -125,7 +125,7 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
                     </span>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
+                <<span className="text-[10px] font-bold text-[#254117] bg-[#ffbd59]/25 px-2 py-0.5 rounded-full border border-[#ffbd59]/40">
                   ID Lapangan
                 </span>
               </div>
@@ -155,7 +155,7 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
                       onChange={(e) => setCourierUsername(e.target.value)}
                       placeholder="ID Petugas Kurir"
                       required
-                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[#254117] text-sm font-medium focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[#254117] text-sm font-medium focus:outline-none focus:border-[#254117] focus:ring-2 focus:ring-[#254117]/20 transition-all"
                     />
                   </div>
                 </div>
@@ -175,12 +175,12 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
                       onChange={(e) => setCourierPassword(e.target.value)}
                       placeholder="Kata sandi akun"
                       required
-                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[#254117] text-sm font-medium focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[#254117] text-sm font-medium focus:outline-none focus:border-[#254117] focus:ring-2 focus:ring-[#254117]/20 transition-all"
                     />
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-sky-50/70 rounded-xl border border-sky-100 text-[11px] text-sky-800">
+                <div className="p-2.5 bg-[#254117]/10 rounded-xl border border-[#254117]/20 text-[11px] text-[#254117]">
                   <span className="font-semibold">Info Demo:</span> Username: <code className="font-bold">kurir_dimas</code>, password terisi otomatis.
                 </div>
 
@@ -188,7 +188,7 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
                   id="btn-courier-login"
                   type="submit"
                   disabled={isCourierLoading}
-                  className="w-full py-3 px-5 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 px-5 rounded-xl bg-[#254117] hover:bg-[#1a2f10] active:scale-[0.99] text-[#ffbd59] font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isCourierLoading ? (
                     <span>Memproses Masuk...</span>
