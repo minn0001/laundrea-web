@@ -7,8 +7,6 @@ import {
   User,
   Lock,
   ArrowRight,
-  RotateCcw,
-  ArrowLeft,
 } from 'lucide-react';
 
 interface StaffLoginPortalProps {
@@ -301,37 +299,8 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="max-w-md mx-auto w-full pb-2 text-center space-y-2">
-        {onNavigateCustomer && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={onNavigateCustomer}
-              className="text-xs text-[#254117]/65 hover:text-[#cd6184] font-medium transition-colors cursor-pointer inline-flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Bukan staf? Kembali ke <strong>Portal Pelanggan (/)</strong></span>
-            </button>
-          </div>
-        )}
-
-        <div className="flex items-center justify-center gap-3 text-[11px] text-[#254117]/60">
-          <span>Laundrea v2.4</span>
-          <span>•</span>
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm('Kembalikan seluruh data demo ke kondisi awal?')) {
-                resetAllData();
-                window.location.reload();
-              }
-            }}
-            className="inline-flex items-center gap-1 hover:text-[#cd6184] cursor-pointer"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Reset Demo Data</span>
-          </button>
-        </div>
+          <div className="max-w-md mx-auto w-full pb-2 text-center">
+        <span className="text-[11px] text-[#254117]/60">Laundrea v2.4</span>
       </div>
     </div>
   );
