@@ -111,7 +111,7 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
             <div className="space-y-4 animate-in fade-in duration-150">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-[#254117]/10 text-[#254117] flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-[#254117] text-[#ffbd59] flex items-center justify-center shrink-0">
                     <Truck className="w-4 h-4" />
                   </div>
                   <div>
