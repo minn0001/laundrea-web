@@ -338,7 +338,7 @@ export const INITIAL_STAMP_HISTORY: StampHistoryItem[] = [
     orderNumber: 'LND-20260908-01',
     date: '2026-09-08',
     type: 'earned',
-    title: 'Order Express (4.2 kg)',
+    title: 'Pesanan Express (4.2 kg)',
     pointsChange: 1,
   },
   {
@@ -346,7 +346,7 @@ export const INITIAL_STAMP_HISTORY: StampHistoryItem[] = [
     orderNumber: 'LND-20260901-08',
     date: '2026-09-01',
     type: 'earned',
-    title: 'Order Regular (5.0 kg)',
+    title: 'Pesanan Regular (5.0 kg)',
     pointsChange: 1,
   },
   {
@@ -354,7 +354,7 @@ export const INITIAL_STAMP_HISTORY: StampHistoryItem[] = [
     orderNumber: 'LND-20260824-03',
     date: '2026-08-24',
     type: 'redeemed',
-    title: 'Reward Free Wash (10 Stamps Redeemed)',
+    title: 'Hadiah Cuci Gratis (10 Stempel Ditukar)',
     pointsChange: -10,
   },
   {
@@ -362,7 +362,7 @@ export const INITIAL_STAMP_HISTORY: StampHistoryItem[] = [
     orderNumber: 'LND-20260820-02',
     date: '2026-08-20',
     type: 'earned',
-    title: 'Order Regular (6.0 kg)',
+    title: 'Pesanan Regular (6.0 kg)',
     pointsChange: 1,
   },
   {
@@ -370,7 +370,7 @@ export const INITIAL_STAMP_HISTORY: StampHistoryItem[] = [
     orderNumber: 'LND-20260814-11',
     date: '2026-08-14',
     type: 'earned',
-    title: 'Order Express (4.5 kg)',
+    title: 'Pesanan Express (4.5 kg)',
     pointsChange: 1,
   },
   {
@@ -378,7 +378,7 @@ export const INITIAL_STAMP_HISTORY: StampHistoryItem[] = [
     orderNumber: 'LND-20260807-05',
     date: '2026-08-07',
     type: 'earned',
-    title: 'Order Per Item (3 pcs)',
+    title: 'Pesanan Per Item (3 pcs)',
     pointsChange: 1,
   },
   {
@@ -386,7 +386,7 @@ export const INITIAL_STAMP_HISTORY: StampHistoryItem[] = [
     orderNumber: 'LND-20260801-09',
     date: '2026-08-01',
     type: 'earned',
-    title: 'Order Regular (4.0 kg)',
+    title: 'Pesanan Regular (4.0 kg)',
     pointsChange: 1,
   },
 ];
