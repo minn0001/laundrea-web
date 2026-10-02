@@ -113,11 +113,11 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               Progres Cuci Gratis
             </h2>
           </div>
-                    <div className="flex items-center justify-end gap-2">
+           <div className="flex items-center justify-end gap-2">
             <div className="text-right">
               <span className="text-[10px] text-[#254117]/60 block font-medium">Total Stempel</span>
               <span className="text-lg sm:text-xl font-black text-[#cd6184]">
-                {stampsCount} Stempel
+                {stampsInCycle} Stempel
               </span>
             </div>
           </div>
