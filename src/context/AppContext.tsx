@@ -589,7 +589,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       orderNumber,
       date: now.toISOString().slice(0, 10),
       type: 'earned',
-      title: `Order ${selectedPlan.name} (${data.estimatedQuantity} ${selectedPlan.unit})`,
+      title: `Pesanan ${selectedPlan.name} (${data.estimatedQuantity} ${selectedPlan.unit})`,
       pointsChange: 1,
     };
     setStampHistory((prev) => [newStamp, ...prev]);
