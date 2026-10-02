@@ -14,7 +14,6 @@ import {
   Ticket,
   Copy,
   CheckCheck,
-  PlusCircle,
   Tag,
   Plus,
 } from 'lucide-react';
@@ -29,7 +28,6 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
     stampHistory,
     customerVouchers,
     claimLoyaltyVoucher,
-    addTestStamp,
     customerPhone,
     customers,
   } = useApp();
@@ -44,10 +42,12 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
     totalOrders: stampHistory.filter((s) => s.type === 'earned').length || 7,
   };
 
-  const tier = stampsCount >= 10 ? 'Gold' : stampsCount >= 5 ? 'Silver' : 'Bronze';
-  const targetStamps = 10;
-  const stampsRemaining = Math.max(0, targetStamps - (stampsCount % targetStamps));
-  const progressPercent = Math.min(100, Math.round(((stampsCount % targetStamps) / targetStamps) * 100));
+    const tier = stampsCount >= 10 ? 'Gold' : stampsCount >= 5 ? 'Silver' : 'Bronze';
+    const targetStamps = 10;
+    const stampsInCycle = stampsCount === 0 ? 0 : ((stampsCount - 1) % targetStamps) + 1;
+    const isCycleComplete = stampsInCycle === targetStamps;
+    const stampsRemaining = isCycleComplete ? 0 : targetStamps - stampsInCycle;
+    const progressPercent = Math.min(100, Math.round((stampsInCycle / targetStamps) * 100));
 
   const handleRedeemVoucher = () => {
     const newVoucher = claimLoyaltyVoucher();
@@ -113,17 +113,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               Progres Cuci Gratis
             </h2>
           </div>
-          <div className="flex items-center justify-between sm:justify-end gap-2">
-            <button
-              type="button"
-              id="btn-add-test-stamp"
-              onClick={addTestStamp}
-              title="Klik untuk menambah 1 stempel uji coba"
-              className="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#254117] text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-gray-200 shrink-0"
-            >
-              <PlusCircle className="w-3.5 h-3.5 text-[#cd6184]" />
-              <span>+1 Stempel</span>
-            </button>
+                    <div className="flex items-center justify-end gap-2">
             <div className="text-right">
               <span className="text-[10px] text-[#254117]/60 block font-medium">Total Stempel</span>
               <span className="text-lg sm:text-xl font-black text-[#cd6184]">
@@ -137,12 +127,12 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
         <div className="space-y-2.5 sm:space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs font-bold text-[#254117] gap-1 sm:gap-2">
             <span className="leading-snug">
-              {stampsCount >= targetStamps
+              {isCycleComplete
                 ? '✓ 10 Stempel telah terkumpul! Voucher siap diklaim.'
-                : `${stampsCount % targetStamps} dari 10 stempel terkumpul`}
+                : `${stampsInCycle} dari 10 stempel terkumpul`}
             </span>
             <span className="text-[#97a273] text-left">
-              {stampsCount >= targetStamps
+              {isCycleComplete
                 ? 'Voucher Hadiah Tersedia'
                 : `${stampsRemaining} stempel lagi untuk klaim voucher`}
             </span>
@@ -153,7 +143,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             <div
               className="bg-[#cd6184] h-full rounded-full transition-all duration-500"
               style={{
-                width: `${stampsCount >= targetStamps ? 100 : progressPercent}%`,
+                width: `${progressPercent}%`,
               }}
             />
           </div>
@@ -162,7 +152,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 sm:gap-3 pt-1.5 sm:pt-2">
             {Array.from({ length: 10 }).map((_, index) => {
               const stampNumber = index + 1;
-              const isCollected = (stampsCount % targetStamps >= stampNumber) || (stampsCount >= targetStamps && index < 10);
+              const isCollected = stampsInCycle >= stampNumber;
 
               return (
                 <div
@@ -207,7 +197,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                 </span>
               </div>
               <h3 className="text-sm font-bold text-[#254117] mt-1">
-                {stampsCount >= 10
+                {isCycleComplete
                   ? 'Voucher Cuci Gratis Siap Diklaim!'
                   : 'Kumpulkan 10 Stempel untuk Klaim Voucher'}
               </h3>
@@ -220,17 +210,17 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           <div className="shrink-0 flex sm:flex-col items-center sm:items-end gap-2">
             <button
               id="btn-claim-voucher-10-stamps"
-              disabled={stampsCount < 10}
+              disabled={!isCycleComplete}
               onClick={handleRedeemVoucher}
               className={`w-full sm:w-auto px-5 py-2.5 sm:py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 ${
-                stampsCount >= 10
+                isCycleComplete
                   ? 'bg-[#cd6184] hover:bg-[#b85373] text-white shadow-md active:scale-98'
                   : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-75'
               }`}
             >
               <Sparkles className="w-4 h-4" />
               <span>
-                {stampsCount >= 10
+                {isCycleComplete
                   ? 'Klaim Voucher Cuci Gratis'
                   : `Kurang ${stampsRemaining} Stempel`}
               </span>
