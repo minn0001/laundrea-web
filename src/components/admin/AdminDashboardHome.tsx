@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AdminView } from './AdminSidebar';
 import {
+  PeriodFilter,
+  getOrderDate,
+  getPeriodDailyPoints,
+  getTodayDateStr,
+} from '../../utils/orderAnalytics';
+import {
   ShoppingBag,
   TrendingUp,
   Sparkles,
@@ -29,6 +35,9 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
 }) => {
   const { orders, couriers, customers } = useApp();
   const [activeChartTab, setActiveChartTab] = useState<'volume' | 'status'>('volume');
+  const [trendPeriod, setTrendPeriod] = useState<PeriodFilter>('7days');
+  const [customStartDate, setCustomStartDate] = useState('2026-09-01');
+  const [customEndDate, setCustomEndDate] = useState(getTodayDateStr());
 
   // Metrics calculation
   const totalOrders = orders.length;
@@ -36,7 +45,7 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
   const completedOrders = orders.filter((o) => o.status === 'delivered').length;
 
   const totalRevenue = orders.reduce((sum, ord) => {
-    return sum + (ord.actualPrice || ord.estimatedPrice);
+    return sum + (ord.actualPrice || ord.estimatedPrice || 0);
   }, 0);
 
   // Best-selling plan count
@@ -46,7 +55,7 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
       planCounts[o.planName] = { count: 0, revenue: 0 };
     }
     planCounts[o.planName].count += 1;
-    planCounts[o.planName].revenue += (o.actualPrice || o.estimatedPrice);
+    planCounts[o.planName].revenue += (o.actualPrice || o.estimatedPrice || 0);
   });
 
   let bestSellingPlan = 'Express';
@@ -61,71 +70,42 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
   // Active Couriers
   const activeCouriersCount = couriers.filter((c) => c.status === 'active').length;
 
-  // Helper to extract clean YYYY-MM-DD from order
-  const getOrderDate = (ord: (typeof orders)[0]): string => {
-    if (ord.pickupDate && ord.pickupDate.length >= 10) {
-      return ord.pickupDate.slice(0, 10);
-    }
-    if (ord.statusTimestamps?.booked) {
-      return ord.statusTimestamps.booked.slice(0, 10);
-    }
-    return '';
-  };
+  // Trend dataset generated from real orders data in app (computed strictly by booking date statusTimestamps.booked / pickupDate fallback)
+  const weeklyTrends = getPeriodDailyPoints(
+    trendPeriod,
+    orders,
+    [],
+    customStartDate,
+    customEndDate
+  );
 
-  const todayReal = new Date().toISOString().slice(0, 10);
-  const allRecordedDates = orders.map(getOrderDate).filter(Boolean);
-
-  const anchorDateStr = allRecordedDates.includes(todayReal)
-    ? todayReal
-    : allRecordedDates.length > 0
-    ? [...allRecordedDates].sort().reverse()[0]
-    : todayReal;
-
-  const anchorDate = new Date(anchorDateStr);
-  const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-  const fullDayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-
-  // 7-day trend dataset generated from real orders data in app
-  const weeklyTrends = Array.from({ length: 7 }).map((_, idx) => {
-    const d = new Date(anchorDate);
-    d.setDate(anchorDate.getDate() - (6 - idx));
-    const dStr = d.toISOString().slice(0, 10);
-    const dayOrders = orders.filter((o) => getOrderDate(o) === dStr);
-    const dayRevenue = dayOrders.reduce(
-      (sum, o) => sum + (o.actualPrice || o.estimatedPrice || 0),
-      0
-    );
-
-    return {
-      dateStr: dStr,
-      day: dayNames[d.getDay()],
-      fullDay: fullDayNames[d.getDay()],
-      orders: dayOrders.length,
-      revenue: dayRevenue,
-    };
-  });
-
+  const totalPeriodOrders = weeklyTrends.reduce((sum, t) => sum + t.orders, 0);
   const maxWeeklyOrders = Math.max(...weeklyTrends.map((t) => t.orders), 1);
-  const totalWeeklyOrders = weeklyTrends.reduce((sum, t) => sum + t.orders, 0);
-  const avgDailyOrders = (totalWeeklyOrders / 7).toFixed(1);
+  const avgDailyOrders = weeklyTrends.length > 0 ? (totalPeriodOrders / weeklyTrends.length).toFixed(1) : '0';
 
-  // Find busiest day in the 7-day period from real data
-  const busiestItem = weeklyTrends.reduce((prev, curr) =>
-    curr.orders > prev.orders ? curr : prev
+  // Find busiest day in the period from real data
+  const busiestItem = weeklyTrends.reduce(
+    (prev, curr) => (curr.orders > prev.orders ? curr : prev),
+    weeklyTrends[0]
   );
   const busiestDayText =
-    busiestItem.orders > 0
-      ? `Hari tersibuk: ${busiestItem.fullDay} (${busiestItem.orders} pesanan)`
+    busiestItem && busiestItem.orders > 0
+      ? `Hari tersibuk: ${busiestItem.fullDateLabel || busiestItem.dayLabel} (${busiestItem.orders} pesanan)`
       : 'Belum ada pesanan';
 
-  // Status breakdown counts
+  // Orders falling into the selected trend period
+  const periodOrders = orders.filter((o) =>
+    weeklyTrends.some((t) => t.dateStr === getOrderDate(o))
+  );
+
+  // Status breakdown counts for selected period
   const statusBreakdown = [
-    { key: 'pickup', label: 'Jemput', count: orders.filter((o) => o.status === 'pickup').length, color: '#cd6184' },
-    { key: 'washing', label: 'Cuci', count: orders.filter((o) => o.status === 'washing').length, color: '#97a273' },
-    { key: 'drying', label: 'Kering', count: orders.filter((o) => o.status === 'drying').length, color: '#ffbd59' },
-    { key: 'ironing', label: 'Setrika', count: orders.filter((o) => o.status === 'ironing').length, color: '#cd6184' },
-    { key: 'ready', label: 'Siap Antar', count: orders.filter((o) => o.status === 'ready').length, color: '#ffbd59' },
-    { key: 'delivered', label: 'Terkirim', count: completedOrders, color: '#97a273' },
+    { key: 'pickup', label: 'Jemput', count: periodOrders.filter((o) => o.status === 'pickup').length, color: '#cd6184' },
+    { key: 'washing', label: 'Cuci', count: periodOrders.filter((o) => o.status === 'washing').length, color: '#97a273' },
+    { key: 'drying', label: 'Kering', count: periodOrders.filter((o) => o.status === 'drying').length, color: '#ffbd59' },
+    { key: 'ironing', label: 'Setrika', count: periodOrders.filter((o) => o.status === 'ironing').length, color: '#cd6184' },
+    { key: 'ready', label: 'Siap Antar', count: periodOrders.filter((o) => o.status === 'ready').length, color: '#ffbd59' },
+    { key: 'delivered', label: 'Terkirim', count: periodOrders.filter((o) => o.status === 'delivered').length, color: '#97a273' },
   ];
 
   return (
@@ -247,7 +227,7 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
 
       {/* Visual Analytics & Operational Overview Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Trend Chart (7-day Order Volume) */}
+        {/* Trend Chart (Real Order Volume & Operational Trends) */}
         <div className="lg:col-span-8 bg-white p-5 sm:p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
             <div>
@@ -256,47 +236,135 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
                 <span>Tren Aktivitas Pesanan & Operasional</span>
               </h2>
               <p className="text-xs text-[#254117]/60">
-                Grafik fluktuasi pesanan masuk dan penyelesaian selama 7 hari terakhir
+                {trendPeriod === '7days'
+                  ? 'Grafik fluktuasi pesanan masuk dan penyelesaian selama 7 hari terakhir'
+                  : trendPeriod === 'today'
+                  ? 'Grafik aktivitas pesanan untuk hari ini'
+                  : trendPeriod === 'month'
+                  ? 'Grafik aktivitas pesanan untuk bulan ini'
+                  : 'Grafik aktivitas pesanan untuk rentang tanggal kustom'}
               </p>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-[#ffecf2] p-1 rounded-xl self-start sm:self-auto text-xs">
-              <button
-                onClick={() => setActiveChartTab('volume')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  activeChartTab === 'volume'
-                    ? 'bg-[#cd6184] text-white shadow-xs'
-                    : 'text-[#254117]/70'
-                }`}
-              >
-                Volume Order
-              </button>
-              <button
-                onClick={() => setActiveChartTab('status')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  activeChartTab === 'status'
-                    ? 'bg-[#cd6184] text-white shadow-xs'
-                    : 'text-[#254117]/70'
-                }`}
-              >
-                Distribusi Status
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Period Filter Buttons */}
+              <div className="flex items-center gap-1 bg-[#ffecf2] p-1 rounded-xl text-xs">
+                <button
+                  type="button"
+                  onClick={() => setTrendPeriod('today')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    trendPeriod === 'today'
+                      ? 'bg-[#cd6184] text-white shadow-xs'
+                      : 'text-[#254117]/70'
+                  }`}
+                >
+                  Hari Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrendPeriod('7days')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    trendPeriod === '7days'
+                      ? 'bg-[#cd6184] text-white shadow-xs'
+                      : 'text-[#254117]/70'
+                  }`}
+                >
+                  7 Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrendPeriod('month')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    trendPeriod === 'month'
+                      ? 'bg-[#cd6184] text-white shadow-xs'
+                      : 'text-[#254117]/70'
+                  }`}
+                >
+                  Bulan Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrendPeriod('custom')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    trendPeriod === 'custom'
+                      ? 'bg-[#cd6184] text-white shadow-xs'
+                      : 'text-[#254117]/70'
+                  }`}
+                >
+                  Kustom
+                </button>
+              </div>
+
+              {/* View Tab Buttons */}
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveChartTab('volume')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeChartTab === 'volume'
+                      ? 'bg-white text-[#254117] shadow-xs'
+                      : 'text-[#254117]/70'
+                  }`}
+                >
+                  Volume
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveChartTab('status')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    activeChartTab === 'status'
+                      ? 'bg-white text-[#254117] shadow-xs'
+                      : 'text-[#254117]/70'
+                  }`}
+                >
+                  Status
+                </button>
+              </div>
             </div>
           </div>
 
-          {activeChartTab === 'volume' ? (
-            /* 7-Day Bar Chart */
+          {/* Custom Date Range Selector if selected */}
+          {trendPeriod === 'custom' && (
+            <div className="flex flex-wrap items-center gap-2.5 p-3 bg-gray-50 rounded-2xl text-xs">
+              <span className="font-bold text-[#254117]">Rentang Tanggal:</span>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-[#254117]"
+              />
+              <span className="text-gray-400">s.d.</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-[#254117]"
+              />
+            </div>
+          )}
+
+          {totalPeriodOrders === 0 ? (
+            /* Empty state when no real orders exist in this period */
+            <div className="h-56 flex flex-col items-center justify-center p-6 text-center bg-gray-50/70 rounded-2xl border border-dashed border-gray-200">
+              <Activity className="w-8 h-8 text-[#254117]/30 mb-2" />
+              <p className="text-sm font-bold text-[#254117]/80">Belum ada pesanan pada periode ini</p>
+              <p className="text-xs text-[#254117]/50 mt-1 max-w-xs">
+                Pesanan yang dibuat atau dijadwalkan pada rentang tanggal ini akan otomatis tampil di sini secara real-time.
+              </p>
+            </div>
+          ) : activeChartTab === 'volume' ? (
+            /* Bar Chart for Real Orders */
             <div className="pt-2">
-              <div className="h-56 flex items-end justify-between gap-2 sm:gap-5 px-2">
+              <div className="h-56 flex items-end justify-between gap-1 sm:gap-3 px-2 overflow-x-auto">
                 {weeklyTrends.map((item, idx) => {
                   const heightPercent = maxWeeklyOrders > 0 ? Math.round((item.orders / maxWeeklyOrders) * 100) : 0;
                   const isPeak = item.orders > 0 && item.orders === maxWeeklyOrders;
 
                   return (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+                    <div key={idx} className="flex-1 min-w-[28px] flex flex-col items-center gap-2 h-full justify-end group">
                       <div className="w-full flex items-end justify-center h-full">
                         <div
-                          style={{ height: item.orders > 0 ? `${Math.max(heightPercent, 10)}%` : '6px' }}
+                          style={{ height: item.orders > 0 ? `${Math.max(heightPercent, 12)}%` : '6px' }}
                           className={`w-full max-w-[36px] rounded-t-xl transition-all relative cursor-pointer ${
                             item.orders === 0
                               ? 'bg-gray-200 hover:bg-gray-300'
@@ -313,7 +381,7 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
                         </div>
                       </div>
                       <div className="text-center">
-                        <span className="text-[11px] font-bold text-[#254117] block">{item.day}</span>
+                        <span className="text-[11px] font-bold text-[#254117] block truncate">{item.dayLabel}</span>
                         <span className="text-[10px] text-[#254117]/60 font-semibold">{item.orders}</span>
                       </div>
                     </div>
@@ -322,7 +390,7 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
               </div>
 
               <div className="flex flex-row items-center justify-between pt-3.5 border-t border-gray-100 text-[10px] sm:text-xs text-[#254117]/70 gap-2 overflow-hidden">
-                <span className="truncate">Rata-rata {avgDailyOrders} pesanan/hari</span>
+                <span className="truncate">Total: {totalPeriodOrders} pesanan • Rata-rata {avgDailyOrders} pesanan/hari</span>
                 <span className="text-[#cd6184] font-bold shrink-0">{busiestDayText}</span>
               </div>
             </div>

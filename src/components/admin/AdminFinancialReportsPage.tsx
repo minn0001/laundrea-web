@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
+  PeriodFilter,
+  getOrderDate,
+  isDateInPeriod,
+  getPeriodDailyPoints,
+  getTodayDateStr,
+} from '../../utils/orderAnalytics';
+import {
   TrendingUp,
   BarChart3,
   DollarSign,
@@ -27,83 +34,38 @@ export const AdminFinancialReportsPage: React.FC = () => {
   const [newCostAmount, setNewCostAmount] = useState<number>(350000);
   const [downloadToast, setDownloadToast] = useState(false);
 
-  // Helper to extract clean YYYY-MM-DD from order
-  const getOrderDate = (ord: (typeof orders)[0]): string => {
-    if (ord.pickupDate && ord.pickupDate.length >= 10) {
-      return ord.pickupDate.slice(0, 10);
-    }
-    if (ord.statusTimestamps?.booked) {
-      return ord.statusTimestamps.booked.slice(0, 10);
-    }
-    return '';
-  };
-
-  const todayReal = new Date().toISOString().slice(0, 10);
-  const allRecordedDates = [
-    ...orders.map(getOrderDate),
-    ...operationalCosts.map((c) => c.date?.slice(0, 10) || ''),
-  ].filter(Boolean);
-
-  // If there are transactions matching today's calendar date, anchor to today;
-  // otherwise anchor to the most recent date recorded (e.g. 2026-09-08 for demo data)
-  const anchorDateStr = allRecordedDates.includes(todayReal)
-    ? todayReal
-    : allRecordedDates.length > 0
-    ? [...allRecordedDates].sort().reverse()[0]
-    : todayReal;
-
-  // Check if a date string falls inside the active dateFilter
-  const isDateInFilter = (dateStr: string): boolean => {
-    if (!dateStr) return false;
-    const cleanDate = dateStr.slice(0, 10);
-    if (dateFilter === 'today') {
-      return cleanDate === anchorDateStr;
-    }
-    if (dateFilter === '7days') {
-      const anchor = new Date(anchorDateStr);
-      const past7 = new Date(anchor);
-      past7.setDate(past7.getDate() - 6);
-      const past7Str = past7.toISOString().slice(0, 10);
-      return cleanDate >= past7Str && cleanDate <= anchorDateStr;
-    }
-    if (dateFilter === 'month') {
-      return cleanDate.slice(0, 7) === anchorDateStr.slice(0, 7);
-    }
-    if (dateFilter === 'custom') {
-      if (!customStartDate && !customEndDate) return true;
-      if (customStartDate && cleanDate < customStartDate) return false;
-      if (customEndDate && cleanDate > customEndDate) return false;
-      return true;
-    }
-    return true;
-  };
+  const todayReal = getTodayDateStr();
 
   const getPeriodLabel = () => {
-    if (dateFilter === 'today') return `Hari Ini (${anchorDateStr})`;
-    if (dateFilter === '7days') return `7 Hari Terakhir (s.d. ${anchorDateStr})`;
+    if (dateFilter === 'today') return `Hari Ini (${todayReal})`;
+    if (dateFilter === '7days') return `7 Hari Terakhir (s.d. ${todayReal})`;
     if (dateFilter === 'month') {
       const monthNames = [
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
       ];
-      const monthIdx = parseInt(anchorDateStr.slice(5, 7), 10) - 1;
-      return `Bulan ${monthNames[monthIdx] || ''} ${anchorDateStr.slice(0, 4)}`;
+      const monthIdx = parseInt(todayReal.slice(5, 7), 10) - 1;
+      return `Bulan ${monthNames[monthIdx] || ''} ${todayReal.slice(0, 4)}`;
     }
     if (dateFilter === 'custom') return `${customStartDate || 'Awal'} s.d. ${customEndDate || 'Akhir'}`;
     return 'Semua Periode';
   };
 
-  // Dynamically filtered orders and operational costs based on active period filter
-  const filteredOrders = orders.filter((ord) => isDateInFilter(getOrderDate(ord)));
-  const filteredCosts = operationalCosts.filter((item) => isDateInFilter(item.date));
+  // Dynamically filtered orders and operational costs based strictly on real creation/booking date
+  const filteredOrders = orders.filter((ord) =>
+    isDateInPeriod(getOrderDate(ord), dateFilter, customStartDate, customEndDate)
+  );
+  const filteredCosts = operationalCosts.filter((item) =>
+    isDateInPeriod((item.date || '').slice(0, 10), dateFilter, customStartDate, customEndDate)
+  );
 
-  // Recalculated Gross Revenue
+  // Recalculated Gross Revenue directly from filtered real orders
   const grossRevenue = filteredOrders.reduce((sum, ord) => {
-    return sum + (ord.actualPrice || ord.estimatedPrice);
+    return sum + (ord.actualPrice || ord.estimatedPrice || 0);
   }, 0);
 
-  // Recalculated Total Operational Cost
-  const totalCost = filteredCosts.reduce((sum, item) => sum + item.amount, 0);
+  // Recalculated Total Operational Cost from filtered costs
+  const totalCost = filteredCosts.reduce((sum, item) => sum + (item.amount || 0), 0);
 
   // Recalculated Net Profit & Margin
   const netProfit = grossRevenue - totalCost;
@@ -113,7 +75,7 @@ export const AdminFinancialReportsPage: React.FC = () => {
   // Breakdown by plan for filtered orders
   const planRevenue: Record<string, { revenue: number; count: number }> = {};
   filteredOrders.forEach((ord) => {
-    const val = ord.actualPrice || ord.estimatedPrice;
+    const val = ord.actualPrice || ord.estimatedPrice || 0;
     if (!planRevenue[ord.planName]) {
       planRevenue[ord.planName] = { revenue: 0, count: 0 };
     }
@@ -121,201 +83,48 @@ export const AdminFinancialReportsPage: React.FC = () => {
     planRevenue[ord.planName].count += 1;
   });
 
-  // Dynamically generate real chart data based on filtered transactions and timeframe
+  // Dynamically generate real chart data based on filtered real orders & costs
   const generateRealChartData = () => {
     if (timeframe === 'monthly') {
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-      const anchorYear = parseInt(anchorDateStr.slice(0, 4), 10);
-      const anchorMonthIdx = parseInt(anchorDateStr.slice(5, 7), 10) - 1;
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonthIdx = now.getMonth();
 
-      // Show 6 months ending at current anchor month
-      const monthsList: { label: string; revenue: number; cost: number }[] = [];
+      // Show 6 months ending at current calendar month
+      const monthsList: { label: string; revenue: number; cost: number; orders: number }[] = [];
       for (let i = 5; i >= 0; i--) {
-        const mIdx = (anchorMonthIdx - i + 12) % 12;
-        const y = anchorMonthIdx - i < 0 ? anchorYear - 1 : anchorYear;
+        const mIdx = (currentMonthIdx - i + 12) % 12;
+        const y = currentMonthIdx - i < 0 ? currentYear - 1 : currentYear;
         const monthKey = `${y}-${String(mIdx + 1).padStart(2, '0')}`;
 
-        const rev = orders
-          .filter((ord) => getOrderDate(ord).startsWith(monthKey))
-          .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
-
+        const monthOrders = orders.filter((ord) => getOrderDate(ord).startsWith(monthKey));
+        const rev = monthOrders.reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice || 0), 0);
         const cst = operationalCosts
-          .filter((c) => (c.date || '').startsWith(monthKey))
-          .reduce((sum, c) => sum + c.amount, 0);
+          .filter((c) => (c.date || '').slice(0, 10).startsWith(monthKey))
+          .reduce((sum, c) => sum + (c.amount || 0), 0);
 
         monthsList.push({
           label: `${monthNames[mIdx]} '${String(y).slice(2)}`,
           revenue: rev,
           cost: cst,
+          orders: monthOrders.length,
         });
       }
       return monthsList;
     }
 
-    // Daily / Period-specific breakdown of the active filtered range
-    if (dateFilter === 'today') {
-      // Time buckets for today's orders & operations
-      const buckets = [
-        { label: '08:00', start: '06:00', end: '09:00' },
-        { label: '10:00', start: '09:01', end: '11:00' },
-        { label: '12:00', start: '11:01', end: '13:00' },
-        { label: '14:00', start: '13:01', end: '15:00' },
-        { label: '16:00', start: '15:01', end: '17:00' },
-        { label: '18:00', start: '17:01', end: '19:00' },
-        { label: '20:00', start: '19:01', end: '23:59' },
-      ];
-
-      return buckets.map((b) => {
-        const rev = filteredOrders
-          .filter((ord) => {
-            const timeStr = ord.pickupTime || ord.statusTimestamps?.booked || '';
-            const match = timeStr.match(/\b\d{2}:\d{2}\b/);
-            const t = match ? match[0] : '10:00';
-            return t >= b.start && t <= b.end;
-          })
-          .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
-
-        const cst = filteredCosts.length > 0 ? Math.round(totalCost / buckets.length) : 0;
-
-        return {
-          label: b.label,
-          revenue: rev,
-          cost: cst,
-        };
-      });
-    }
-
-    if (dateFilter === '7days') {
-      const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-      const anchor = new Date(anchorDateStr);
-      const points: { label: string; revenue: number; cost: number }[] = [];
-
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(anchor);
-        d.setDate(anchor.getDate() - i);
-        const dStr = d.toISOString().slice(0, 10);
-        const dayLabel = dayNames[d.getDay()];
-
-        const rev = filteredOrders
-          .filter((ord) => getOrderDate(ord) === dStr)
-          .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
-
-        const cst = filteredCosts
-          .filter((c) => (c.date || '').slice(0, 10) === dStr)
-          .reduce((sum, c) => sum + c.amount, 0);
-
-        points.push({
-          label: `${dayLabel} (${dStr.slice(8)})`,
-          revenue: rev,
-          cost: cst,
-        });
-      }
-      return points;
-    }
-
-    if (dateFilter === 'month') {
-      const yyyymm = anchorDateStr.slice(0, 7);
-      const buckets = [
-        { label: 'Minggu 1', start: `${yyyymm}-01`, end: `${yyyymm}-07` },
-        { label: 'Minggu 2', start: `${yyyymm}-08`, end: `${yyyymm}-14` },
-        { label: 'Minggu 3', start: `${yyyymm}-15`, end: `${yyyymm}-21` },
-        { label: 'Minggu 4', start: `${yyyymm}-22`, end: `${yyyymm}-28` },
-        { label: 'Minggu 5', start: `${yyyymm}-29`, end: `${yyyymm}-31` },
-      ];
-
-      return buckets.map((b) => {
-        const rev = filteredOrders
-          .filter((ord) => {
-            const d = getOrderDate(ord);
-            return d >= b.start && d <= b.end;
-          })
-          .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
-
-        const cst = filteredCosts
-          .filter((c) => {
-            const d = (c.date || '').slice(0, 10);
-            return d >= b.start && d <= b.end;
-          })
-          .reduce((sum, c) => sum + c.amount, 0);
-
-        return {
-          label: b.label,
-          revenue: rev,
-          cost: cst,
-        };
-      });
-    }
-
-    if (dateFilter === 'custom') {
-      const start = new Date(customStartDate || anchorDateStr);
-      const end = new Date(customEndDate || anchorDateStr);
-      const daysCount = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-
-      if (daysCount <= 7) {
-        const points: { label: string; revenue: number; cost: number }[] = [];
-        for (let i = 0; i < daysCount; i++) {
-          const d = new Date(start);
-          d.setDate(start.getDate() + i);
-          const dStr = d.toISOString().slice(0, 10);
-
-          const rev = filteredOrders
-            .filter((ord) => getOrderDate(ord) === dStr)
-            .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
-
-          const cst = filteredCosts
-            .filter((c) => (c.date || '').slice(0, 10) === dStr)
-            .reduce((sum, c) => sum + c.amount, 0);
-
-          points.push({
-            label: dStr.slice(5),
-            revenue: rev,
-            cost: cst,
-          });
-        }
-        return points;
-      } else {
-        const segments = 5;
-        const step = Math.ceil(daysCount / segments);
-        const points: { label: string; revenue: number; cost: number }[] = [];
-
-        for (let i = 0; i < segments; i++) {
-          const s = new Date(start);
-          s.setDate(start.getDate() + i * step);
-          const e = new Date(start);
-          e.setDate(start.getDate() + Math.min((i + 1) * step - 1, daysCount - 1));
-
-          const sStr = s.toISOString().slice(0, 10);
-          const eStr = e.toISOString().slice(0, 10);
-
-          const rev = filteredOrders
-            .filter((ord) => {
-              const d = getOrderDate(ord);
-              return d >= sStr && d <= eStr;
-            })
-            .reduce((sum, ord) => sum + (ord.actualPrice || ord.estimatedPrice), 0);
-
-          const cst = filteredCosts
-            .filter((c) => {
-              const d = (c.date || '').slice(0, 10);
-              return d >= sStr && d <= eStr;
-            })
-            .reduce((sum, c) => sum + c.amount, 0);
-
-          points.push({
-            label: `${sStr.slice(5)}..${eStr.slice(8)}`,
-            revenue: rev,
-            cost: cst,
-          });
-        }
-        return points;
-      }
-    }
-
-    return [];
+    // Daily breakdown calculated identically for the active period filter
+    return getPeriodDailyPoints(dateFilter, filteredOrders, filteredCosts, customStartDate, customEndDate).map((p) => ({
+      label: p.dayLabel,
+      revenue: p.revenue,
+      cost: p.cost,
+      orders: p.orders,
+    }));
   };
 
   const chartData = generateRealChartData();
-  const maxBarValue = Math.max(...chartData.map((d) => Math.max(d.revenue, d.cost)), 50000) * 1.15;
+  const maxBarValue = Math.max(...chartData.map((d) => Math.max(d.revenue, d.cost)), 10000) * 1.15;
 
   const handleAddCost = (e: React.FormEvent) => {
     e.preventDefault();
@@ -570,41 +379,51 @@ export const AdminFinancialReportsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Custom Responsive SVG / Bar Visualization */}
-        <div className="h-64 flex items-end justify-between gap-2 sm:gap-6 pt-6 px-2">
-          {chartData.map((bar, idx) => {
-            const revenueHeight = Math.round((bar.revenue / maxBarValue) * 100);
-            const costHeight = Math.round((bar.cost / maxBarValue) * 100);
+        {filteredOrders.length === 0 ? (
+          <div className="h-64 flex flex-col items-center justify-center p-6 text-center bg-gray-50/70 rounded-2xl border border-dashed border-gray-200">
+            <BarChart3 className="w-8 h-8 text-[#254117]/30 mb-2" />
+            <p className="text-sm font-bold text-[#254117]/80">Belum ada pesanan pada periode ini</p>
+            <p className="text-xs text-[#254117]/50 mt-1 max-w-xs">
+              Pendapatan dan beban operasional pada rentang tanggal terpilih akan otomatis tampil di sini secara real-time.
+            </p>
+          </div>
+        ) : (
+          /* Custom Responsive SVG / Bar Visualization */
+          <div className="h-64 flex items-end justify-between gap-1 sm:gap-3 pt-6 px-2 overflow-x-auto">
+            {chartData.map((bar, idx) => {
+              const revenueHeight = Math.round((bar.revenue / maxBarValue) * 100);
+              const costHeight = Math.round((bar.cost / maxBarValue) * 100);
 
-            return (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                <div className="w-full flex items-end justify-center gap-1 sm:gap-2 h-full">
-                  {/* Revenue Bar (#97a273) */}
-                  <div
-                    style={{ height: `${revenueHeight}%` }}
-                    className="w-full max-w-[28px] bg-[#97a273] hover:bg-[#859062] rounded-t-lg transition-all relative cursor-pointer"
-                  >
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[10px] py-1 px-1.5 rounded-md whitespace-nowrap z-20 pointer-events-none shadow-md">
-                      Rp {bar.revenue.toLocaleString('id-ID')}
+              return (
+                <div key={idx} className="flex-1 min-w-[28px] flex flex-col items-center gap-2 h-full justify-end group">
+                  <div className="w-full flex items-end justify-center gap-1 sm:gap-2 h-full">
+                    {/* Revenue Bar (#97a273) */}
+                    <div
+                      style={{ height: `${revenueHeight}%` }}
+                      className="w-full max-w-[28px] bg-[#97a273] hover:bg-[#859062] rounded-t-lg transition-all relative cursor-pointer"
+                    >
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[10px] py-1 px-1.5 rounded-md whitespace-nowrap z-20 pointer-events-none shadow-md">
+                        Rp {bar.revenue.toLocaleString('id-ID')}
+                      </div>
+                    </div>
+
+                    {/* Cost Bar (#cd6184) */}
+                    <div
+                      style={{ height: `${costHeight}%` }}
+                      className="w-full max-w-[28px] bg-[#cd6184] hover:bg-[#b85373] rounded-t-lg transition-all relative cursor-pointer"
+                    >
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[10px] py-1 px-1.5 rounded-md whitespace-nowrap z-20 pointer-events-none shadow-md">
+                        Rp {bar.cost.toLocaleString('id-ID')}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Cost Bar (#cd6184) */}
-                  <div
-                    style={{ height: `${costHeight}%` }}
-                    className="w-full max-w-[28px] bg-[#cd6184] hover:bg-[#b85373] rounded-t-lg transition-all relative cursor-pointer"
-                  >
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[10px] py-1 px-1.5 rounded-md whitespace-nowrap z-20 pointer-events-none shadow-md">
-                      Rp {bar.cost.toLocaleString('id-ID')}
-                    </div>
-                  </div>
+                  <span className="text-[11px] font-bold text-[#254117] mt-1 truncate">{bar.label}</span>
                 </div>
-
-                <span className="text-[11px] font-bold text-[#254117] mt-1">{bar.label}</span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Chart summary caption bar with non-awkward single-line wrapping */}
         <div className="flex flex-row items-center justify-between pt-3.5 border-t border-gray-100 text-[10px] sm:text-xs text-[#254117]/70 gap-2 overflow-hidden">

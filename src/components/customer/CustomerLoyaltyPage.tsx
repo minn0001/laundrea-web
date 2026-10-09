@@ -91,14 +91,6 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           <h1 className="text-lg sm:text-xl font-black text-[#254117]">
             Poin & Stempel
           </h1>
-
-          <button
-            onClick={onOrderNowClick}
-            className="px-3.5 py-2 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.99]"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Pesan Baru</span>
-          </button>
         </div>
       </div>
 
