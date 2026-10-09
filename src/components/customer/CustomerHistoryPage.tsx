@@ -19,6 +19,7 @@ import {
   Phone,
   ArrowUpRight,
   ShoppingBag,
+  Plus,
 } from 'lucide-react';
 
 interface CustomerHistoryPageProps {
@@ -135,9 +136,9 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
           type="button"
           id="btn-history-new-order"
           onClick={() => onNewOrderClick()}
-          className="px-3 py-2 rounded-xl bg-[#cd6184] text-white text-xs font-bold shadow-xs hover:bg-[#b85373] transition-all flex items-center gap-1.5 cursor-pointer"
+          className="px-3.5 py-2 rounded-xl bg-[#cd6184] text-white text-xs font-bold shadow-xs hover:bg-[#b85373] transition-all flex items-center gap-1.5 cursor-pointer active:scale-[0.99]"
         >
-          <ShoppingBag className="w-3.5 h-3.5" />
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>Pesan Baru</span>
         </button>
       </div>

@@ -605,6 +605,14 @@ export const AdminFinancialReportsPage: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Chart summary caption bar with non-awkward single-line wrapping */}
+        <div className="flex flex-row items-center justify-between pt-3.5 border-t border-gray-100 text-[10px] sm:text-xs text-[#254117]/70 gap-2 overflow-hidden">
+          <span className="truncate">Periode: {getPeriodLabel()}</span>
+          <span className="text-[#cd6184] font-bold shrink-0">
+            {filteredOrders.length} transaksi ({timeframe === 'daily' ? 'Harian' : 'Bulanan'})
+          </span>
+        </div>
       </div>
 
       {/* Plan Contribution & Expense Record Grid */}

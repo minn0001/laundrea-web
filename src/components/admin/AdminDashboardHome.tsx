@@ -61,17 +61,62 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
   // Active Couriers
   const activeCouriersCount = couriers.filter((c) => c.status === 'active').length;
 
-  // 7-day trend dataset
-  const weeklyTrends = [
-    { day: 'Sen', orders: 6, revenue: 360000 },
-    { day: 'Sel', orders: 9, revenue: 540000 },
-    { day: 'Rab', orders: 8, revenue: 480000 },
-    { day: 'Kam', orders: 12, revenue: 720000 },
-    { day: 'Jum', orders: 15, revenue: 950000 },
-    { day: 'Sab', orders: 19, revenue: 1240000 },
-    { day: 'Min', orders: 14, revenue: 890000 },
-  ];
-  const maxWeeklyOrders = Math.max(...weeklyTrends.map((t) => t.orders));
+  // Helper to extract clean YYYY-MM-DD from order
+  const getOrderDate = (ord: (typeof orders)[0]): string => {
+    if (ord.pickupDate && ord.pickupDate.length >= 10) {
+      return ord.pickupDate.slice(0, 10);
+    }
+    if (ord.statusTimestamps?.booked) {
+      return ord.statusTimestamps.booked.slice(0, 10);
+    }
+    return '';
+  };
+
+  const todayReal = new Date().toISOString().slice(0, 10);
+  const allRecordedDates = orders.map(getOrderDate).filter(Boolean);
+
+  const anchorDateStr = allRecordedDates.includes(todayReal)
+    ? todayReal
+    : allRecordedDates.length > 0
+    ? [...allRecordedDates].sort().reverse()[0]
+    : todayReal;
+
+  const anchorDate = new Date(anchorDateStr);
+  const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  const fullDayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+  // 7-day trend dataset generated from real orders data in app
+  const weeklyTrends = Array.from({ length: 7 }).map((_, idx) => {
+    const d = new Date(anchorDate);
+    d.setDate(anchorDate.getDate() - (6 - idx));
+    const dStr = d.toISOString().slice(0, 10);
+    const dayOrders = orders.filter((o) => getOrderDate(o) === dStr);
+    const dayRevenue = dayOrders.reduce(
+      (sum, o) => sum + (o.actualPrice || o.estimatedPrice || 0),
+      0
+    );
+
+    return {
+      dateStr: dStr,
+      day: dayNames[d.getDay()],
+      fullDay: fullDayNames[d.getDay()],
+      orders: dayOrders.length,
+      revenue: dayRevenue,
+    };
+  });
+
+  const maxWeeklyOrders = Math.max(...weeklyTrends.map((t) => t.orders), 1);
+  const totalWeeklyOrders = weeklyTrends.reduce((sum, t) => sum + t.orders, 0);
+  const avgDailyOrders = (totalWeeklyOrders / 7).toFixed(1);
+
+  // Find busiest day in the 7-day period from real data
+  const busiestItem = weeklyTrends.reduce((prev, curr) =>
+    curr.orders > prev.orders ? curr : prev
+  );
+  const busiestDayText =
+    busiestItem.orders > 0
+      ? `Hari tersibuk: ${busiestItem.fullDay} (${busiestItem.orders} pesanan)`
+      : 'Belum ada pesanan';
 
   // Status breakdown counts
   const statusBreakdown = [
@@ -244,16 +289,18 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
             <div className="pt-2">
               <div className="h-56 flex items-end justify-between gap-2 sm:gap-5 px-2">
                 {weeklyTrends.map((item, idx) => {
-                  const heightPercent = Math.round((item.orders / maxWeeklyOrders) * 100);
-                  const isPeak = item.orders === maxWeeklyOrders;
+                  const heightPercent = maxWeeklyOrders > 0 ? Math.round((item.orders / maxWeeklyOrders) * 100) : 0;
+                  const isPeak = item.orders > 0 && item.orders === maxWeeklyOrders;
 
                   return (
                     <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                       <div className="w-full flex items-end justify-center h-full">
                         <div
-                          style={{ height: `${heightPercent}%` }}
+                          style={{ height: item.orders > 0 ? `${Math.max(heightPercent, 10)}%` : '6px' }}
                           className={`w-full max-w-[36px] rounded-t-xl transition-all relative cursor-pointer ${
-                            isPeak
+                            item.orders === 0
+                              ? 'bg-gray-200 hover:bg-gray-300'
+                              : isPeak
                               ? 'bg-[#cd6184] hover:bg-[#b85373]'
                               : 'bg-[#97a273] hover:bg-[#859062]'
                           }`}
@@ -274,9 +321,9 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
                 })}
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-gray-100 text-xs text-[#254117]/70">
-                <span>Rata-rata 11.8 pesanan/hari</span>
-                <span className="text-[#cd6184] font-bold">Hari tersibuk: Sabtu (19 pesanan)</span>
+              <div className="flex flex-row items-center justify-between pt-3.5 border-t border-gray-100 text-[10px] sm:text-xs text-[#254117]/70 gap-2 overflow-hidden">
+                <span className="truncate">Rata-rata {avgDailyOrders} pesanan/hari</span>
+                <span className="text-[#cd6184] font-bold shrink-0">{busiestDayText}</span>
               </div>
             </div>
           ) : (

@@ -23,6 +23,7 @@ import {
   Send,
   Lock,
   Info,
+  ChevronDown,
 } from 'lucide-react';
 
 interface CustomerTrackingPageProps {
@@ -51,6 +52,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleSuccessMessage, setScheduleSuccessMessage] = useState<string | null>(null);
   const [isOnMyWayActive, setIsOnMyWayActive] = useState(false);
+  const [isOrderDropdownOpen, setIsOrderDropdownOpen] = useState(false);
 
   // Auto-refresh simulation
   const [lastRefreshedSec, setLastRefreshedSec] = useState(2);
@@ -170,51 +172,95 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
           </h1>
 
           {orders.length > 1 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-              <span className="text-[10px] text-[#254117]/60 font-semibold whitespace-nowrap hidden sm:inline">
-                Pilih Pesanan:
-              </span>
-              {orders.map((o) => {
-                const isSelected = o.id === currentOrder.id;
-                const statusLabel =
-                  o.status === 'pickup'
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsOrderDropdownOpen(!isOrderDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-gray-200 text-[#254117] hover:bg-[#ffecf2] shadow-xs cursor-pointer transition-colors"
+              >
+                <span className="text-[10px] text-[#254117]/60 font-semibold">Pilih Pesanan:</span>
+                <span>{currentOrder.orderNumber}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold bg-[#ffecf2] text-[#cd6184]">
+                  {currentOrder.status === 'pickup'
                     ? 'Jemput'
-                    : o.status === 'picked_up'
+                    : currentOrder.status === 'picked_up'
                     ? 'Dijemput'
-                    : o.status === 'washing'
+                    : currentOrder.status === 'washing'
                     ? 'Cuci'
-                    : o.status === 'drying'
+                    : currentOrder.status === 'drying'
                     ? 'Kering'
-                    : o.status === 'ironing'
+                    : currentOrder.status === 'ironing'
                     ? 'Setrika'
-                    : o.status === 'ready'
+                    : currentOrder.status === 'ready'
                     ? 'Siap'
-                    : 'Selesai';
+                    : 'Selesai'}
+                </span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-gray-500 transition-transform ${
+                    isOrderDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
 
-                return (
-                  <button
-                    key={o.id}
-                    type="button"
-                    onClick={() => setActiveCustomerOrderId(o.id)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 active:scale-95 ${
-                      isSelected
-                        ? 'bg-[#cd6184] text-white shadow-xs ring-1 ring-[#cd6184]'
-                        : 'bg-white hover:bg-[#ffecf2] text-[#254117] border border-gray-200'
-                    }`}
-                  >
-                    <span>{o.orderNumber.replace('LND-', '')}</span>
-                    <span
-                      className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold ${
-                        isSelected
-                          ? 'bg-white/25 text-white'
-                          : 'bg-[#ffecf2] text-[#cd6184]'
-                      }`}
-                    >
-                      {statusLabel}
-                    </span>
-                  </button>
-                );
-              })}
+              {isOrderDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setIsOrderDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in max-h-72 overflow-y-auto">
+                    {orders.map((o) => {
+                      const isSelected = o.id === currentOrder.id;
+                      const statusLabel =
+                        o.status === 'pickup'
+                          ? 'Jemput'
+                          : o.status === 'picked_up'
+                          ? 'Dijemput'
+                          : o.status === 'washing'
+                          ? 'Cuci'
+                          : o.status === 'drying'
+                          ? 'Kering'
+                          : o.status === 'ironing'
+                          ? 'Setrika'
+                          : o.status === 'ready'
+                          ? 'Siap'
+                          : 'Selesai';
+
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveCustomerOrderId(o.id);
+                            setIsOrderDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between text-xs font-bold transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#ffecf2] text-[#cd6184]'
+                              : 'text-[#254117] hover:bg-gray-50'
+                          }`}
+                        >
+                          <div>
+                            <span className="block">{o.orderNumber}</span>
+                            <span className="text-[10px] text-[#254117]/60 font-medium">
+                              Paket {o.planName}
+                            </span>
+                          </div>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                              isSelected
+                                ? 'bg-[#cd6184] text-white'
+                                : 'bg-gray-100 text-[#254117]'
+                            }`}
+                          >
+                            {statusLabel}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

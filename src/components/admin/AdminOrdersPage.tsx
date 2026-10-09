@@ -16,6 +16,7 @@ import {
   QrCode,
   Check,
   AlertCircle,
+  ChevronDown,
 } from 'lucide-react';
 
 interface AdminOrdersPageProps {
@@ -27,6 +28,7 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(() => {
     return orders.find((o) => o.id === initialSelectedOrderId) || null;
   });
@@ -133,47 +135,114 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
           <h1 className="text-2xl font-bold text-[#254117]">Kelola Pesanan</h1>
         </div>
 
-        {/* Status filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        {/* Status filters vertical dropdown */}
+        <div className="relative">
           <button
-            onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+            type="button"
+            onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs border ${
               statusFilter === 'all'
-                ? 'bg-[#cd6184] text-white shadow-xs'
-                : 'bg-white border border-gray-200 text-[#254117] hover:bg-gray-50'
+                ? 'bg-white border-gray-200 text-[#254117] hover:bg-gray-50'
+                : statusFilter === 'awaiting_verification'
+                ? 'bg-amber-500 text-white border-amber-600'
+                : 'bg-[#cd6184] text-white border-[#cd6184]'
             }`}
           >
-            Semua ({orders.length})
+            <Filter className="w-3.5 h-3.5" />
+            <span>
+              Status: {
+                statusFilter === 'all'
+                  ? `Semua (${orders.length})`
+                  : statusFilter === 'awaiting_verification'
+                  ? `Verifikasi Bayar (${awaitingVerificationOrders.length})`
+                  : allStatuses.find((s) => s.id === statusFilter)?.label || statusFilter
+              }
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
-          <button
-            onClick={() => setStatusFilter('awaiting_verification')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-              statusFilter === 'awaiting_verification'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 text-amber-600" />
-            <span>Verifikasi Bayar</span>
-            {awaitingVerificationOrders.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
-                {awaitingVerificationOrders.length}
-              </span>
-            )}
-          </button>
-          {allStatuses.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setStatusFilter(item.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                statusFilter === item.id
-                  ? 'bg-[#cd6184] text-white shadow-xs'
-                  : 'bg-white border border-gray-200 text-[#254117] hover:bg-gray-50'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+
+          {isStatusDropdownOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-20"
+                onClick={() => setIsStatusDropdownOpen(false)}
+              />
+              <div className="absolute right-0 sm:left-auto mt-1.5 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in max-h-80 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setIsStatusDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between text-xs font-bold transition-colors cursor-pointer ${
+                    statusFilter === 'all'
+                      ? 'bg-[#ffecf2] text-[#cd6184]'
+                      : 'text-[#254117] hover:bg-gray-50'
+                  }`}
+                >
+                  <span>Semua Pesanan</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                    {orders.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter('awaiting_verification');
+                    setIsStatusDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between text-xs font-bold transition-colors cursor-pointer border-t border-gray-100 ${
+                    statusFilter === 'awaiting_verification'
+                      ? 'bg-amber-100 text-amber-900'
+                      : 'text-amber-800 hover:bg-amber-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Verifikasi Bayar</span>
+                  </div>
+                  {awaitingVerificationOrders.length > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold">
+                      {awaitingVerificationOrders.length}
+                    </span>
+                  )}
+                </button>
+
+                <div className="h-px bg-gray-100 my-1" />
+
+                {allStatuses.map((item) => {
+                  const count = orders.filter((o) =>
+                    item.id === 'pickup'
+                      ? o.status === 'pickup' || o.status === 'picked_up'
+                      : o.status === item.id
+                  ).length;
+                  const isSelected = statusFilter === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(item.id);
+                        setIsStatusDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between text-xs font-bold transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#ffecf2] text-[#cd6184]'
+                          : 'text-[#254117] hover:bg-gray-50'
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 

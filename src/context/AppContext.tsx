@@ -156,6 +156,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('laundrea_admin_logged_in', 'false');
       localStorage.removeItem('laundrea_current_role');
     }
+    // Clean up old legacy stamp storage keys so devices fall back cleanly to current INITIAL_STAMP_HISTORY
+    localStorage.removeItem('laundrea_stamp_history');
+    localStorage.removeItem('laundrea_stamps_count');
   }, []);
 
   // Helper to ensure plan text is in Indonesian if old cached English exists
@@ -286,12 +289,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Stamps Loyalty State
   const [stampsCount, setStampsCount] = useState<number>(() => {
-    const saved = localStorage.getItem('laundrea_stamps_count');
+    const saved = localStorage.getItem('laundrea_stamps_count_v2');
     return saved !== null ? parseInt(saved, 10) : 10;
   });
 
   const [stampHistory, setStampHistory] = useState<StampHistoryItem[]>(() => {
-    const saved = localStorage.getItem('laundrea_stamp_history');
+    const saved = localStorage.getItem('laundrea_stamp_history_v2');
     return saved ? JSON.parse(saved) : INITIAL_STAMP_HISTORY;
   });
 
@@ -345,11 +348,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [operationalCosts]);
 
   useEffect(() => {
-    localStorage.setItem('laundrea_stamps_count', stampsCount.toString());
+    localStorage.setItem('laundrea_stamps_count_v2', stampsCount.toString());
   }, [stampsCount]);
 
   useEffect(() => {
-    localStorage.setItem('laundrea_stamp_history', JSON.stringify(stampHistory));
+    localStorage.setItem('laundrea_stamp_history_v2', JSON.stringify(stampHistory));
   }, [stampHistory]);
 
   useEffect(() => {
@@ -875,7 +878,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('laundrea_system_roles');
     localStorage.removeItem('laundrea_system_roles_v2');
     localStorage.removeItem('laundrea_stamps_count');
+    localStorage.removeItem('laundrea_stamps_count_v2');
     localStorage.removeItem('laundrea_stamp_history');
+    localStorage.removeItem('laundrea_stamp_history_v2');
   };
 
   return (

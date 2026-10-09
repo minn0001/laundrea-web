@@ -83,7 +83,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                 : 'bg-[#ffecf2] text-[#cd6184]'
             }`}
           >
-            Member {tier}
+            Member {tier === 'Gold' ? 'Emas' : tier === 'Silver' ? 'Perak' : 'Perunggu'}
           </span>
         </div>
 
@@ -418,7 +418,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-[#cd6184]">
-              Level Bronze
+              Level Perunggu
             </span>
             {tier === 'Bronze' && (
               <span className="text-[10px] bg-[#97a273] text-white font-bold px-2 py-0.5 rounded-full">
@@ -452,7 +452,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-600">
-              Level Silver
+              Level Perak
             </span>
             {tier === 'Silver' && (
               <span className="text-[10px] bg-[#97a273] text-white font-bold px-2 py-0.5 rounded-full">
@@ -464,7 +464,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           <ul className="mt-2.5 sm:mt-3 space-y-1.5 text-xs text-[#254117]/80">
             <li className="flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-[#97a273]" />
-              <span>Semua keuntungan Level Bronze</span>
+              <span>Semua keuntungan Level Perunggu</span>
             </li>
             <li className="flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-[#97a273]" />
@@ -486,7 +486,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-[#ffbd59]">
-              Level Gold
+              Level Emas
             </span>
             {tier === 'Gold' && (
               <span className="text-[10px] bg-[#97a273] text-white font-bold px-2 py-0.5 rounded-full">
@@ -498,7 +498,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           <ul className="mt-2.5 sm:mt-3 space-y-1.5 text-xs text-[#254117]/80">
             <li className="flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-[#97a273]" />
-              <span>Semua keuntungan Level Silver</span>
+              <span>Semua keuntungan Level Perak</span>
             </li>
             <li className="flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 text-[#97a273]" />
@@ -528,8 +528,8 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
 
         <div className="divide-y divide-gray-100">
           {stampHistory.map((item) => (
-            <div key={item.id} className="py-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div key={item.id} className="py-3 flex items-center justify-between gap-2.5 sm:gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div
                   className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                     item.type === 'earned'
@@ -543,11 +543,11 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                     <Gift className="w-4 h-4" />
                   )}
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-bold text-[#254117]">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-[#254117] leading-snug">
                     {item.title}
                   </p>
-                  <p className="text-[11px] text-[#254117]/60 flex items-center gap-2 mt-0.5">
+                  <p className="text-[10.5px] sm:text-[11px] text-[#254117]/60 flex items-center gap-1.5 sm:gap-2 mt-0.5">
                     <span>{item.date}</span>
                     {item.orderNumber && (
                       <>
@@ -560,7 +560,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               </div>
 
               <div
-                className={`text-xs sm:text-sm font-black px-2.5 py-1 rounded-xl ${
+                className={`text-[11px] sm:text-sm font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg sm:rounded-xl whitespace-nowrap shrink-0 ${
                   item.pointsChange > 0
                     ? 'bg-[#97a273]/15 text-[#97a273]'
                     : 'bg-[#cd6184]/15 text-[#cd6184]'
