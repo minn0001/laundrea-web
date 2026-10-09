@@ -35,19 +35,23 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
   const [claimedModalVoucher, setClaimedModalVoucher] = useState<CustomerVoucher | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  // Member tier based on lifetime earned stamps (number of history entries with type 'earned')
+  const lifetimeEarnedStamps = stampHistory.filter((s) => s.type === 'earned').length;
+  const tier: 'Bronze' | 'Silver' | 'Gold' =
+    lifetimeEarnedStamps >= 10 ? 'Gold' : lifetimeEarnedStamps >= 5 ? 'Silver' : 'Bronze';
+
   // Find customer profile if available
   const currentProfile = customers.find((c) => c.phone === customerPhone) || {
     name: 'Pelanggan Setia',
-    tier: stampsCount >= 10 ? 'Gold' : stampsCount >= 5 ? 'Silver' : 'Bronze',
-    totalOrders: stampHistory.filter((s) => s.type === 'earned').length || 7,
+    tier,
+    totalOrders: lifetimeEarnedStamps,
   };
 
-    const tier = stampsCount >= 10 ? 'Gold' : stampsCount >= 5 ? 'Silver' : 'Bronze';
-    const targetStamps = 10;
-    const stampsInCycle = stampsCount === 0 ? 0 : ((stampsCount - 1) % targetStamps) + 1;
-    const isCycleComplete = stampsInCycle === targetStamps;
-    const stampsRemaining = isCycleComplete ? 0 : targetStamps - stampsInCycle;
-    const progressPercent = Math.min(100, Math.round((stampsInCycle / targetStamps) * 100));
+  const balance = Math.max(0, stampsCount);
+  const filledStamps = Math.min(balance, 10);
+  const isCycleComplete = balance >= 10;
+  const stampsRemaining = Math.max(0, 10 - balance);
+  const progressPercent = Math.min(100, Math.round((filledStamps / 10) * 100));
 
   const handleRedeemVoucher = () => {
     const newVoucher = claimLoyaltyVoucher();
@@ -109,7 +113,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             <div className="text-right">
               <span className="text-[10px] text-[#254117]/60 block font-medium">Total Stempel</span>
               <span className="text-lg sm:text-xl font-black text-[#cd6184]">
-                {stampsInCycle} Stempel
+                {filledStamps} / 10 Stempel
               </span>
             </div>
           </div>
@@ -121,7 +125,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             <span className="leading-snug">
               {isCycleComplete
                 ? '✓ 10 Stempel telah terkumpul! Voucher siap diklaim.'
-                : `${stampsInCycle} dari 10 stempel terkumpul`}
+                : `${filledStamps} dari 10 stempel terkumpul`}
             </span>
             <span className="text-[#97a273] text-left">
               {isCycleComplete
@@ -144,7 +148,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
           <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 sm:gap-3 pt-1.5 sm:pt-2">
             {Array.from({ length: 10 }).map((_, index) => {
               const stampNumber = index + 1;
-              const isCollected = stampsInCycle >= stampNumber;
+              const isCollected = filledStamps >= stampNumber;
 
               return (
                 <div

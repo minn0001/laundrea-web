@@ -35,7 +35,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
 }) => {
   const { customerPhone, stampsCount, orders, activeCustomerOrderId } = useApp();
 
-  const stampsInCycle = stampsCount === 0 ? 0 : ((stampsCount - 1) % 10) + 1;
+  const filledStamps = Math.min(Math.max(0, stampsCount), 10);
 
   const userName = localStorage.getItem('laundrea_cust_name') || 'Yaya';
   const userAddress =
@@ -302,7 +302,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-xs text-gray-900">Kartu Cap & Loyalty</h4>
                 <span className="text-[11px] font-black text-[#cd6184] bg-[#ffecf2] px-2 py-0.5 rounded-md">
-                  {stampsInCycle} / 10 Cap
+                  {filledStamps} / 10 Cap
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">

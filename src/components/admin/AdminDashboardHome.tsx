@@ -6,6 +6,7 @@ import {
   getOrderDate,
   getPeriodDailyPoints,
   getTodayDateStr,
+  getTrendChartBars,
 } from '../../utils/orderAnalytics';
 import {
   ShoppingBag,
@@ -71,7 +72,7 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
   const activeCouriersCount = couriers.filter((c) => c.status === 'active').length;
 
   // Trend dataset generated from real orders data in app (computed strictly by booking date statusTimestamps.booked / pickupDate fallback)
-  const weeklyTrends = getPeriodDailyPoints(
+  const dailyPoints = getPeriodDailyPoints(
     trendPeriod,
     orders,
     [],
@@ -79,23 +80,26 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
     customEndDate
   );
 
-  const totalPeriodOrders = weeklyTrends.reduce((sum, t) => sum + t.orders, 0);
-  const maxWeeklyOrders = Math.max(...weeklyTrends.map((t) => t.orders), 1);
-  const avgDailyOrders = weeklyTrends.length > 0 ? (totalPeriodOrders / weeklyTrends.length).toFixed(1) : '0';
+  const totalPeriodOrders = dailyPoints.reduce((sum, t) => sum + t.orders, 0);
+  const avgDailyOrders = dailyPoints.length > 0 ? (totalPeriodOrders / dailyPoints.length).toFixed(1) : '0';
 
-  // Find busiest day in the period from real data
-  const busiestItem = weeklyTrends.reduce(
+  // Find busiest day in the period from real daily data
+  const busiestItem = dailyPoints.reduce(
     (prev, curr) => (curr.orders > prev.orders ? curr : prev),
-    weeklyTrends[0]
+    dailyPoints[0]
   );
   const busiestDayText =
     busiestItem && busiestItem.orders > 0
       ? `Hari tersibuk: ${busiestItem.fullDateLabel || busiestItem.dayLabel} (${busiestItem.orders} pesanan)`
       : 'Belum ada pesanan';
 
+  // Responsive chart bars: <=14 days daily, 15-90 days weekly, >90 days monthly
+  const chartBars = getTrendChartBars(dailyPoints);
+  const maxBarOrders = Math.max(...chartBars.map((b) => b.orders), 1);
+
   // Orders falling into the selected trend period
   const periodOrders = orders.filter((o) =>
-    weeklyTrends.some((t) => t.dateStr === getOrderDate(o))
+    dailyPoints.some((t) => t.dateStr === getOrderDate(o))
   );
 
   // Status breakdown counts for selected period
@@ -228,7 +232,7 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
       {/* Visual Analytics & Operational Overview Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Trend Chart (Real Order Volume & Operational Trends) */}
-        <div className="lg:col-span-8 bg-white p-5 sm:p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4">
+        <div className="lg:col-span-8 bg-white p-5 sm:p-6 rounded-3xl border border-gray-200 shadow-xs space-y-4 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
             <div>
               <h2 className="text-base font-bold text-[#254117] flex items-center gap-2">
@@ -325,21 +329,23 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
 
           {/* Custom Date Range Selector if selected */}
           {trendPeriod === 'custom' && (
-            <div className="flex flex-wrap items-center gap-2.5 p-3 bg-gray-50 rounded-2xl text-xs">
-              <span className="font-bold text-[#254117]">Rentang Tanggal:</span>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-[#254117]"
-              />
-              <span className="text-gray-400">s.d.</span>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-[#254117]"
-              />
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-2xl text-xs border border-gray-100">
+              <span className="font-bold text-[#254117] w-full sm:w-auto">Rentang Tanggal:</span>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-xl text-[#254117] text-xs font-medium focus:outline-hidden focus:border-[#cd6184] min-w-0 flex-1 sm:flex-none"
+                />
+                <span className="text-gray-400 font-medium text-xs shrink-0">s.d.</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-xl text-[#254117] text-xs font-medium focus:outline-hidden focus:border-[#cd6184] min-w-0 flex-1 sm:flex-none"
+                />
+              </div>
             </div>
           )}
 
@@ -355,38 +361,47 @@ export const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({
           ) : activeChartTab === 'volume' ? (
             /* Bar Chart for Real Orders */
             <div className="pt-2">
-              <div className="h-56 flex items-end justify-between gap-1 sm:gap-3 px-2 overflow-x-auto">
-                {weeklyTrends.map((item, idx) => {
-                  const heightPercent = maxWeeklyOrders > 0 ? Math.round((item.orders / maxWeeklyOrders) * 100) : 0;
-                  const isPeak = item.orders > 0 && item.orders === maxWeeklyOrders;
+              <div className="w-full overflow-x-auto pb-2">
+                <div className="h-56 flex items-end justify-between gap-1 sm:gap-2 px-1 min-w-full">
+                  {chartBars.map((item) => {
+                    const heightPercent = maxBarOrders > 0 ? Math.round((item.orders / maxBarOrders) * 100) : 0;
+                    const isPeak = item.orders > 0 && item.orders === maxBarOrders;
 
-                  return (
-                    <div key={idx} className="flex-1 min-w-[28px] flex flex-col items-center gap-2 h-full justify-end group">
-                      <div className="w-full flex items-end justify-center h-full">
-                        <div
-                          style={{ height: item.orders > 0 ? `${Math.max(heightPercent, 12)}%` : '6px' }}
-                          className={`w-full max-w-[36px] rounded-t-xl transition-all relative cursor-pointer ${
-                            item.orders === 0
-                              ? 'bg-gray-200 hover:bg-gray-300'
-                              : isPeak
-                              ? 'bg-[#cd6184] hover:bg-[#b85373]'
-                              : 'bg-[#97a273] hover:bg-[#859062]'
-                          }`}
-                        >
-                          {/* Tooltip */}
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[10px] py-1 px-2 rounded-lg whitespace-nowrap z-20 pointer-events-none shadow-md">
-                            <span className="font-bold">{item.orders} pesanan</span>
-                            <span className="block text-white/70">Rp {item.revenue.toLocaleString('id-ID')}</span>
+                    return (
+                      <div
+                        key={item.key}
+                        className={`flex-1 ${item.minWidthClass} flex flex-col items-center gap-2 h-full justify-end group`}
+                      >
+                        <div className="w-full flex items-end justify-center h-full">
+                          <div
+                            style={{ height: item.orders > 0 ? `${Math.max(heightPercent, 12)}%` : '6px' }}
+                            className={`w-full max-w-[36px] rounded-t-xl transition-all relative cursor-pointer ${
+                              item.orders === 0
+                                ? 'bg-gray-200 hover:bg-gray-300'
+                                : isPeak
+                                ? 'bg-[#cd6184] hover:bg-[#b85373]'
+                                : 'bg-[#97a273] hover:bg-[#859062]'
+                            }`}
+                          >
+                            {/* Tooltip */}
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-10 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[10px] py-1 px-2 rounded-lg whitespace-nowrap z-20 pointer-events-none shadow-md">
+                              <span className="font-bold">{item.orders} pesanan</span>
+                              <span className="block text-white/70">Rp {item.revenue.toLocaleString('id-ID')}</span>
+                            </div>
                           </div>
                         </div>
+                        <div className="text-center w-full px-0.5">
+                          <span className="text-[10px] font-bold text-[#254117] block leading-tight whitespace-nowrap">
+                            {item.topLabel}
+                          </span>
+                          <span className="text-[9.5px] font-semibold text-[#254117]/60 block leading-tight mt-0.5 whitespace-nowrap">
+                            {item.bottomLabel}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <span className="text-[11px] font-bold text-[#254117] block truncate">{item.dayLabel}</span>
-                        <span className="text-[10px] text-[#254117]/60 font-semibold">{item.orders}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="flex flex-row items-center justify-between pt-3.5 border-t border-gray-100 text-[10px] sm:text-xs text-[#254117]/70 gap-2 overflow-hidden">

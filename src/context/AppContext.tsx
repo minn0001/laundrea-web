@@ -158,7 +158,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     // Clean up old legacy stamp storage keys so devices fall back cleanly to current INITIAL_STAMP_HISTORY
     localStorage.removeItem('laundrea_stamp_history');
+    localStorage.removeItem('laundrea_stamp_history_v2');
     localStorage.removeItem('laundrea_stamps_count');
+    localStorage.removeItem('laundrea_stamps_count_v2');
+    localStorage.removeItem('laundrea_stamps_count_v3');
   }, []);
 
   // Helper to ensure plan text is in Indonesian if old cached English exists
@@ -288,15 +291,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [systemPermissions] = useState<PermissionItem[]>(INITIAL_SYSTEM_PERMISSIONS);
 
   // Stamps Loyalty State
-  const [stampsCount, setStampsCount] = useState<number>(() => {
-    const saved = localStorage.getItem('laundrea_stamps_count_v2');
-    return saved !== null ? parseInt(saved, 10) : 10;
-  });
-
   const [stampHistory, setStampHistory] = useState<StampHistoryItem[]>(() => {
-    const saved = localStorage.getItem('laundrea_stamp_history_v2');
+    const saved = localStorage.getItem('laundrea_stamp_history_v3');
     return saved ? JSON.parse(saved) : INITIAL_STAMP_HISTORY;
   });
+
+  // Stamp balance derived directly from stampHistory (sum of all pointsChange values)
+  const stampsCount = stampHistory.reduce((sum, item) => sum + (item.pointsChange || 0), 0);
 
   // Customer Vouchers State
   const [customerVouchers, setCustomerVouchers] = useState<CustomerVoucher[]>(() => {
@@ -348,11 +349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [operationalCosts]);
 
   useEffect(() => {
-    localStorage.setItem('laundrea_stamps_count_v2', stampsCount.toString());
-  }, [stampsCount]);
-
-  useEffect(() => {
-    localStorage.setItem('laundrea_stamp_history_v2', JSON.stringify(stampHistory));
+    localStorage.setItem('laundrea_stamp_history_v3', JSON.stringify(stampHistory));
   }, [stampHistory]);
 
   useEffect(() => {
@@ -473,7 +470,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: dateStr,
     };
 
-    setStampsCount((prev) => Math.max(0, prev - 10));
     setCustomerVouchers((prev) => [newVoucher, ...prev]);
 
     const newItem: StampHistoryItem = {
@@ -489,7 +485,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addTestStamp = () => {
-    setStampsCount((prev) => prev + 1);
     const now = new Date();
     const newItem: StampHistoryItem = {
       id: `stmp-${Date.now()}`,
@@ -586,7 +581,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Award +1 stamp in loyalty
-    setStampsCount((prev) => prev + 1);
     const newStamp: StampHistoryItem = {
       id: `stmp-${Date.now()}`,
       orderNumber,
@@ -602,6 +596,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const existing = prev.find((c) => c.phone === data.customerPhone);
       if (existing) {
         const nextTotal = existing.totalOrders + 1;
+        const lifetimeEarned = stampHistory.filter((s) => s.type === 'earned').length + 1;
+        const nextTier = lifetimeEarned >= 10 ? 'Gold' : lifetimeEarned >= 5 ? 'Silver' : 'Bronze';
         return prev.map((c) =>
           c.phone === data.customerPhone
             ? {
@@ -610,7 +606,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 lastOrderDate: now.toISOString().slice(0, 10),
                 totalSpent: c.totalSpent + estimatedPrice,
                 stampsCount: (c.stampsCount || 0) + 1,
-                tier: nextTotal >= 10 ? 'Gold' : nextTotal >= 5 ? 'Silver' : 'Bronze',
+                tier: nextTier,
               }
             : c
         );
@@ -863,7 +859,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOperationalCosts(INITIAL_OPERATIONAL_COSTS);
     setSystemUsers(INITIAL_SYSTEM_USERS);
     setSystemRoles(INITIAL_SYSTEM_ROLES);
-    setStampsCount(7);
     setStampHistory(INITIAL_STAMP_HISTORY);
     localStorage.removeItem('laundrea_plans');
     localStorage.removeItem('laundrea_orders');
@@ -879,8 +874,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('laundrea_system_roles_v2');
     localStorage.removeItem('laundrea_stamps_count');
     localStorage.removeItem('laundrea_stamps_count_v2');
+    localStorage.removeItem('laundrea_stamps_count_v3');
     localStorage.removeItem('laundrea_stamp_history');
     localStorage.removeItem('laundrea_stamp_history_v2');
+    localStorage.removeItem('laundrea_stamp_history_v3');
   };
 
   return (

@@ -124,8 +124,8 @@ export const getPeriodDailyPoints = (
     const end = customEnd ? new Date(customEnd) : new Date(today);
     if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
       const cur = new Date(start);
-      // Cap at 62 days to keep visualization clean and performant
-      while (cur <= end && dates.length < 62) {
+      // Cap at 730 days to support long custom ranges
+      while (cur <= end && dates.length < 730) {
         dates.push(formatLocalDate(cur));
         cur.setDate(cur.getDate() + 1);
       }
@@ -168,4 +168,125 @@ export const getPeriodDailyPoints = (
       cost: dayCost,
     };
   });
+};
+
+export interface TrendChartBar {
+  key: string;
+  topLabel: string;
+  bottomLabel: string;
+  fullDateLabel: string;
+  orders: number;
+  revenue: number;
+  minWidthClass: string;
+  isDaily: boolean;
+}
+
+/**
+ * Builds trend chart bars adapting intelligently to range length:
+ * - Up to 14 days: one bar per day with two-line label (weekday on top, date like "08/09" below, no parens)
+ * - 15 to 90 days: group bars by week and label like "01–07 Sep"
+ * - More than 90 days: group by month and label like "Sep 26"
+ */
+export const getTrendChartBars = (dailyPoints: ChartDayPoint[]): TrendChartBar[] => {
+  const totalDays = dailyPoints.length;
+  if (totalDays === 0) return [];
+
+  // Up to 14 days: one bar per day
+  if (totalDays <= 14) {
+    return dailyPoints.map((d) => {
+      const parts = d.dateStr.split('-');
+      const dObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const dayName = INDO_DAYS[dObj.getDay()] || '';
+      const dayFormatted = String(dObj.getDate()).padStart(2, '0');
+      const monthFormatted = String(dObj.getMonth() + 1).padStart(2, '0');
+
+      return {
+        key: d.dateStr,
+        topLabel: dayName,
+        bottomLabel: `${dayFormatted}/${monthFormatted}`,
+        fullDateLabel: d.fullDateLabel,
+        orders: d.orders,
+        revenue: d.revenue,
+        minWidthClass: 'min-w-[38px] sm:min-w-[42px]',
+        isDaily: true,
+      };
+    });
+  }
+
+  // 15 to 90 days: group bars by week
+  if (totalDays <= 90) {
+    const bars: TrendChartBar[] = [];
+    for (let i = 0; i < dailyPoints.length; i += 7) {
+      const chunk = dailyPoints.slice(i, i + 7);
+      const startDay = chunk[0];
+      const endDay = chunk[chunk.length - 1];
+
+      const sParts = startDay.dateStr.split('-');
+      const eParts = endDay.dateStr.split('-');
+      const sDate = new Date(parseInt(sParts[0], 10), parseInt(sParts[1], 10) - 1, parseInt(sParts[2], 10));
+      const eDate = new Date(parseInt(eParts[0], 10), parseInt(eParts[1], 10) - 1, parseInt(eParts[2], 10));
+
+      const sDayNum = String(sDate.getDate()).padStart(2, '0');
+      const eDayNum = String(eDate.getDate()).padStart(2, '0');
+      const sMonth = INDO_MONTHS[sDate.getMonth()];
+      const eMonth = INDO_MONTHS[eDate.getMonth()];
+
+      let weekLabel: string;
+      if (sDate.getMonth() === eDate.getMonth()) {
+        weekLabel = `${sDayNum}–${eDayNum} ${sMonth}`;
+      } else {
+        weekLabel = `${sDayNum} ${sMonth}–${eDayNum} ${eMonth}`;
+      }
+
+      const weekOrders = chunk.reduce((sum, item) => sum + item.orders, 0);
+      const weekRevenue = chunk.reduce((sum, item) => sum + item.revenue, 0);
+
+      bars.push({
+        key: `week-${startDay.dateStr}-${endDay.dateStr}`,
+        topLabel: weekLabel,
+        bottomLabel: `${weekOrders} pesanan`,
+        fullDateLabel: `${weekLabel}: ${weekOrders} pesanan`,
+        orders: weekOrders,
+        revenue: weekRevenue,
+        minWidthClass: 'min-w-[68px] sm:min-w-[76px]',
+        isDaily: false,
+      });
+    }
+    return bars;
+  }
+
+  // More than 90 days: group by month and label like "Sep 26"
+  const monthMap = new Map<string, ChartDayPoint[]>();
+  dailyPoints.forEach((d) => {
+    const ym = d.dateStr.slice(0, 7);
+    if (!monthMap.has(ym)) {
+      monthMap.set(ym, []);
+    }
+    monthMap.get(ym)!.push(d);
+  });
+
+  const bars: TrendChartBar[] = [];
+  monthMap.forEach((daysInMonth, ym) => {
+    const [yStr, mStr] = ym.split('-');
+    const mIndex = parseInt(mStr, 10) - 1;
+    const monthName = INDO_MONTHS[mIndex] || ym;
+    const yearTwoDigit = yStr.slice(-2);
+    const monthLabel = `${monthName} ${yearTwoDigit}`;
+
+    const mOrders = daysInMonth.reduce((sum, item) => sum + item.orders, 0);
+    const mRevenue = daysInMonth.reduce((sum, item) => sum + item.revenue, 0);
+
+    bars.push({
+      key: `month-${ym}`,
+      topLabel: monthLabel,
+      bottomLabel: `${mOrders} pesanan`,
+      fullDateLabel: `${monthName} ${yStr}: ${mOrders} pesanan`,
+      orders: mOrders,
+      revenue: mRevenue,
+      minWidthClass: 'min-w-[56px] sm:min-w-[64px]',
+      isDaily: false,
+    });
+  });
+
+  return bars;
 };
