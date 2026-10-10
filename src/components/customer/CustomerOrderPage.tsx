@@ -38,7 +38,14 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   initialPlanId,
   initialVoucherCode,
 }) => {
-  const { plans, createOrder, customerPhone, customerVouchers } = useApp();
+  const {
+    plans,
+    createOrder,
+    customerPhone,
+    customerName: loggedInName,
+    customerAddress: loggedInAddress,
+    customerVouchers,
+  } = useApp();
 
   // Step in checkout flow: 'select' (plan, quantity, handover, return, schedule) or 'confirm' (summary & payment)
   const [checkoutStep, setCheckoutStep] = useState<'select' | 'confirm'>('select');
@@ -50,13 +57,10 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const [returnMethod, setReturnMethod] = useState<ReturnMethod>('deliver_to_me');
 
   const [customerName, setCustomerName] = useState(() => {
-    return localStorage.getItem('laundrea_cust_name') || 'Yaya';
+    return loggedInName || 'Pelanggan';
   });
   const [customerAddress, setCustomerAddress] = useState(() => {
-    return (
-      localStorage.getItem('laundrea_cust_address') ||
-      'Jl. Senopati No. 42, Kebayoran Baru, Jakarta Selatan'
-    );
+    return loggedInAddress || '';
   });
   const [notes, setNotes] = useState('Pakaian katun & kemeja kerja');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qris');

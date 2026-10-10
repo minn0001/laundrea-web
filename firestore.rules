@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() >= 5 && id.size() <= 30 && id.matches('^[0-9]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidCustomer(data, phoneId) {
+      return data.keys().hasAll(['name', 'address', 'phone', 'createdAt'])
+        && data.keys().hasOnly(['name', 'address', 'phone', 'createdAt'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.address is string && data.address.size() >= 1 && data.address.size() <= 300
+        && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 20
+        && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Customer accounts collection keyed by normalized phone digits
+    match /customers/{phoneId} {
+      // Anyone can read a customer doc (to check account existence by phone) or authenticated users
+      allow get: if isValidId(phoneId);
+      allow list: if false;
+
+      // Allow creating account if valid id and valid customer schema
+      allow create: if isValidId(phoneId) && isValidCustomer(incoming(), phoneId);
+
+      // Allow updating profile (e.g. name or address changes)
+      allow update: if isValidId(phoneId)
+        && isValidCustomer(incoming(), phoneId)
+        && incoming().createdAt == resource.data.createdAt;
+
+      allow delete: if false;
+    }
+  }
+}

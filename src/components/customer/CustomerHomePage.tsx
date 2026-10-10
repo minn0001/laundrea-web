@@ -33,20 +33,35 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
   onGoToLoyalty,
   onGoToProfile,
 }) => {
-  const { customerPhone, stampsCount, orders, activeCustomerOrderId } = useApp();
+  const {
+    customerPhone,
+    customerName,
+    customerAddress,
+    stampsCount,
+    orders,
+    activeCustomerOrderId,
+  } = useApp();
 
   const filledStamps = Math.min(Math.max(0, stampsCount), 10);
 
-  const userName = localStorage.getItem('laundrea_cust_name') || 'Yaya';
-  const userAddress =
-    localStorage.getItem('laundrea_cust_address') ||
-    'Jl. Senopati No. 42, Kebayoran Baru, Jakarta Selatan';
+  const userName = customerName || 'Pelanggan';
+  const userAddress = customerAddress || 'Alamat belum diatur';
 
-  // Check if there is an active order
+  // Filter customer-specific orders
+  const myOrders = orders.filter((o) => {
+    if (!customerPhone) return false;
+    let cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
+    if (cleanOrderPhone.startsWith('62')) cleanOrderPhone = '0' + cleanOrderPhone.slice(2);
+    let normCust = customerPhone.replace(/\D/g, '');
+    if (normCust.startsWith('62')) normCust = '0' + normCust.slice(2);
+    return cleanOrderPhone === normCust;
+  });
+
+  // Check if there is an active order for this customer
   const activeOrder =
-    orders.find((o) => o.id === activeCustomerOrderId) ||
-    orders.find((o) => o.status !== 'delivered') ||
-    orders[0];
+    myOrders.find((o) => o.id === activeCustomerOrderId) ||
+    myOrders.find((o) => o.status !== 'delivered') ||
+    myOrders[0];
 
   const hasActiveOrder = activeOrder && activeOrder.status !== 'delivered';
 

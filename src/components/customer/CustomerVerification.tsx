@@ -1,9 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { BrandWordmark } from '../common/BrandWordmark';
-import { Phone, ArrowRight, ShieldCheck, CheckCircle2, MessageSquare, ArrowLeft } from 'lucide-react';
+import {
+  Phone,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  MessageSquare,
+  ArrowLeft,
+  User,
+  MapPin,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
+import {
+  getCustomerFromFirestore,
+  saveCustomerToFirestore,
+  normalizePhoneNumber,
+  DEFAULT_DEMO_PHONE,
+  DEFAULT_DEMO_NAME,
+  DEFAULT_DEMO_ADDRESS,
+  CustomerFirestoreData,
+} from '../../services/firebaseService';
 
 interface CustomerVerificationProps {
-  onVerified: (phone: string) => void;
+  onVerified: (phone: string, profileData?: { name?: string; address?: string }) => void;
   onBackToLanding?: () => void;
 }
 
@@ -11,13 +31,19 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
   onVerified,
   onBackToLanding,
 }) => {
-  const [step, setStep] = useState<'phone' | 'otp' | 'success'>('phone');
+  const [step, setStep] = useState<'phone' | 'otp' | 'register' | 'success'>('phone');
   const [phone, setPhone] = useState('081234567890');
   const [otp, setOtp] = useState('');
   const [simulatedCode, setSimulatedCode] = useState('782910');
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
+
+  // New registration fields for new numbers
+  const [regName, setRegName] = useState('');
+  const [regAddress, setRegAddress] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isCheckingAccount, setIsCheckingAccount] = useState(false);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -31,6 +57,7 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
 
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     if (!phone || phone.length < 8) return;
 
     setIsLoading(true);
@@ -47,23 +74,90 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
 
   const handleResend = () => {
     if (!canResend) return;
+    setAuthError(null);
     const generated = Math.floor(100000 + Math.random() * 900000).toString();
     setSimulatedCode(generated);
     setCountdown(30);
     setCanResend(false);
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.length === 6) {
-      setIsLoading(true);
-      setTimeout(() => {
-        setIsLoading(false);
+    if (otp.length !== 6) return;
+    setAuthError(null);
+    setIsLoading(true);
+    setIsCheckingAccount(true);
+
+    const normPhone = normalizePhoneNumber(phone);
+    const isDemoNumber = normPhone === normalizePhoneNumber(DEFAULT_DEMO_PHONE);
+
+    try {
+      // Check customer account in Firestore
+      const customerRecord: CustomerFirestoreData | null = await getCustomerFromFirestore(phone);
+
+      setIsLoading(false);
+      setIsCheckingAccount(false);
+
+      if (customerRecord) {
+        // Account exists in Firestore: log in directly with saved name & address
         setStep('success');
         setTimeout(() => {
-          onVerified(phone);
-        }, 1200);
-      }, 400);
+          onVerified(phone, {
+            name: customerRecord.name,
+            address: customerRecord.address,
+          });
+        }, 1000);
+      } else {
+        // Account does not exist in Firestore: show "Lengkapi Profil"
+        setStep('register');
+      }
+    } catch (err) {
+      console.error('Error connecting to Firestore during customer verification:', err);
+      setIsLoading(false);
+      setIsCheckingAccount(false);
+
+      // Offline / connection fallback rule:
+      // The demo number 081234567890 must still log in using the built-in "Yaya" profile and default address as fallback!
+      if (isDemoNumber) {
+        setStep('success');
+        setTimeout(() => {
+          onVerified(phone, {
+            name: DEFAULT_DEMO_NAME,
+            address: DEFAULT_DEMO_ADDRESS,
+          });
+        }, 1000);
+      } else {
+        // Friendly Indonesian message instead of crashing
+        setAuthError('Gagal terhubung, coba lagi');
+      }
+    }
+  };
+
+  const handleCompleteRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim() || !regAddress.trim()) {
+      setAuthError('Mohon isi nama lengkap dan alamat penjemputan.');
+      return;
+    }
+
+    setAuthError(null);
+    setIsLoading(true);
+
+    try {
+      const savedDoc = await saveCustomerToFirestore(phone, regName, regAddress);
+      setIsLoading(false);
+      setStep('success');
+
+      setTimeout(() => {
+        onVerified(phone, {
+          name: savedDoc.name,
+          address: savedDoc.address,
+        });
+      }, 1000);
+    } catch (err) {
+      console.error('Error saving customer to Firestore:', err);
+      setIsLoading(false);
+      setAuthError('Gagal terhubung, coba lagi');
     }
   };
 
@@ -89,8 +183,94 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
             </div>
             <h2 className="text-2xl font-bold text-[#97a273]">Terverifikasi!</h2>
             <p className="text-sm text-[#254117]/70">
-              Selamat datang di Laundrea. Membuka pilihan paket...
+              Selamat datang di Laundrea. Membuka beranda pelanggan...
             </p>
+          </div>
+        ) : step === 'register' ? (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#cd6184] uppercase tracking-wider">
+                <User className="w-4 h-4" />
+                <span>Lengkapi Profil</span>
+              </div>
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                Langkah Terakhir
+              </span>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold text-[#254117] mb-1">
+                Lengkapi Data Diri
+              </h2>
+              <p className="text-xs text-[#254117]/70">
+                Nomor <span className="font-semibold text-[#254117]">{phone}</span> belum terdaftar. Silakan isi nama dan alamat penjemputan untuk mulai memesan.
+              </p>
+            </div>
+
+            {authError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCompleteRegistration} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#254117] mb-1.5">
+                  Nama Lengkap <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="Contoh: Budi Santoso"
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#254117] mb-1.5">
+                  Alamat Penjemputan <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute top-3 left-3.5 pointer-events-none text-[#254117]/40">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={regAddress}
+                    onChange={(e) => setRegAddress(e.target.value)}
+                    placeholder="Alamat lengkap rumah/apartemen/kantor..."
+                    required
+                    className="w-full pl-10 pr-4 py-2.5 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all resize-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading || !regName.trim() || !regAddress.trim()}
+                className="w-full py-3.5 px-6 rounded-xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan Akun...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>Mulai</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         ) : (
           <div>
@@ -110,6 +290,13 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                 </button>
               )}
             </div>
+
+            {authError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
 
             {step === 'phone' ? (
               <form onSubmit={handleSendOtp} className="space-y-5">
@@ -238,7 +425,10 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                     className="w-2/3 py-3 px-4 rounded-xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
                   >
                     {isLoading ? (
-                      <span>Memverifikasi...</span>
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>{isCheckingAccount ? 'Memeriksa...' : 'Memverifikasi...'}</span>
+                      </span>
                     ) : (
                       <>
                         <span>Verifikasi</span>

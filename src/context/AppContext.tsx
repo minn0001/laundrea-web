@@ -30,15 +30,26 @@ import {
   INITIAL_SYSTEM_ROLES,
   INITIAL_SYSTEM_PERMISSIONS,
 } from '../data/initialData';
+import {
+  getCustomerFromFirestore,
+  updateCustomerInFirestore,
+  normalizePhoneNumber,
+  DEFAULT_DEMO_PHONE,
+  DEFAULT_DEMO_NAME,
+  DEFAULT_DEMO_ADDRESS,
+} from '../services/firebaseService';
 
 interface AppContextType {
   role: Role;
   setRole: (role: Role) => void;
-  // Customer Auth
+  // Customer Auth & Profile
   isCustomerVerified: boolean;
   customerPhone: string;
+  customerName: string;
+  customerAddress: string;
   activeCustomerOrderId: string | null;
-  verifyCustomer: (phone: string) => void;
+  verifyCustomer: (phone: string, profileData?: { name?: string; address?: string }) => void;
+  updateCustomerProfile: (data: { name?: string; address?: string }) => Promise<void>;
   logoutCustomer: () => void;
   setActiveCustomerOrderId: (id: string | null) => void;
   // Courier Auth
@@ -122,7 +133,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('laundrea_cust_verified') === 'true';
   });
   const [customerPhone, setCustomerPhone] = useState<string>(() => {
-    return localStorage.getItem('laundrea_cust_phone') || '081234567890';
+    return localStorage.getItem('laundrea_cust_phone') || DEFAULT_DEMO_PHONE;
+  });
+  const [customerName, setCustomerName] = useState<string>(() => {
+    return localStorage.getItem('laundrea_cust_name_v4') || DEFAULT_DEMO_NAME;
+  });
+  const [customerAddress, setCustomerAddress] = useState<string>(() => {
+    return localStorage.getItem('laundrea_cust_address_v4') || DEFAULT_DEMO_ADDRESS;
   });
   const [activeCustomerOrderId, setActiveCustomerOrderId] = useState<string | null>(() => {
     return localStorage.getItem('laundrea_cust_order_id') || 'ord-101';
@@ -156,7 +173,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('laundrea_admin_logged_in', 'false');
       localStorage.removeItem('laundrea_current_role');
     }
-    // Clean up old legacy stamp storage keys so devices fall back cleanly to current INITIAL_STAMP_HISTORY
+    // Clean up old legacy keys so devices cleanly adopt phone-isolated and Firestore data
+    localStorage.removeItem('laundrea_cust_name');
+    localStorage.removeItem('laundrea_cust_address');
     localStorage.removeItem('laundrea_stamp_history');
     localStorage.removeItem('laundrea_stamp_history_v2');
     localStorage.removeItem('laundrea_stamps_count');
@@ -290,29 +309,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [systemPermissions] = useState<PermissionItem[]>(INITIAL_SYSTEM_PERMISSIONS);
 
-  // Stamps Loyalty State
+  // Stamps Loyalty State (isolated per customer phone)
+  const getStampStorageKey = (phone: string) => {
+    const norm = normalizePhoneNumber(phone) || 'default';
+    return `laundrea_stamp_history_v4_${norm}`;
+  };
+
+  const getVoucherStorageKey = (phone: string) => {
+    const norm = normalizePhoneNumber(phone) || 'default';
+    return `laundrea_customer_vouchers_v4_${norm}`;
+  };
+
   const [stampHistory, setStampHistory] = useState<StampHistoryItem[]>(() => {
-    const saved = localStorage.getItem('laundrea_stamp_history_v3');
-    return saved ? JSON.parse(saved) : INITIAL_STAMP_HISTORY;
+    const norm = normalizePhoneNumber(customerPhone);
+    const key = getStampStorageKey(customerPhone);
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // fallback
+      }
+    }
+    // Only the demo phone starts with seed history; new numbers start with empty history
+    if (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE)) {
+      return INITIAL_STAMP_HISTORY;
+    }
+    return [];
   });
 
   // Stamp balance derived directly from stampHistory (sum of all pointsChange values)
   const stampsCount = stampHistory.reduce((sum, item) => sum + (item.pointsChange || 0), 0);
 
-  // Customer Vouchers State
+  // Customer Vouchers State (isolated per customer phone)
   const [customerVouchers, setCustomerVouchers] = useState<CustomerVoucher[]>(() => {
-    const saved = localStorage.getItem('laundrea_customer_vouchers');
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMER_VOUCHERS;
+    const norm = normalizePhoneNumber(customerPhone);
+    const key = getVoucherStorageKey(customerPhone);
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // fallback
+      }
+    }
+    // Only the demo phone starts with seed vouchers; new numbers start with empty vouchers
+    if (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE)) {
+      return INITIAL_CUSTOMER_VOUCHERS;
+    }
+    return [];
   });
 
-  // Persist to local storage
+  // Persist customer profile and auth state
   useEffect(() => {
     localStorage.setItem('laundrea_cust_verified', String(isCustomerVerified));
     localStorage.setItem('laundrea_cust_phone', customerPhone);
+    localStorage.setItem('laundrea_cust_name_v4', customerName);
+    localStorage.setItem('laundrea_cust_address_v4', customerAddress);
     if (activeCustomerOrderId) {
       localStorage.setItem('laundrea_cust_order_id', activeCustomerOrderId);
     }
-  }, [isCustomerVerified, customerPhone, activeCustomerOrderId]);
+  }, [isCustomerVerified, customerPhone, customerName, customerAddress, activeCustomerOrderId]);
 
   useEffect(() => {
     localStorage.setItem('laundrea_courier_logged_in', String(isCourierLoggedIn));
@@ -349,12 +406,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [operationalCosts]);
 
   useEffect(() => {
-    localStorage.setItem('laundrea_stamp_history_v3', JSON.stringify(stampHistory));
-  }, [stampHistory]);
+    const key = getStampStorageKey(customerPhone);
+    localStorage.setItem(key, JSON.stringify(stampHistory));
+  }, [customerPhone, stampHistory]);
 
   useEffect(() => {
-    localStorage.setItem('laundrea_customer_vouchers', JSON.stringify(customerVouchers));
-  }, [customerVouchers]);
+    const key = getVoucherStorageKey(customerPhone);
+    localStorage.setItem(key, JSON.stringify(customerVouchers));
+  }, [customerPhone, customerVouchers]);
 
   useEffect(() => {
     localStorage.setItem('laundrea_system_users_v3', JSON.stringify(systemUsers));
@@ -365,18 +424,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [systemRoles]);
 
   // Actions
-  const verifyCustomer = (phone: string) => {
+  const verifyCustomer = (
+    phone: string,
+    profileData?: { name?: string; address?: string }
+  ) => {
     setRole('customer');
     setIsCustomerVerified(true);
     setCustomerPhone(phone);
+
+    const norm = normalizePhoneNumber(phone);
+    const finalName = profileData?.name?.trim() || (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? DEFAULT_DEMO_NAME : 'Pelanggan Laundrea');
+    const finalAddress = profileData?.address?.trim() || (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? DEFAULT_DEMO_ADDRESS : '');
+
+    setCustomerName(finalName);
+    setCustomerAddress(finalAddress);
+
+    // Load stamp history for this phone
+    const stampKey = getStampStorageKey(phone);
+    const savedStamps = localStorage.getItem(stampKey);
+    if (savedStamps) {
+      try {
+        setStampHistory(JSON.parse(savedStamps));
+      } catch {
+        setStampHistory(norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? INITIAL_STAMP_HISTORY : []);
+      }
+    } else {
+      setStampHistory(norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? INITIAL_STAMP_HISTORY : []);
+    }
+
+    // Load vouchers for this phone
+    const voucherKey = getVoucherStorageKey(phone);
+    const savedVouchers = localStorage.getItem(voucherKey);
+    if (savedVouchers) {
+      try {
+        setCustomerVouchers(JSON.parse(savedVouchers));
+      } catch {
+        setCustomerVouchers(norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? INITIAL_CUSTOMER_VOUCHERS : []);
+      }
+    } else {
+      setCustomerVouchers(norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? INITIAL_CUSTOMER_VOUCHERS : []);
+    }
+
     localStorage.setItem('laundrea_cust_verified', 'true');
+    localStorage.setItem('laundrea_cust_phone', phone);
+    localStorage.setItem('laundrea_cust_name_v4', finalName);
+    localStorage.setItem('laundrea_cust_address_v4', finalAddress);
     localStorage.setItem('laundrea_current_role', 'customer');
+
     if (typeof document !== 'undefined') {
       document.title = 'Laundrea';
     }
     if (typeof window !== 'undefined' && window.location.pathname.startsWith('/staff')) {
       window.history.pushState({}, '', '/');
       window.dispatchEvent(new Event('popstate'));
+    }
+  };
+
+  const updateCustomerProfile = async (data: { name?: string; address?: string }) => {
+    if (data.name) setCustomerName(data.name.trim());
+    if (data.address) setCustomerAddress(data.address.trim());
+    if (data.name) localStorage.setItem('laundrea_cust_name_v4', data.name.trim());
+    if (data.address) localStorage.setItem('laundrea_cust_address_v4', data.address.trim());
+
+    // Update customers list in local state as well
+    setCustomers((prev) =>
+      prev.map((c) =>
+        normalizePhoneNumber(c.phone) === normalizePhoneNumber(customerPhone)
+          ? {
+              ...c,
+              name: data.name?.trim() || c.name,
+              address: data.address?.trim() || c.address,
+            }
+          : c
+      )
+    );
+
+    // Save to Firestore as source of truth
+    try {
+      await updateCustomerInFirestore(customerPhone, data);
+    } catch (err) {
+      console.warn('Sync updated profile to Firestore error:', err);
     }
   };
 
@@ -887,8 +1014,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setRole,
         isCustomerVerified,
         customerPhone,
+        customerName,
+        customerAddress,
         activeCustomerOrderId,
         verifyCustomer,
+        updateCustomerProfile,
         logoutCustomer,
         setActiveCustomerOrderId,
         isCourierLoggedIn,

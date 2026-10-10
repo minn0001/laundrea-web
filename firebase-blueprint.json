@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "Registered customer profile document identified by normalized phone number",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full customer name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "address": {
+          "type": "string",
+          "description": "Customer pickup and delivery address",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "phone": {
+          "type": "string",
+          "description": "Customer phone number in normalized or standard format",
+          "minLength": 5,
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO 8601 creation timestamp string",
+          "maxLength": 50
+        }
+      },
+      "required": ["name", "address", "phone", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/customers/{phoneId}": {
+      "schema": {
+        "$ref": "#/entities/Customer"
+      },
+      "description": "Customer account records indexed by normalized phone number digits"
+    }
+  }
+}

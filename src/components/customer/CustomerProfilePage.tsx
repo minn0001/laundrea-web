@@ -23,24 +23,17 @@ interface CustomerProfilePageProps {
 export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   onLogoutClick,
 }) => {
-  const { customerPhone, stampsCount } = useApp();
+  const { customerPhone, customerName, customerAddress, stampsCount, updateCustomerProfile } = useApp();
 
-  // State profil pengguna (disimpan ke localStorage)
-  const [userName, setUserName] = useState<string>(() => {
-    return localStorage.getItem('laundrea_cust_name') || 'Yaya';
-  });
+  // State profil pengguna
+  const [userName, setUserName] = useState<string>(customerName || 'Pelanggan');
   const [userEmail, setUserEmail] = useState<string>(() => {
-    return localStorage.getItem('laundrea_cust_email') || 'yaya.laundrea@gmail.com';
+    return localStorage.getItem(`laundrea_cust_email_${customerPhone}`) || 'pelanggan@laundrea.id';
   });
-  const [userAddress, setUserAddress] = useState<string>(() => {
-    return (
-      localStorage.getItem('laundrea_cust_address') ||
-      'Jl. Senopati No. 42, Kebayoran Baru, Jakarta Selatan'
-    );
-  });
+  const [userAddress, setUserAddress] = useState<string>(customerAddress || '');
   const [addressNotes, setAddressNotes] = useState<string>(() => {
     return (
-      localStorage.getItem('laundrea_cust_address_notes') ||
+      localStorage.getItem(`laundrea_cust_address_notes_${customerPhone}`) ||
       'Pagar hitam, sebelah mini market'
     );
   });
@@ -56,23 +49,23 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   const [tempAddress, setTempAddress] = useState(userAddress);
   const [tempNotes, setTempNotes] = useState(addressNotes);
 
-  // Simpan Informasi Akun
-  const handleSaveAccount = (e: React.FormEvent) => {
+  // Simpan Informasi Akun (Updates Firestore via AppContext)
+  const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setUserName(tempName);
     setUserEmail(tempEmail);
-    localStorage.setItem('laundrea_cust_name', tempName);
-    localStorage.setItem('laundrea_cust_email', tempEmail);
+    localStorage.setItem(`laundrea_cust_email_${customerPhone}`, tempEmail);
+    await updateCustomerProfile({ name: tempName });
     setActiveModal(null);
   };
 
-  // Simpan Alamat
-  const handleSaveAddress = (e: React.FormEvent) => {
+  // Simpan Alamat (Updates Firestore via AppContext)
+  const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     setUserAddress(tempAddress);
     setAddressNotes(tempNotes);
-    localStorage.setItem('laundrea_cust_address', tempAddress);
-    localStorage.setItem('laundrea_cust_address_notes', tempNotes);
+    localStorage.setItem(`laundrea_cust_address_notes_${customerPhone}`, tempNotes);
+    await updateCustomerProfile({ address: tempAddress });
     setActiveModal(null);
   };
 

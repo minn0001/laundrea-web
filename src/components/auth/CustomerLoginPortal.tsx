@@ -7,7 +7,20 @@ import {
   CheckCircle2,
   MessageSquare,
   Sparkles,
+  MapPin,
+  User,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import {
+  getCustomerFromFirestore,
+  saveCustomerToFirestore,
+  normalizePhoneNumber,
+  DEFAULT_DEMO_PHONE,
+  DEFAULT_DEMO_NAME,
+  DEFAULT_DEMO_ADDRESS,
+  CustomerFirestoreData,
+} from '../../services/firebaseService';
 
 interface CustomerLoginPortalProps {
   onNavigateStaff?: () => void;
@@ -16,16 +29,22 @@ interface CustomerLoginPortalProps {
 export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   onNavigateStaff,
 }) => {
-  const { verifyCustomer, resetAllData } = useApp();
+  const { verifyCustomer } = useApp();
 
   // Customer WhatsApp OTP state
   const [waPhone, setWaPhone] = useState('081234567890');
-  const [otpStep, setOtpStep] = useState<'phone' | 'otp' | 'success'>('phone');
+  const [otpStep, setOtpStep] = useState<'phone' | 'otp' | 'register' | 'success'>('phone');
   const [otpCode, setOtpCode] = useState('');
   const [simulatedCode, setSimulatedCode] = useState('782910');
   const [isWaLoading, setIsWaLoading] = useState(false);
   const [countdown, setCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
+
+  // New registration form states for new phone numbers
+  const [regName, setRegName] = useState('');
+  const [regAddress, setRegAddress] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isCheckingAccount, setIsCheckingAccount] = useState(false);
 
   // OTP Countdown timer
   useEffect(() => {
@@ -41,6 +60,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   // Handle WhatsApp OTP send
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     if (!waPhone || waPhone.length < 8) return;
 
     setIsWaLoading(true);
@@ -57,23 +77,93 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
 
   const handleResendOtp = () => {
     if (!canResend) return;
+    setAuthError(null);
     const generated = Math.floor(100000 + Math.random() * 900000).toString();
     setSimulatedCode(generated);
     setCountdown(30);
     setCanResend(false);
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  // Handle OTP verification and check customer existence in Firestore
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.length === 6) {
-      setIsWaLoading(true);
-      setTimeout(() => {
-        setIsWaLoading(false);
+    if (otpCode.length !== 6) return;
+    setAuthError(null);
+    setIsWaLoading(true);
+    setIsCheckingAccount(true);
+
+    const normPhone = normalizePhoneNumber(waPhone);
+    const isDemoNumber = normPhone === normalizePhoneNumber(DEFAULT_DEMO_PHONE);
+
+    try {
+      // Check customer account in Firestore
+      const customerRecord: CustomerFirestoreData | null = await getCustomerFromFirestore(waPhone);
+
+      setIsWaLoading(false);
+      setIsCheckingAccount(false);
+
+      if (customerRecord) {
+        // Account exists in Firestore: log in directly with saved name & address
         setOtpStep('success');
         setTimeout(() => {
-          verifyCustomer(waPhone);
+          verifyCustomer(waPhone, {
+            name: customerRecord.name,
+            address: customerRecord.address,
+          });
         }, 700);
-      }, 350);
+      } else {
+        // Account does not exist in Firestore: show "Lengkapi Profil"
+        setOtpStep('register');
+      }
+    } catch (err) {
+      console.error('Error connecting to Firestore during login:', err);
+      setIsWaLoading(false);
+      setIsCheckingAccount(false);
+
+      // Offline / connection fallback rule:
+      // The demo number 081234567890 must still log in using the built-in "Yaya" profile and default address as fallback!
+      if (isDemoNumber) {
+        setOtpStep('success');
+        setTimeout(() => {
+          verifyCustomer(waPhone, {
+            name: DEFAULT_DEMO_NAME,
+            address: DEFAULT_DEMO_ADDRESS,
+          });
+        }, 700);
+      } else {
+        // Friendly Indonesian message instead of crashing
+        setAuthError('Gagal terhubung, coba lagi');
+      }
+    }
+  };
+
+  // Handle submission of "Lengkapi Profil" registration
+  const handleCompleteRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim() || !regAddress.trim()) {
+      setAuthError('Mohon isi nama lengkap dan alamat penjemputan.');
+      return;
+    }
+
+    setAuthError(null);
+    setIsWaLoading(true);
+
+    try {
+      // Save customer to Firestore collection 'customers'
+      const savedDoc = await saveCustomerToFirestore(waPhone, regName, regAddress);
+      setIsWaLoading(false);
+      setOtpStep('success');
+
+      setTimeout(() => {
+        verifyCustomer(waPhone, {
+          name: savedDoc.name,
+          address: savedDoc.address,
+        });
+      }, 700);
+    } catch (err) {
+      console.error('Error saving customer to Firestore:', err);
+      setIsWaLoading(false);
+      setAuthError('Gagal terhubung, coba lagi');
     }
   };
 
@@ -89,7 +179,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
         </p>
       </div>
 
-      {/* Main Form Box: Direct WhatsApp OTP Flow */}
+      {/* Main Form Box */}
       <div className="max-w-md mx-auto w-full my-auto py-3 space-y-3">
         <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xl border border-[#ffecf2] relative overflow-hidden">
           {otpStep === 'success' ? (
@@ -101,6 +191,105 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
               <p className="text-xs text-[#254117]/70">
                 Selamat datang di Portal Pelanggan Laundrea. Mengalihkan ke dashboard...
               </p>
+            </div>
+          ) : otpStep === 'register' ? (
+            /* Lengkapi Profil Screen in the same card style */
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#ffecf2] text-[#cd6184] flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-[#cd6184] uppercase tracking-wider block">
+                      Lengkapi Profil
+                    </span>
+                    <span className="text-[10px] text-[#254117]/60 font-medium">
+                      Pendaftaran Pelanggan Baru
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  Langkah Terakhir
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-[#254117]">
+                  Halo! Silakan Lengkapi Data Anda
+                </h2>
+                <p className="text-xs text-[#254117]/70 mt-0.5">
+                  Nomor <span className="font-bold text-[#254117]">{waPhone}</span> belum terdaftar. Isi data penjemputan untuk mulai menikmati layanan Laundrea.
+                </p>
+              </div>
+
+              {authError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#254117] mb-1">
+                    Nama Lengkap <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <input
+                      id="input-register-name"
+                      type="text"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      placeholder="Contoh: Budi Santoso"
+                      required
+                      className="w-full pl-10 pr-4 py-2.5 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#254117] mb-1">
+                    Alamat Penjemputan <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute top-2.5 left-3.5 pointer-events-none text-[#254117]/40">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <textarea
+                      id="input-register-address"
+                      rows={2}
+                      value={regAddress}
+                      onChange={(e) => setRegAddress(e.target.value)}
+                      placeholder="Alamat lengkap rumah/apartemen/kantor..."
+                      required
+                      className="w-full pl-10 pr-4 py-2 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all resize-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  id="btn-customer-complete-register"
+                  type="submit"
+                  disabled={isWaLoading || !regName.trim() || !regAddress.trim()}
+                  className="w-full py-3 px-5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isWaLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Menyimpan Akun...</span>
+                    </span>
+                  ) : (
+                    <>
+                      <span>Mulai</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
           ) : (
             <div className="space-y-4">
@@ -122,6 +311,13 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                   Tanpa Sandi
                 </span>
               </div>
+
+              {authError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              )}
 
               {otpStep === 'phone' ? (
                 <form onSubmit={handleSendOtp} className="space-y-4">
@@ -252,7 +448,10 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                       className="w-2/3 py-2.5 px-4 rounded-xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
                     >
                       {isWaLoading ? (
-                        <span>Memverifikasi...</span>
+                        <span className="flex items-center gap-1.5">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>{isCheckingAccount ? 'Memeriksa Akun...' : 'Memverifikasi...'}</span>
+                        </span>
                       ) : (
                         <>
                           <span>Verifikasi & Masuk</span>

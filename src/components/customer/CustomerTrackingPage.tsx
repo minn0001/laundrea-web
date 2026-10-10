@@ -37,15 +37,26 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
 }) => {
   const {
     orders,
+    customerPhone,
     activeCustomerOrderId,
     setActiveCustomerOrderId,
     scheduleDelivery,
     updateOrderPaymentStatus,
   } = useApp();
 
+  // Filter orders strictly for the logged-in customer
+  const customerOrders = orders.filter((o) => {
+    if (!customerPhone) return false;
+    let cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
+    if (cleanOrderPhone.startsWith('62')) cleanOrderPhone = '0' + cleanOrderPhone.slice(2);
+    let normCust = customerPhone.replace(/\D/g, '');
+    if (normCust.startsWith('62')) normCust = '0' + normCust.slice(2);
+    return cleanOrderPhone === normCust;
+  });
+
   // Active tracked order
-  const currentOrderId = orderId || activeCustomerOrderId || orders[0]?.id;
-  const currentOrder = orders.find((o) => o.id === currentOrderId) || orders[0];
+  const currentOrderId = orderId || activeCustomerOrderId || customerOrders[0]?.id;
+  const currentOrder = customerOrders.find((o) => o.id === currentOrderId) || customerOrders[0];
 
   const [deliveryDate, setDeliveryDate] = useState('Hari ini, 17:00 - 19:00');
   const [isScheduling, setIsScheduling] = useState(false);
@@ -171,7 +182,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
             Laundrea {currentOrder.planName}
           </h1>
 
-          {orders.length > 1 && (
+          {customerOrders.length > 1 && (
             <div className="relative">
               <button
                 type="button"
@@ -209,7 +220,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
                     onClick={() => setIsOrderDropdownOpen(false)}
                   />
                   <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in max-h-72 overflow-y-auto">
-                    {orders.map((o) => {
+                    {customerOrders.map((o) => {
                       const isSelected = o.id === currentOrder.id;
                       const statusLabel =
                         o.status === 'pickup'

@@ -18,6 +18,7 @@ export const CustomerApp: React.FC = () => {
     verifyCustomer,
     logoutCustomer,
     customerPhone,
+    customerName,
     activeCustomerOrderId,
     setActiveCustomerOrderId,
     orders,
@@ -30,7 +31,7 @@ export const CustomerApp: React.FC = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState<boolean>(false);
 
-  const userName = localStorage.getItem('laundrea_cust_name') || 'Yaya';
+  const userName = customerName || 'Pelanggan';
 
   // If not verified yet, display either the landing page or the WhatsApp verification flow
   if (!isCustomerVerified) {
@@ -45,8 +46,8 @@ export const CustomerApp: React.FC = () => {
             />
           ) : (
             <CustomerVerification
-              onVerified={(phone) => {
-                verifyCustomer(phone);
+              onVerified={(phone, profileData) => {
+                verifyCustomer(phone, profileData);
                 setActiveTab('beranda');
               }}
               onBackToLanding={() => setUnverifiedScreen('landing')}

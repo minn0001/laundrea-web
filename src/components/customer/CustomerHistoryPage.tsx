@@ -37,16 +37,16 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
 
-  // Filter orders related to customer or fallback to all orders for complete experience
-  const customerOrders = orders.filter((o) => {
-    if (!customerPhone) return true;
+  // Filter orders strictly by logged-in customer phone
+  const displayOrders = orders.filter((o) => {
+    if (!customerPhone) return false;
     const cleanCustomer = customerPhone.replace(/\D/g, '');
-    const cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
-    return cleanOrderPhone === cleanCustomer || cleanOrderPhone.endsWith(cleanCustomer.slice(-7));
+    let cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
+    if (cleanOrderPhone.startsWith('62')) cleanOrderPhone = '0' + cleanOrderPhone.slice(2);
+    let normCust = cleanCustomer;
+    if (normCust.startsWith('62')) normCust = '0' + normCust.slice(2);
+    return cleanOrderPhone === normCust;
   });
-
-  // If filtered list is empty (e.g. phone has no orders yet in mock), show available orders so user can explore
-  const displayOrders = customerOrders.length > 0 ? customerOrders : orders;
 
   // Filter by status and search
   const filteredOrders = displayOrders.filter((order) => {
