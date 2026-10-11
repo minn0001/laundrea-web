@@ -4,6 +4,7 @@ import { BrandWordmark } from '../common/BrandWordmark';
 import {
   Phone,
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
   MessageSquare,
   Sparkles,
@@ -196,22 +197,29 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
             /* Lengkapi Profil Screen in the same card style */
             <div className="space-y-4 animate-in fade-in duration-200">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <button
+                  type="button"
+                  id="btn-back-from-register"
+                  onClick={() => {
+                    setOtpStep('phone');
+                    setOtpCode('');
+                    setRegName('');
+                    setRegAddress('');
+                    setAuthError(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#cd6184] hover:text-[#b85373] hover:bg-[#ffecf2] px-2 py-1 -ml-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Kembali</span>
+                </button>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-[#ffecf2] text-[#cd6184] flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[#cd6184] uppercase tracking-wider block">
-                      Lengkapi Profil
-                    </span>
-                    <span className="text-[10px] text-[#254117]/60 font-medium">
-                      Pendaftaran Pelanggan Baru
-                    </span>
-                  </div>
+                  <span className="text-[10px] font-bold text-[#cd6184] uppercase tracking-wider">
+                    Lengkapi Profil
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Langkah Terakhir
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  Langkah Terakhir
-                </span>
               </div>
 
               <div>

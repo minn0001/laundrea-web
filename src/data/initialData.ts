@@ -89,7 +89,7 @@ export const INITIAL_COURIERS: Courier[] = [
 export const INITIAL_CUSTOMERS: CustomerProfile[] = [
   {
     id: 'cust-1',
-    name: 'Nadia Salsabila',
+    name: 'Yaya',
     phone: '081234567890',
     address: 'Jl. Senopati No. 42, Kebayoran Baru, Jakarta Selatan',
     totalOrders: 12,
@@ -131,13 +131,35 @@ export const INITIAL_CUSTOMERS: CustomerProfile[] = [
     stampsCount: 2,
     tier: 'Bronze',
   },
+  {
+    id: 'cust-5',
+    name: 'Maya Indah',
+    phone: '081922334455',
+    address: 'Jl. Panglima Polim IX No. 12, Jakarta Selatan',
+    totalOrders: 1,
+    lastOrderDate: '2026-09-07',
+    totalSpent: 54000,
+    stampsCount: 1,
+    tier: 'Bronze',
+  },
+  {
+    id: 'cust-6',
+    name: 'Hendro Wijaya',
+    phone: '081733445566',
+    address: 'Jl. Teuku Umar No. 20, Menteng, Jakarta Pusat',
+    totalOrders: 1,
+    lastOrderDate: '2026-09-08',
+    totalSpent: 76800,
+    stampsCount: 1,
+    tier: 'Bronze',
+  },
 ];
 
 export const INITIAL_ORDERS: Order[] = [
   {
     id: 'ord-101',
     orderNumber: 'LND-20260908-01',
-    customerName: 'Nadia Salsabila',
+    customerName: 'Yaya',
     customerPhone: '081234567890',
     customerAddress: 'Jl. Senopati No. 42, Kebayoran Baru, Jakarta Selatan',
     planId: 'express',

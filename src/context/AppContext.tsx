@@ -37,6 +37,7 @@ import {
   DEFAULT_DEMO_PHONE,
   DEFAULT_DEMO_NAME,
   DEFAULT_DEMO_ADDRESS,
+  seedSampleCustomersIfMissing,
 } from '../services/firebaseService';
 
 interface AppContextType {
@@ -136,10 +137,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('laundrea_cust_phone') || DEFAULT_DEMO_PHONE;
   });
   const [customerName, setCustomerName] = useState<string>(() => {
-    return localStorage.getItem('laundrea_cust_name_v4') || DEFAULT_DEMO_NAME;
+    return localStorage.getItem('laundrea_cust_name_v5') || DEFAULT_DEMO_NAME;
   });
   const [customerAddress, setCustomerAddress] = useState<string>(() => {
-    return localStorage.getItem('laundrea_cust_address_v4') || DEFAULT_DEMO_ADDRESS;
+    return localStorage.getItem('laundrea_cust_address_v5') || DEFAULT_DEMO_ADDRESS;
   });
   const [activeCustomerOrderId, setActiveCustomerOrderId] = useState<string | null>(() => {
     return localStorage.getItem('laundrea_cust_order_id') || 'ord-101';
@@ -174,13 +175,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('laundrea_current_role');
     }
     // Clean up old legacy keys so devices cleanly adopt phone-isolated and Firestore data
+    localStorage.removeItem('laundrea_orders');
+    localStorage.removeItem('laundrea_orders_v2');
+    localStorage.removeItem('laundrea_orders_v3');
+    localStorage.removeItem('laundrea_orders_v4');
+    localStorage.removeItem('laundrea_customers');
+    localStorage.removeItem('laundrea_customers_v2');
+    localStorage.removeItem('laundrea_customers_v3');
+    localStorage.removeItem('laundrea_customers_v4');
     localStorage.removeItem('laundrea_cust_name');
+    localStorage.removeItem('laundrea_cust_name_v2');
+    localStorage.removeItem('laundrea_cust_name_v3');
+    localStorage.removeItem('laundrea_cust_name_v4');
     localStorage.removeItem('laundrea_cust_address');
-    localStorage.removeItem('laundrea_stamp_history');
-    localStorage.removeItem('laundrea_stamp_history_v2');
-    localStorage.removeItem('laundrea_stamps_count');
-    localStorage.removeItem('laundrea_stamps_count_v2');
-    localStorage.removeItem('laundrea_stamps_count_v3');
+    localStorage.removeItem('laundrea_cust_address_v2');
+    localStorage.removeItem('laundrea_cust_address_v3');
+    localStorage.removeItem('laundrea_cust_address_v4');
+
+    // Make the sample customers real accounts in Firestore on app boot
+    seedSampleCustomersIfMissing().catch(() => {});
   }, []);
 
   // Helper to ensure plan text is in Indonesian if old cached English exists
@@ -222,7 +235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('laundrea_orders');
+    const saved = localStorage.getItem('laundrea_orders_v5');
     return saved ? JSON.parse(saved) : INITIAL_ORDERS;
   });
 
@@ -242,7 +255,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [customers, setCustomers] = useState<CustomerProfile[]>(() => {
-    const saved = localStorage.getItem('laundrea_customers');
+    const saved = localStorage.getItem('laundrea_customers_v5');
     return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
   });
 
@@ -364,8 +377,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('laundrea_cust_verified', String(isCustomerVerified));
     localStorage.setItem('laundrea_cust_phone', customerPhone);
-    localStorage.setItem('laundrea_cust_name_v4', customerName);
-    localStorage.setItem('laundrea_cust_address_v4', customerAddress);
+    localStorage.setItem('laundrea_cust_name_v5', customerName);
+    localStorage.setItem('laundrea_cust_address_v5', customerAddress);
     if (activeCustomerOrderId) {
       localStorage.setItem('laundrea_cust_order_id', activeCustomerOrderId);
     }
@@ -386,7 +399,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [plans]);
 
   useEffect(() => {
-    localStorage.setItem('laundrea_orders', JSON.stringify(orders));
+    localStorage.setItem('laundrea_orders_v5', JSON.stringify(orders));
   }, [orders]);
 
   useEffect(() => {
@@ -394,7 +407,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [couriers]);
 
   useEffect(() => {
-    localStorage.setItem('laundrea_customers', JSON.stringify(customers));
+    localStorage.setItem('laundrea_customers_v5', JSON.stringify(customers));
   }, [customers]);
 
   useEffect(() => {
@@ -467,8 +480,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     localStorage.setItem('laundrea_cust_verified', 'true');
     localStorage.setItem('laundrea_cust_phone', phone);
-    localStorage.setItem('laundrea_cust_name_v4', finalName);
-    localStorage.setItem('laundrea_cust_address_v4', finalAddress);
+    localStorage.setItem('laundrea_cust_name_v5', finalName);
+    localStorage.setItem('laundrea_cust_address_v5', finalAddress);
     localStorage.setItem('laundrea_current_role', 'customer');
 
     if (typeof document !== 'undefined') {
@@ -483,8 +496,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateCustomerProfile = async (data: { name?: string; address?: string }) => {
     if (data.name) setCustomerName(data.name.trim());
     if (data.address) setCustomerAddress(data.address.trim());
-    if (data.name) localStorage.setItem('laundrea_cust_name_v4', data.name.trim());
-    if (data.address) localStorage.setItem('laundrea_cust_address_v4', data.address.trim());
+    if (data.name) localStorage.setItem('laundrea_cust_name_v5', data.name.trim());
+    if (data.address) localStorage.setItem('laundrea_cust_address_v5', data.address.trim());
 
     // Update customers list in local state as well
     setCustomers((prev) =>
@@ -989,9 +1002,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStampHistory(INITIAL_STAMP_HISTORY);
     localStorage.removeItem('laundrea_plans');
     localStorage.removeItem('laundrea_orders');
+    localStorage.removeItem('laundrea_orders_v4');
+    localStorage.removeItem('laundrea_orders_v5');
     localStorage.removeItem('laundrea_couriers');
     localStorage.removeItem('laundrea_couriers_v2');
     localStorage.removeItem('laundrea_customers');
+    localStorage.removeItem('laundrea_customers_v4');
+    localStorage.removeItem('laundrea_customers_v5');
+    localStorage.removeItem('laundrea_cust_name_v5');
+    localStorage.removeItem('laundrea_cust_address_v5');
     localStorage.removeItem('laundrea_promos');
     localStorage.removeItem('laundrea_costs');
     localStorage.removeItem('laundrea_system_users');
