@@ -94,7 +94,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-bold text-white leading-tight truncate">
-              Pemilik Laundrea
+              Admin
             </span>
             <span className="text-[11px] text-white/60 truncate">@{adminUsername}</span>
           </div>
