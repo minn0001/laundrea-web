@@ -25,6 +25,7 @@ import {
   Info,
   Lock,
   Pencil,
+  Banknote,
 } from 'lucide-react';
 
 export const CourierApp: React.FC = () => {
@@ -37,6 +38,8 @@ export const CourierApp: React.FC = () => {
     couriers,
     updateOrderWeight,
     updateOrderStatus,
+    confirmCodCashReceived,
+    hasPermission,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'history' | 'profile'>('tasks');
@@ -122,14 +125,19 @@ export const CourierApp: React.FC = () => {
   const handleOpenDetail = (order: Order) => {
     setSelectedOrderId(order.id);
     setWeightInput(order.actualQuantity ? order.actualQuantity.toString() : '');
-    setIsEditingWeight(!order.actualQuantity);
+    // If a payment method is chosen by customer, the weight is locked (no more Edit)
+    const isLockedByCustomerMethod = Boolean(order.paymentMethod);
+    setIsEditingWeight(!order.actualQuantity && !isLockedByCustomerMethod);
     setSuccessMessage(null);
   };
 
-  const calculatedNewPrice =
-    selectedOrder && parseFloat(weightInput) > 0
-      ? Math.round(selectedOrder.unitPrice * parseFloat(weightInput))
-      : selectedOrder?.estimatedPrice || 0;
+  const calculatedNewPrice = (() => {
+    if (!selectedOrder) return 0;
+    const qty = parseFloat(weightInput) > 0 ? parseFloat(weightInput) : (selectedOrder.actualQuantity || selectedOrder.estimatedQuantity);
+    const gross = Math.round(selectedOrder.unitPrice * qty);
+    const disc = selectedOrder.voucherCode && selectedOrder.voucherDiscount ? Math.min(selectedOrder.voucherDiscount, gross) : 0;
+    return Math.max(0, gross - disc);
+  })();
 
   const handleWeightSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,9 +150,9 @@ export const CourierApp: React.FC = () => {
       updateOrderWeight(selectedOrder.id, num);
       setIsUpdating(false);
       setIsEditingWeight(false);
-      setSuccessMessage('Berat berhasil disimpan, total harga diperbarui');
+      setSuccessMessage('Berat berhasil disimpan & total tagihan dibuka untuk pembayaran pelanggan');
       setTimeout(() => setSuccessMessage(null), 4000);
-    }, 400);
+    }, 300);
   };
 
   // Courier Handover Actions: Courier only handles Pickup and Delivery
@@ -384,15 +392,22 @@ export const CourierApp: React.FC = () => {
                     </div>
 
                     {!isEditingWeight ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingWeight(true)}
-                        className="py-3.5 px-5 rounded-2xl bg-white border-2 border-[#cd6184] text-[#cd6184] hover:bg-[#ffecf2] font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
-                        title="Edit berat riil"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        <span>Edit</span>
-                      </button>
+                      selectedOrder.paymentMethod ? (
+                        <div className="py-2 px-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-400 font-bold text-[11px] flex items-center gap-1 select-none" title="Berat terkunci karena metode pembayaran telah dipilih pelanggan">
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>Terkunci</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingWeight(true)}
+                          className="py-3.5 px-5 rounded-2xl bg-white border-2 border-[#cd6184] text-[#cd6184] hover:bg-[#ffecf2] font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
+                          title="Edit berat riil"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                      )
                     ) : (
                       <button
                         type="submit"
@@ -438,6 +453,46 @@ export const CourierApp: React.FC = () => {
               </div>
             ) : null}
 
+            {/* Requirement 4: COD Highlight Box for Courier */}
+            {selectedOrder.paymentMethod === 'cod' && selectedOrder.paymentStatus !== 'paid' && (
+              <div className="p-4 bg-emerald-50 rounded-3xl border-2 border-emerald-400 text-emerald-950 space-y-3 shadow-xs animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-black text-sm text-emerald-900">
+                    <Banknote className="w-5 h-5 text-emerald-600" />
+                    <span>Pelanggan membayar tunai: Rp {(selectedOrder.actualPrice || selectedOrder.estimatedPrice).toLocaleString('id-ID')}</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">
+                    COD
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-800">
+                  Terima uang tunai pas dari pelanggan di lokasi, lalu tekan tombol di bawah untuk menandai lunas dan membuka konfirmasi penjemputan.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => confirmCodCashReceived(selectedOrder.id)}
+                  disabled={isUpdating}
+                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Terima Tunai & Tandai Lunas</span>
+                </button>
+              </div>
+            )}
+
+            {/* If paid via COD, show confirmation */}
+            {selectedOrder.paidTo && selectedOrder.paymentStatus === 'paid' && (
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-900">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Dibayar tunai ke kurir <strong>{selectedOrder.paidTo}</strong></span>
+                </div>
+                <span className="font-bold text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                  Lunas
+                </span>
+              </div>
+            )}
+
             {/* Courier Specific Action Card (Strictly Antar & Jemput Only) */}
             <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
@@ -453,42 +508,63 @@ export const CourierApp: React.FC = () => {
               </div>
 
               {/* Action 1: Pickup Task */}
-              {selectedOrder.status === 'pickup' && (
-                <div className="space-y-3">
-                  <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1.5">
-                    <div className="flex items-center gap-1.5 font-bold text-amber-800">
-                      <Truck className="w-4 h-4 text-amber-600" />
-                      <span>Tugas Penjemputan Cucian</span>
+              {selectedOrder.status === 'pickup' && (() => {
+                const isWeightSaved = selectedOrder.actualQuantity !== undefined && selectedOrder.actualQuantity > 0;
+                const isCodPending = selectedOrder.paymentMethod === 'cod' && selectedOrder.paymentStatus !== 'paid';
+                const isPickupDisabled = isUpdating || !isWeightSaved || isCodPending;
+
+                let disabledHelperText = '';
+                if (!isWeightSaved) {
+                  disabledHelperText = 'Simpan berat dulu';
+                } else if (isCodPending) {
+                  disabledHelperText = 'Terima tunai dulu';
+                }
+
+                return (
+                  <div className="space-y-3">
+                    <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                        <Truck className="w-4 h-4 text-amber-600" />
+                        <span>Tugas Penjemputan Cucian</span>
+                      </div>
+                      <p className="text-[9.5px] sm:text-[11px] text-amber-800/90 leading-relaxed">
+                        1. Datang ke alamat pelanggan & timbang pakaian di atas.<br />
+                        2. Tekan tombol konfirmasi serah terima penjemputan di bawah untuk membawa cucian menuju gerai.
+                      </p>
                     </div>
-                    <p className="text-[9.5px] sm:text-[11px] text-amber-800/90 leading-relaxed">
-                      1. Datang ke alamat pelanggan & timbang pakaian di atas.<br />
-                      2. Tekan tombol konfirmasi serah terima penjemputan di bawah untuk membawa cucian menuju gerai.
+
+                    <button
+                      type="button"
+                      onClick={handleConfirmPickup}
+                      disabled={isPickupDisabled}
+                      className="w-full py-3.5 px-3 sm:px-4 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-[10.5px] sm:text-xs shadow-md flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>
+                        {isUpdating ? (
+                          'Memproses...'
+                        ) : (
+                          <>
+                            <span className="sm:hidden">Konfirmasi Cucian Dijemput (Bawa ke Gerai)</span>
+                            <span className="hidden sm:inline">Konfirmasi Cucian Telah Dijemput (Bawa ke Gerai)</span>
+                          </>
+                        )}
+                      </span>
+                    </button>
+
+                    {disabledHelperText && (
+                      <p className="text-[11px] text-center font-bold text-amber-700 flex items-center justify-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>{disabledHelperText}</span>
+                      </p>
+                    )}
+
+                    <p className="text-[10px] text-center text-gray-500 italic">
+                      *Tahap pencucian berikutnya hanya dapat dimulai oleh Admin setelah cucian tiba di gerai.
                     </p>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={handleConfirmPickup}
-                    disabled={isUpdating}
-                    className="w-full py-3.5 px-3 sm:px-4 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-[10.5px] sm:text-xs shadow-md flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
-                  >
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>
-                      {isUpdating ? (
-                        'Memproses...'
-                      ) : (
-                        <>
-                          <span className="sm:hidden">Konfirmasi Cucian Dijemput (Bawa ke Gerai)</span>
-                          <span className="hidden sm:inline">Konfirmasi Cucian Telah Dijemput (Bawa ke Gerai)</span>
-                        </>
-                      )}
-                    </span>
-                  </button>
-                  <p className="text-[10px] text-center text-gray-500 italic">
-                    *Tahap pencucian berikutnya hanya dapat dimulai oleh Admin setelah cucian tiba di gerai.
-                  </p>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Action 1b: Picked up, in transit to store */}
               {selectedOrder.status === 'picked_up' && (

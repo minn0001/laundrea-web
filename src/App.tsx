@@ -59,20 +59,12 @@ const AppContent: React.FC = () => {
   }
 
   // 2. CUSTOMER LINK: / (root)
-  // Opening the root URL goes straight to the Pelanggan login screen (WhatsApp OTP flow).
-  // No role selection screen.
-  // After login, the user goes to the customer dashboard as usual.
-  // Prevent cross-access: courier or admin sessions cannot open customer dashboard.
-  if (isCustomerVerified) {
-    return (
-      <div className="min-h-screen flex flex-col bg-white text-[#254117] w-full">
-        <CustomerApp />
-      </div>
-    );
-  }
-
-  // Unauthenticated customer route: goes straight to Pelanggan WhatsApp OTP login
-  return <CustomerLoginPortal onNavigateStaff={() => navigate('/staff')} />;
+  // Opening the root URL goes straight to the customer app with Guest browsing enabled.
+  return (
+    <div className="min-h-screen flex flex-col bg-white text-[#254117] w-full">
+      <CustomerApp />
+    </div>
+  );
 };
 
 export default function App() {

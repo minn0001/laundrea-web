@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { BrandWordmark } from '../common/BrandWordmark';
 import {
   Phone,
   ArrowRight,
@@ -8,10 +7,10 @@ import {
   CheckCircle2,
   MessageSquare,
   Sparkles,
-  MapPin,
   User,
   Loader2,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import {
   getCustomerFromFirestore,
@@ -20,21 +19,31 @@ import {
   DEFAULT_DEMO_PHONE,
   DEFAULT_DEMO_NAME,
   DEFAULT_DEMO_ADDRESS,
+  SEED_CUSTOMERS,
   CustomerFirestoreData,
 } from '../../services/firebaseService';
+import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
+import { StructuredAddressData } from '../../services/wilayahService';
+
+// Laundrea WhatsApp Number in international format without plus sign
+const LAUNDREA_WA_NUMBER = '6287790103092';
 
 interface CustomerLoginPortalProps {
+  onSuccess?: () => void;
+  onClose?: () => void;
   onNavigateStaff?: () => void;
 }
 
 export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
+  onSuccess,
+  onClose,
   onNavigateStaff,
 }) => {
   const { verifyCustomer } = useApp();
 
-  // Customer WhatsApp OTP state
+  // Step state: 'options' | 'phone_input' | 'otp' | 'register' | 'success'
+  const [step, setStep] = useState<'options' | 'phone_input' | 'otp' | 'register' | 'success'>('options');
   const [waPhone, setWaPhone] = useState('081234567890');
-  const [otpStep, setOtpStep] = useState<'phone' | 'otp' | 'register' | 'success'>('phone');
   const [otpCode, setOtpCode] = useState('');
   const [simulatedCode, setSimulatedCode] = useState('782910');
   const [isWaLoading, setIsWaLoading] = useState(false);
@@ -44,25 +53,58 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   // New registration form states for new phone numbers
   const [regName, setRegName] = useState('');
   const [regAddress, setRegAddress] = useState('');
+  const [regStructured, setRegStructured] = useState<StructuredAddressData | undefined>(undefined);
+  const [isAddressValid, setIsAddressValid] = useState(false);
+
   const [authError, setAuthError] = useState<string | null>(null);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
+
+  // Modal for Syarat & Ketentuan or Kebijakan Privasi
+  const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | null>(null);
 
   // OTP Countdown timer
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (otpStep === 'otp' && countdown > 0) {
+    if (step === 'otp' && countdown > 0) {
       timer = setTimeout(() => setCountdown(countdown - 1), 1000);
     } else if (countdown === 0) {
       setCanResend(true);
     }
     return () => clearTimeout(timer);
-  }, [otpStep, countdown]);
+  }, [step, countdown]);
 
-  // Handle WhatsApp OTP send
-  const handleSendOtp = (e: React.FormEvent) => {
+  // Action: "Lanjut dengan WhatsApp"
+  const handleContinueWithWhatsApp = () => {
+    setAuthError(null);
+    const demoNum = DEFAULT_DEMO_PHONE;
+    setWaPhone(demoNum);
+
+    // 1. Open WhatsApp with prefilled text in a new tab
+    const textMsg = encodeURIComponent('Halo Laundrea, saya ingin masuk/daftar akun.');
+    const waUrl = `https://wa.me/${LAUNDREA_WA_NUMBER}?text=${textMsg}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+
+    // 2. At the same time, move to existing OTP step using demo number 081234567890
+    setIsWaLoading(true);
+    const generated = Math.floor(100000 + Math.random() * 900000).toString();
+    setSimulatedCode(generated);
+
+    setTimeout(() => {
+      setIsWaLoading(false);
+      setStep('otp');
+      setCountdown(30);
+      setCanResend(false);
+    }, 350);
+  };
+
+  // Action: "Kirim Kode OTP" from phone input
+  const handleSendPhoneOtp = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
-    if (!waPhone || waPhone.length < 8) return;
+    if (!waPhone || waPhone.length < 8) {
+      setAuthError('Nomor telepon minimal 8 digit.');
+      return;
+    }
 
     setIsWaLoading(true);
     const generated = Math.floor(100000 + Math.random() * 900000).toString();
@@ -70,10 +112,10 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
 
     setTimeout(() => {
       setIsWaLoading(false);
-      setOtpStep('otp');
+      setStep('otp');
       setCountdown(30);
       setCanResend(false);
-    }, 400);
+    }, 350);
   };
 
   const handleResendOtp = () => {
@@ -105,16 +147,17 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
 
       if (customerRecord) {
         // Account exists in Firestore: log in directly with saved name & address
-        setOtpStep('success');
+        setStep('success');
         setTimeout(() => {
           verifyCustomer(waPhone, {
             name: customerRecord.name,
             address: customerRecord.address,
           });
+          onSuccess?.();
         }, 700);
       } else {
         // Account does not exist in Firestore: show "Lengkapi Profil"
-        setOtpStep('register');
+        setStep('register');
       }
     } catch (err) {
       console.error('Error connecting to Firestore during login:', err);
@@ -122,14 +165,19 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
       setIsCheckingAccount(false);
 
       // Offline / connection fallback rule:
-      // The demo number 081234567890 must still log in using the built-in "Yaya" profile and default address as fallback!
-      if (isDemoNumber) {
-        setOtpStep('success');
+      // The sample customers (Yaya, Rizky, Jessica, Fajar, Maya, Hendro) log in using their seed profile
+      const seedMatch = SEED_CUSTOMERS.find(
+        (sc) => normalizePhoneNumber(sc.phone) === normalizePhoneNumber(waPhone)
+      );
+
+      if (seedMatch) {
+        setStep('success');
         setTimeout(() => {
           verifyCustomer(waPhone, {
-            name: DEFAULT_DEMO_NAME,
-            address: DEFAULT_DEMO_ADDRESS,
+            name: seedMatch.name,
+            address: seedMatch.address,
           });
+          onSuccess?.();
         }, 700);
       } else {
         // Friendly Indonesian message instead of crashing
@@ -150,16 +198,17 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
     setIsWaLoading(true);
 
     try {
-      // Save customer to Firestore collection 'customers'
-      const savedDoc = await saveCustomerToFirestore(waPhone, regName, regAddress);
+      // Save customer to Firestore collection 'customers' with structured parts
+      const savedDoc = await saveCustomerToFirestore(waPhone, regName, regAddress, regStructured);
       setIsWaLoading(false);
-      setOtpStep('success');
+      setStep('success');
 
       setTimeout(() => {
         verifyCustomer(waPhone, {
           name: savedDoc.name,
           address: savedDoc.address,
         });
+        onSuccess?.();
       }, 700);
     } catch (err) {
       console.error('Error saving customer to Firestore:', err);
@@ -169,316 +218,459 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#ffecf2]/30 via-white to-gray-50 flex flex-col justify-between p-3.5 sm:p-6 lg:p-8">
-      {/* Top Header */}
-      <div className="max-w-xl mx-auto w-full pt-3 sm:pt-6 text-center space-y-2">
-        <div className="flex justify-center">
-          <BrandWordmark size="xl" variant="pink" />
-        </div>
-        <p className="text-xs sm:text-sm text-[#254117]/75 font-medium">
-          Layanan Laundry Premium Antar Jemput Higienis
-        </p>
-      </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-100/90 backdrop-blur-xs overflow-y-auto">
+      {/* Centered White Card (rounded corners, soft shadow, light gray background, no logo) */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-lg border border-gray-100 relative my-auto animate-in fade-in zoom-in-95 duration-150">
+        {/* Small "×" at the card's top-right that closes the login and returns to Beranda */}
+        {onClose && (
+          <button
+            type="button"
+            id="btn-close-login"
+            onClick={onClose}
+            aria-label="Tutup"
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
 
-      {/* Main Form Box */}
-      <div className="max-w-md mx-auto w-full my-auto py-3 space-y-3">
-        <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-xl border border-[#ffecf2] relative overflow-hidden">
-          {otpStep === 'success' ? (
-            <div className="py-8 text-center space-y-3 animate-in fade-in duration-200">
-              <div className="w-16 h-16 bg-[#97a273]/20 text-[#97a273] rounded-full flex items-center justify-center mx-auto animate-bounce">
-                <CheckCircle2 className="w-9 h-9" />
-              </div>
-              <h3 className="text-xl font-bold text-[#97a273]">Verifikasi Berhasil!</h3>
-              <p className="text-xs text-[#254117]/70">
-                Selamat datang di Portal Pelanggan Laundrea. Mengalihkan ke dashboard...
+        {/* ================= STEP 1: OPTIONS (Main Login Card) ================= */}
+        {step === 'options' && (
+          <div className="space-y-5 text-center">
+            {/* Title & Subtitle */}
+            <div className="space-y-1 pt-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#254117]">
+                Masuk/Daftar
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 font-medium">
+                Masuk untuk melakukan pemesanan
               </p>
             </div>
-          ) : otpStep === 'register' ? (
-            /* Lengkapi Profil Screen in the same card style */
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+
+            {authError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700 text-left">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            {/* Buttons Stack */}
+            <div className="space-y-3 pt-2">
+              {/* Full-width pill button: "Lanjut dengan WhatsApp" (sage green #97a273, white bold text, chat icon on the left) */}
+              <button
+                type="button"
+                id="btn-login-wa"
+                onClick={handleContinueWithWhatsApp}
+                className="w-full py-3.5 px-5 rounded-full bg-[#97a273] hover:bg-[#889464] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2.5 shadow-xs transition-all cursor-pointer"
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span>Lanjut dengan WhatsApp</span>
+              </button>
+
+              {/* Full-width pill outline button: "Gunakan nomor HP" (dark border, light background, dark bold text) */}
+              <button
+                type="button"
+                id="btn-login-phone-option"
+                onClick={() => {
+                  setAuthError(null);
+                  setStep('phone_input');
+                }}
+                className="w-full py-3.5 px-5 rounded-full border-2 border-[#254117] bg-white hover:bg-gray-50 active:scale-[0.99] text-[#254117] font-bold text-sm flex items-center justify-center transition-all cursor-pointer"
+              >
+                <span>Gunakan nomor HP</span>
+              </button>
+            </div>
+
+            {/* Small centered gray footer text with clickable terms and privacy links */}
+            <p className="text-[11px] text-gray-500 text-center leading-relaxed pt-2 px-2">
+              Dengan melanjutkan, Anda menyetujui{' '}
+              <button
+                type="button"
+                onClick={() => setLegalModal('terms')}
+                className="underline text-gray-700 hover:text-black font-semibold cursor-pointer"
+              >
+                Syarat & Ketentuan
+              </button>{' '}
+              dan{' '}
+              <button
+                type="button"
+                onClick={() => setLegalModal('privacy')}
+                className="underline text-gray-700 hover:text-black font-semibold cursor-pointer"
+              >
+                Kebijakan Privasi
+              </button>
+              .
+            </p>
+
+            {onNavigateStaff && (
+              <div className="pt-2 border-t border-gray-100">
                 <button
                   type="button"
-                  id="btn-back-from-register"
-                  onClick={() => {
-                    setOtpStep('phone');
-                    setOtpCode('');
-                    setRegName('');
-                    setRegAddress('');
-                    setAuthError(null);
-                  }}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#cd6184] hover:text-[#b85373] hover:bg-[#ffecf2] px-2 py-1 -ml-1 rounded-lg transition-colors cursor-pointer"
+                  onClick={onNavigateStaff}
+                  className="text-[11px] text-[#254117]/60 hover:text-[#254117] font-semibold cursor-pointer"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Kembali</span>
+                  Portal Khusus Kurir & Admin →
                 </button>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-[#cd6184] uppercase tracking-wider">
-                    Lengkapi Profil
-                  </span>
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                    Langkah Terakhir
-                  </span>
-                </div>
               </div>
+            )}
+          </div>
+        )}
 
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-[#254117]">
-                  Halo! Silakan Lengkapi Data Anda
-                </h2>
-                <p className="text-xs text-[#254117]/70 mt-0.5">
-                  Nomor <span className="font-bold text-[#254117]">{waPhone}</span> belum terdaftar. Isi data penjemputan untuk mulai menikmati layanan Laundrea.
-                </p>
-              </div>
-
-              {authError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{authError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
-                <div>
-                  <label className="block text-xs font-semibold text-[#254117] mb-1">
-                    Nama Lengkap <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <input
-                      id="input-register-name"
-                      type="text"
-                      value={regName}
-                      onChange={(e) => setRegName(e.target.value)}
-                      placeholder="Contoh: Budi Santoso"
-                      required
-                      className="w-full pl-10 pr-4 py-2.5 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#254117] mb-1">
-                    Alamat Penjemputan <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute top-2.5 left-3.5 pointer-events-none text-[#254117]/40">
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <textarea
-                      id="input-register-address"
-                      rows={2}
-                      value={regAddress}
-                      onChange={(e) => setRegAddress(e.target.value)}
-                      placeholder="Alamat lengkap rumah/apartemen/kantor..."
-                      required
-                      className="w-full pl-10 pr-4 py-2 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all resize-none"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  id="btn-customer-complete-register"
-                  type="submit"
-                  disabled={isWaLoading || !regName.trim() || !regAddress.trim()}
-                  className="w-full py-3 px-5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  {isWaLoading ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Menyimpan Akun...</span>
-                    </span>
-                  ) : (
-                    <>
-                      <span>Mulai</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
+        {/* ================= STEP 2: PHONE INPUT ("Gunakan nomor HP") ================= */}
+        {step === 'phone_input' && (
+          <div className="space-y-4">
+            <div className="text-center space-y-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#254117]">
+                Masuk/Daftar
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 font-medium">
+                Masuk untuk melakukan pemesanan
+              </p>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-[#ffecf2] text-[#cd6184] flex items-center justify-center shrink-0">
+
+            {authError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSendPhoneOtp} className="space-y-4 pt-1">
+              <div>
+                <label className="block text-xs font-semibold text-[#254117] mb-1">
+                  Nomor WhatsApp / HP
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
                     <Phone className="w-4 h-4" />
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-[#cd6184] uppercase tracking-wider block">
-                      Login Pelanggan
-                    </span>
-                    <span className="text-[10px] text-[#254117]/60 font-medium">
-                      Verifikasi Cepat via WhatsApp
-                    </span>
-                  </div>
+                  <input
+                    id="input-customer-phone"
+                    type="tel"
+                    value={waPhone}
+                    onChange={(e) => setWaPhone(e.target.value)}
+                    placeholder="Contoh: 081234567890"
+                    required
+                    className="w-full pl-10 pr-4 py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
+                  />
                 </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Tanpa Sandi
-                </span>
               </div>
 
-              {authError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700 animate-in fade-in">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{authError}</span>
+              {/* Full-width pill "Kirim Kode OTP" button */}
+              <button
+                id="btn-customer-send-otp"
+                type="submit"
+                disabled={isWaLoading}
+                className="w-full py-3.5 px-5 rounded-full bg-[#254117] hover:bg-[#1c3311] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isWaLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Mengirim OTP...</span>
+                  </span>
+                ) : (
+                  <span>Kirim Kode OTP</span>
+                )}
+              </button>
+
+              {/* Small "Kembali" link */}
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthError(null);
+                    setStep('options');
+                  }}
+                  className="inline-flex items-center gap-1 text-xs text-[#254117]/70 hover:text-[#254117] font-semibold cursor-pointer py-1"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Kembali ke pilihan masuk</span>
+                </button>
+              </div>
+            </form>
+
+            <p className="text-[11px] text-gray-500 text-center leading-relaxed pt-2 px-2">
+              Dengan melanjutkan, Anda menyetujui{' '}
+              <button
+                type="button"
+                onClick={() => setLegalModal('terms')}
+                className="underline text-gray-700 hover:text-black font-semibold cursor-pointer"
+              >
+                Syarat & Ketentuan
+              </button>{' '}
+              dan{' '}
+              <button
+                type="button"
+                onClick={() => setLegalModal('privacy')}
+                className="underline text-gray-700 hover:text-black font-semibold cursor-pointer"
+              >
+                Kebijakan Privasi
+              </button>
+              .
+            </p>
+          </div>
+        )}
+
+        {/* ================= STEP 3: OTP VERIFICATION ================= */}
+        {step === 'otp' && (
+          <div className="space-y-4">
+            <div className="text-center space-y-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#254117]">
+                Verifikasi OTP
+              </h2>
+              <p className="text-xs text-gray-500">
+                Kode 6-digit dikirimkan ke WhatsApp <span className="font-bold text-[#254117]">{waPhone}</span>
+              </p>
+            </div>
+
+            {authError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            {/* Simulated WhatsApp Notification Box (stays intact) */}
+            <div className="bg-[#e7f7e9] border border-[#a2dfa7] rounded-2xl p-3.5 space-y-2 text-xs text-[#1e4620]">
+              <div className="flex items-center justify-between text-[11px] font-bold text-[#1e4620]/80">
+                <div className="flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-[#25d366]" />
+                  <span>Simulasi WhatsApp Laundrea OTP</span>
                 </div>
-              )}
+                <span className="text-[10px] text-gray-500 font-normal">Baru saja</span>
+              </div>
+              <p className="text-xs leading-relaxed">
+                Kode OTP verifikasi Laundrea Anda adalah:{' '}
+                <span className="font-mono font-bold text-sm text-[#1e4620] tracking-wider bg-white px-2 py-0.5 rounded-md border border-[#a2dfa7]">
+                  {simulatedCode}
+                </span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setOtpCode(simulatedCode)}
+                className="text-[11px] font-bold text-[#1e4620] underline hover:text-black cursor-pointer block text-left"
+              >
+                Klik untuk isi otomatis
+              </button>
+            </div>
 
-              {otpStep === 'phone' ? (
-                <form onSubmit={handleSendOtp} className="space-y-4">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold text-[#254117]">
-                      Nomor WhatsApp Anda
-                    </h2>
-                    <p className="text-xs text-[#254117]/70 mt-0.5">
-                      Kode 6-digit OTP verifikasi akan dikirimkan otomatis ke WhatsApp Anda.
-                    </p>
-                  </div>
+            <form onSubmit={handleVerifyOtp} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-[#254117] mb-1">
+                  Masukkan 6-Digit Kode OTP
+                </label>
+                <input
+                  id="input-customer-otp"
+                  type="text"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="6 digit angka"
+                  required
+                  className="w-full text-center tracking-[0.4em] font-mono text-xl py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-bold focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
+                />
+              </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-[#254117] mb-1">
-                      Nomor WhatsApp Aktif
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <input
-                        id="input-customer-phone"
-                        type="tel"
-                        value={waPhone}
-                        onChange={(e) => setWaPhone(e.target.value)}
-                        placeholder="Contoh: 081234567890"
-                        required
-                        className="w-full pl-10 pr-4 py-2.5 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
-                      />
-                    </div>
-                    <p className="text-[11px] text-[#254117]/60 mt-1.5">
-                      Nomor terdaftar langsung terhubung ke status pesanan, kupon promo, & saldo stempel loyalty Anda.
-                    </p>
-                  </div>
+              <button
+                id="btn-customer-verify-otp"
+                type="submit"
+                disabled={otpCode.length !== 6 || isWaLoading || isCheckingAccount}
+                className="w-full py-3.5 px-5 rounded-full bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isWaLoading || isCheckingAccount ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Memeriksa Akun...</span>
+                  </span>
+                ) : (
+                  <span>Verifikasi & Lanjut</span>
+                )}
+              </button>
 
+              <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthError(null);
+                    setStep('options');
+                  }}
+                  className="text-gray-500 hover:text-gray-700 underline cursor-pointer text-[11px]"
+                >
+                  Ganti metode masuk
+                </button>
+
+                {countdown > 0 ? (
+                  <span className="text-[11px] text-gray-400">
+                    Kirim ulang dalam {countdown}s
+                  </span>
+                ) : (
                   <button
-                    id="btn-customer-send-otp"
-                    type="submit"
-                    disabled={isWaLoading || !waPhone}
-                    className="w-full py-3 px-5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
+                    type="button"
+                    onClick={handleResendOtp}
+                    className="text-[#cd6184] font-bold hover:underline cursor-pointer text-[11px]"
                   >
-                    {isWaLoading ? (
-                      <span>Mengirim Kode OTP...</span>
-                    ) : (
-                      <>
-                        <span>Kirim Kode OTP WhatsApp</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
+                    Kirim Ulang OTP
                   </button>
-                </form>
+                )}
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ================= STEP 4: LENGKAPI PROFIL (New Phone Number) ================= */}
+        {step === 'register' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              {/* Back button with arrow-left and "Kembali" label at top-left of card */}
+              <button
+                type="button"
+                id="btn-back-from-register"
+                onClick={() => {
+                  setStep('phone_input');
+                  setOtpCode('');
+                  setRegName('');
+                  setRegAddress('');
+                  setAuthError(null);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#cd6184] hover:text-[#b85373] hover:bg-[#ffecf2] px-2.5 py-1 -ml-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Kembali</span>
+              </button>
+
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                Pendaftaran Baru
+              </span>
+            </div>
+
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-[#254117]">
+                Halo! Silakan Lengkapi Data Anda
+              </h2>
+              <p className="text-xs text-[#254117]/70 mt-0.5">
+                Nomor <span className="font-bold text-[#254117]">{waPhone}</span> belum terdaftar. Isi data penjemputan untuk mulai memesan.
+              </p>
+            </div>
+
+            {authError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-[#254117] mb-1">
+                  Nama Lengkap <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="input-register-name"
+                    type="text"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="Contoh: Yaya"
+                    required
+                    className="w-full pl-10 pr-4 py-2.5 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Cascading Address Selector for Lengkapi Profil */}
+              <div>
+                <CascadingAddressSelector
+                  initialCombinedAddress=""
+                  onChange={({ combinedAddress, structured, isValid }) => {
+                    setRegAddress(combinedAddress);
+                    setRegStructured(structured);
+                    setIsAddressValid(isValid);
+                  }}
+                  required
+                  idPrefix="register-addr"
+                />
+              </div>
+
+              <button
+                id="btn-customer-complete-register"
+                type="submit"
+                disabled={isWaLoading || !regName.trim() || !regAddress.trim()}
+                className="w-full py-3.5 px-5 rounded-full bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isWaLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan Akun...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>Mulai</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ================= STEP 5: SUCCESS STATE ================= */}
+        {step === 'success' && (
+          <div className="py-8 text-center space-y-3 animate-in fade-in duration-200">
+            <div className="w-16 h-16 bg-[#97a273]/20 text-[#97a273] rounded-full flex items-center justify-center mx-auto animate-bounce">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+            <h3 className="text-xl font-bold text-[#97a273]">Verifikasi Berhasil!</h3>
+            <p className="text-xs text-[#254117]/70">
+              Selamat datang di Laundrea. Melanjutkan pesanan Anda...
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Small Modal for Syarat & Ketentuan and Kebijakan Privasi */}
+      {legalModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 space-y-3.5 text-[#254117] animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+              <h3 className="text-base font-bold text-[#254117]">
+                {legalModal === 'terms' ? 'Syarat & Ketentuan' : 'Kebijakan Privasi'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setLegalModal(null)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="text-xs leading-relaxed text-[#254117]/80 space-y-2">
+              {legalModal === 'terms' ? (
+                <p>
+                  Dengan menggunakan layanan Laundrea, Anda menyetujui ketentuan penjemputan pakaian, estimasi waktu pengerjaan, standar penimbangan basah/kering, serta perawatan serat kain sesuai jenis layanan yang Anda pilih. Pembayaran dilakukan secara nontunai (QRIS/Transfer) atau COD saat serah terima.
+                </p>
               ) : (
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold text-[#254117]">
-                      Masukkan Kode Verifikasi
-                    </h2>
-                    <p className="text-xs text-[#254117]/70 mt-0.5">
-                      Kode terkirim ke WhatsApp <span className="font-bold text-[#254117]">{waPhone}</span>
-                    </p>
-                  </div>
-
-                  {/* Simulated WhatsApp Notification Box */}
-                  <div className="p-3 bg-[#ffecf2] border border-[#cd6184]/40 rounded-2xl flex items-start gap-2.5">
-                    <div className="p-1.5 bg-[#97a273] text-white rounded-lg shrink-0 mt-0.5">
-                      <MessageSquare className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex-1 text-xs">
-                      <p className="font-semibold text-[#254117]">Simulasi Pesan WhatsApp:</p>
-                      <p className="text-[#254117]/80 mt-0.5">
-                        Kode login: <span className="font-black text-[#cd6184] tracking-wider">{simulatedCode}</span>
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setOtpCode(simulatedCode)}
-                        className="mt-1 text-xs text-[#cd6184] font-bold underline hover:text-[#254117] cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        <span>Klik untuk isi otomatis ({simulatedCode})</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#254117] mb-1">
-                      6 Digit Kode OTP
-                    </label>
-                    <input
-                      id="input-login-otp"
-                      type="text"
-                      maxLength={6}
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="• • • • • •"
-                      className="w-full py-2.5 px-4 text-center tracking-[0.5em] text-xl font-black bg-[#ffecf2]/30 border border-[#cd6184]/40 rounded-xl text-[#254117] focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
-                      autoFocus
-                    />
-                    <div className="flex items-center justify-between text-xs mt-1.5 text-[#254117]/70">
-                      <span>Belum menerima?</span>
-                      {canResend ? (
-                        <button
-                          type="button"
-                          onClick={handleResendOtp}
-                          className="text-[#cd6184] font-semibold hover:underline cursor-pointer"
-                        >
-                          Kirim ulang
-                        </button>
-                      ) : (
-                        <span className="text-[#254117]/50">
-                          Kirim ulang ({countdown}s)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setOtpStep('phone')}
-                      className="w-1/3 py-2.5 px-2 rounded-xl border border-gray-200 text-[#254117] text-xs font-medium hover:bg-gray-50 transition-colors cursor-pointer"
-                    >
-                      Ganti Nomor
-                    </button>
-                    <button
-                      id="btn-customer-verify-otp"
-                      type="submit"
-                      disabled={isWaLoading || otpCode.length !== 6}
-                      className="w-2/3 py-2.5 px-4 rounded-xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      {isWaLoading ? (
-                        <span className="flex items-center gap-1.5">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>{isCheckingAccount ? 'Memeriksa Akun...' : 'Memverifikasi...'}</span>
-                        </span>
-                      ) : (
-                        <>
-                          <span>Verifikasi & Masuk</span>
-                          <CheckCircle2 className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
+                <p>
+                  Laundrea menjaga kerahasiaan data pribadi Anda, termasuk nama lengkap, nomor kontak WhatsApp, dan alamat penjemputan. Informasi ini hanya digunakan untuk keperluan operasional penjemputan, pengantaran, dan pelacakan cucian Anda, serta tidak dibagikan kepada pihak ketiga.
+                </p>
               )}
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Footer */}
-      <div className="max-w-md mx-auto w-full pb-2 text-center">
-        <span className="text-[11px] text-[#254117]/60">Laundrea v2.4</span>
-      </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setLegalModal(null)}
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#cd6184] hover:bg-[#b85373] transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

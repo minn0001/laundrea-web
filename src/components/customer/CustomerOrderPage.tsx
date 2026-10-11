@@ -24,6 +24,8 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
+import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
+import { StructuredAddressData } from '../../services/wilayahService';
 
 interface CustomerOrderPageProps {
   onOrderSuccess: (orderId: string) => void;
@@ -45,6 +47,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     customerName: loggedInName,
     customerAddress: loggedInAddress,
     customerVouchers,
+    updateCustomerProfile,
   } = useApp();
 
   // Step in checkout flow: 'select' (plan, quantity, handover, return, schedule) or 'confirm' (summary & payment)
@@ -62,6 +65,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const [customerAddress, setCustomerAddress] = useState(() => {
     return loggedInAddress || '';
   });
+  const [orderStructuredAddress, setOrderStructuredAddress] = useState<StructuredAddressData | undefined>(undefined);
   const [notes, setNotes] = useState('Pakaian katun & kemeja kerja');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qris');
 
@@ -201,6 +205,15 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
 
   const handleFinalConfirmOrder = () => {
     setIsSubmitting(true);
+    // Save structured parts and combined address to customer profile in Firestore
+    if (customerAddress) {
+      updateCustomerProfile({
+        name: customerName,
+        address: customerAddress,
+        structuredAddress: orderStructuredAddress,
+      }).catch(() => {});
+    }
+
     setTimeout(() => {
       const newOrder = createOrder({
         customerName,
@@ -216,7 +229,6 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
         handoverMethod,
         returnMethod,
         notes,
-        paymentMethod,
         voucherCode: appliedVoucher?.code,
         voucherDiscount: discountAmount,
       });
@@ -747,25 +759,21 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label htmlFor={addressInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-[#254117] flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-[#cd6184]" />
-                      <span>Alamat Lengkap (Penjemputan & Pengantaran)</span>
+                      <span>Alamat Penjemputan / Pengantaran</span>
                       <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                     </label>
                   </div>
-                  <textarea
-                    id={addressInputId}
-                    rows={2}
-                    value={customerAddress}
-                    onChange={(e) => setCustomerAddress(e.target.value)}
-                    placeholder="Nama jalan, nomor rumah/unit, patokan..."
-                    className={`w-full px-3.5 py-2 rounded-xl border text-sm font-medium focus:outline-none transition-colors ${
-                      formAttempted && !isAddressValid
-                        ? 'border-red-400 bg-red-50/20 focus:border-red-500'
-                        : 'border-gray-200 focus:border-[#cd6184]'
-                    }`}
+                  <CascadingAddressSelector
+                    initialCombinedAddress={customerAddress}
+                    onChange={({ combinedAddress, structured }) => {
+                      setCustomerAddress(combinedAddress);
+                      setOrderStructuredAddress(structured);
+                    }}
                     required
+                    idPrefix="order-pickup-addr"
                   />
                   {formAttempted && !isAddressValid && (
                     <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
@@ -943,7 +951,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               {/* Price calculation with discount summary */}
               <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-[#254117]/60 block text-[11px]">Subtotal Pesanan</span>
+                  <span className="text-[#254117]/60 block text-[11px]">Estimasi biaya (bukan harga final)</span>
                   <span className="font-bold text-[#254117]">
                     {estimatedQuantity} {selectedPlan.unit} × Rp {selectedPlan.price.toLocaleString('id-ID')}
                   </span>
@@ -1051,7 +1059,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               Konfirmasi Pesanan
             </h1>
             <p className="text-[#254117]/75 text-sm mt-1">
-              Silakan periksa ringkasan pesanan Laundrea Anda dan tentukan metode pembayaran.
+              Silakan periksa ringkasan pesanan Laundrea Anda sebelum mengirim pesanan.
             </p>
           </div>
 
@@ -1067,7 +1075,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               </div>
               <div className="text-right">
                 <span className="text-xs text-[#254117]/60 block font-medium">
-                  {appliedVoucher ? 'Total Setelah Diskon' : 'Perkiraan Total'}
+                  Estimasi biaya (bukan harga final)
                 </span>
                 <span className="text-2xl font-black text-[#97a273]">
                   Rp {finalEstimatedPrice.toLocaleString('id-ID')}
@@ -1142,65 +1150,11 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
             )}
           </div>
 
-          {/* Payment Method Selector */}
-          <div className="space-y-3">
-            <h2 className="text-base font-bold text-[#254117]">Pilih Metode Pembayaran</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('qris')}
-                className={`p-4 rounded-2xl border-2 text-left flex items-start gap-3 transition-all cursor-pointer ${
-                  paymentMethod === 'qris'
-                    ? 'border-[#cd6184] bg-[#ffecf2]'
-                    : 'border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <QrCode className="w-5 h-5 text-[#cd6184] shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-sm font-bold text-[#254117] block">QRIS E-Wallet</span>
-                  <span className="text-xs text-[#254117]/70">BCA, GoPay, OVO, ShopeePay</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('bank_transfer')}
-                className={`p-4 rounded-2xl border-2 text-left flex items-start gap-3 transition-all cursor-pointer ${
-                  paymentMethod === 'bank_transfer'
-                    ? 'border-[#cd6184] bg-[#ffecf2]'
-                    : 'border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <CreditCard className="w-5 h-5 text-[#cd6184] shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-sm font-bold text-[#254117] block">Transfer Bank</span>
-                  <span className="text-xs text-[#254117]/70">Virtual Account BCA & Mandiri</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('cod')}
-                className={`p-4 rounded-2xl border-2 text-left flex items-start gap-3 transition-all cursor-pointer ${
-                  paymentMethod === 'cod'
-                    ? 'border-[#cd6184] bg-[#ffecf2]'
-                    : 'border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <Banknote className="w-5 h-5 text-[#cd6184] shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-sm font-bold text-[#254117] block">Bayar di Tempat (COD)</span>
-                  <span className="text-xs text-[#254117]/70">Bayar tunai saat pesanan sampai</span>
-                </div>
-              </button>
-            </div>
-          </div>
-
           {/* Mandated note */}
           <div className="bg-[#ffecf2] border border-[#cd6184]/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#254117]">
             <Info className="w-4 h-4 text-[#cd6184] shrink-0 mt-0.5" />
             <p className="leading-relaxed font-medium">
-              Berat sebenarnya dan total biaya akhir akan dikonfirmasi melalui WhatsApp sebelum proses pencucian dimulai.
+              Berat sebenarnya dan total biaya akhir ditentukan setelah kurir menimbang cucian. Anda dapat memilih metode pembayaran setelah penimbangan.
             </p>
           </div>
 

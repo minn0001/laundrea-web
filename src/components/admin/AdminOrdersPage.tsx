@@ -24,7 +24,7 @@ interface AdminOrdersPageProps {
 }
 
 export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelectedOrderId }) => {
-  const { orders, couriers, assignCourier, updateOrderStatus, updateOrderPaymentStatus } = useApp();
+  const { orders, couriers, assignCourier, updateOrderStatus, updateOrderPaymentStatus, hasPermission } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -33,9 +33,9 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
     return orders.find((o) => o.id === initialSelectedOrderId) || null;
   });
 
-  // Orders awaiting payment verification from customer
+  // Requirement 6: Orders awaiting verification (Transfer and QRIS only; COD confirmed by courier directly)
   const awaitingVerificationOrders = orders.filter(
-    (o) => o.paymentStatus === 'awaiting_verification'
+    (o) => o.paymentStatus === 'awaiting_verification' && o.paymentMethod !== 'cod'
   );
 
   // Filter orders
@@ -300,11 +300,17 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleConfirmPaymentLunas(ord.id)}
+                    onClick={() => {
+                      if (!hasPermission('payment_confirm')) {
+                        alert('Akses ditolak: Anda tidak memiliki hak akses payment_confirm.');
+                        return;
+                      }
+                      handleConfirmPaymentLunas(ord.id);
+                    }}
                     className="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center gap-1 shadow-2xs cursor-pointer text-center"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Tandai Lunas</span>
+                    <span>Verifikasi & Tandai Lunas</span>
                   </button>
                 </div>
               </div>
@@ -536,21 +542,32 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
               </div>
             )}
 
-            {/* Payment Status Toggle */}
+            {/* Payment Status Toggle / Info */}
             <div className="flex items-center justify-between p-3 bg-[#ffecf2]/50 rounded-2xl border border-[#cd6184]/20">
               <div>
                 <span className="text-[11px] text-[#254117]/70 block font-medium">Status Pembayaran:</span>
                 <span className="text-xs font-bold text-[#254117] uppercase">
-                  {selectedOrder.paymentMethod} •{' '}
+                  {selectedOrder.paymentMethod ? selectedOrder.paymentMethod.toUpperCase() : 'BELUM PILIH'} •{' '}
                   {selectedOrder.paymentStatus === 'paid'
                     ? 'LUNAS'
                     : selectedOrder.paymentStatus === 'awaiting_verification'
                     ? 'MENUNGGU VERIFIKASI'
-                    : 'PENDING'}
+                    : selectedOrder.paymentStatus === 'awaiting_payment'
+                    ? 'MENUNGGU PEMBAYARAN'
+                    : 'BELUM BAYAR'}
                 </span>
+                {selectedOrder.paidTo && (
+                  <p className="text-[11px] text-emerald-800 font-bold mt-0.5">
+                    Dibayar tunai ke kurir {selectedOrder.paidTo}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => {
+                  if (!hasPermission('payment_confirm')) {
+                    alert('Akses ditolak: Anda tidak memiliki hak akses payment_confirm.');
+                    return;
+                  }
                   if (selectedOrder.paymentStatus === 'awaiting_verification') {
                     handleConfirmPaymentLunas(selectedOrder.id);
                   } else {
@@ -568,7 +585,7 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                 {selectedOrder.paymentStatus === 'paid'
                   ? '✓ Lunas'
                   : selectedOrder.paymentStatus === 'awaiting_verification'
-                  ? 'Konfirmasi Lunas'
+                  ? 'Verifikasi & Tandai Lunas'
                   : 'Tandai Lunas'}
               </button>
             </div>
@@ -606,21 +623,37 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                 Proses pencucian, pengeringan, dan penyetrikaan dikelola oleh Admin. Kurir hanya bertugas untuk antar dan jemput.
               </p>
               <div className="grid grid-cols-3 gap-1.5 text-xs">
-                {allStatuses.map((st) => (
-                  <button
-                    key={st.id}
-                    type="button"
-                    onClick={() => handleStatusChange(selectedOrder.id, st.id)}
-                    className={`py-2 px-1.5 rounded-xl font-bold uppercase text-[10px] transition-all cursor-pointer text-center ${
-                      selectedOrder.status === st.id
-                        ? 'bg-[#cd6184] text-white shadow-xs'
-                        : 'bg-gray-100 hover:bg-gray-200 text-[#254117]'
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
+                {allStatuses.map((st) => {
+                  const isProcessing = ['washing', 'drying', 'ironing', 'ready', 'delivered'].includes(st.id);
+                  const isLockedByPayment = selectedOrder.paymentFlowV2 && isProcessing && selectedOrder.paymentStatus !== 'paid';
+
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      disabled={isLockedByPayment}
+                      onClick={() => handleStatusChange(selectedOrder.id, st.id)}
+                      title={isLockedByPayment ? 'Menunggu pembayaran terverifikasi' : ''}
+                      className={`py-2 px-1.5 rounded-xl font-bold uppercase text-[10px] transition-all text-center ${
+                        selectedOrder.status === st.id
+                          ? 'bg-[#cd6184] text-white shadow-xs'
+                          : isLockedByPayment
+                          ? 'bg-gray-100 text-gray-400 opacity-60 cursor-not-allowed border border-gray-200'
+                          : 'bg-gray-100 hover:bg-gray-200 text-[#254117] cursor-pointer'
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  );
+                })}
               </div>
+
+              {selectedOrder.paymentFlowV2 && selectedOrder.paymentStatus !== 'paid' && (
+                <p className="text-[11px] font-semibold text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Menunggu pembayaran terverifikasi sebelum memulai pencucian.</span>
+                </p>
+              )}
             </div>
 
             {/* Timeline */}

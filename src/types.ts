@@ -62,12 +62,28 @@ export interface Order {
   notes?: string;
   deliveryScheduledTime?: string;
   paymentMethod?: PaymentMethod;
-  paymentStatus?: 'pending' | 'awaiting_verification' | 'paid';
+  paymentStatus?: 'not_due' | 'pending' | 'awaiting_payment' | 'awaiting_verification' | 'paid';
+  paymentFlowV2?: boolean;
+  paymentChosenAt?: string;
+  paidTo?: string;
+  paidAt?: string;
   lastUpdatedLabel?: string;
   voucherCode?: string;
   voucherTitle?: string;
   voucherDiscount?: number;
   subtotalPrice?: number;
+}
+
+export interface AppNotification {
+  id: string;
+  customerPhone: string;
+  orderId: string;
+  orderNumber: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
+  type?: 'payment_opened' | 'cash_received' | 'payment_verified' | 'status_changed';
 }
 
 export interface Courier {

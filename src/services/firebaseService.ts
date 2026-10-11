@@ -37,6 +37,15 @@ export interface CustomerFirestoreData {
   address: string;
   phone: string;
   createdAt: string;
+  province?: string;
+  provinceId?: string;
+  city?: string;
+  cityId?: string;
+  district?: string;
+  districtId?: string;
+  village?: string;
+  villageId?: string;
+  streetAddress?: string;
 }
 
 export const DEFAULT_DEMO_PHONE = '081234567890';
@@ -105,31 +114,36 @@ export async function getCustomerFromFirestore(
   await ensureSilentAuth();
 
   const customerDocRef = doc(db, 'customers', normPhone);
-  const snapshot = await getDoc(customerDocRef);
 
-  if (snapshot.exists()) {
-    const data = snapshot.data() as CustomerFirestoreData;
-    let name = data.name || '';
-    let address = data.address || '';
-    const createdAt = data.createdAt || new Date().toISOString();
+  try {
+    const snapshot = await getDoc(customerDocRef);
 
-    // Requirement: If demo number has a different name in Firestore, update it to "Yaya"
-    if (normPhone === normalizePhoneNumber(DEFAULT_DEMO_PHONE)) {
-      if (name !== DEFAULT_DEMO_NAME || address !== DEFAULT_DEMO_ADDRESS) {
-        name = DEFAULT_DEMO_NAME;
-        address = DEFAULT_DEMO_ADDRESS;
-        updateDoc(customerDocRef, { name, address }).catch((e) =>
-          console.warn('Failed updating demo account name in Firestore:', e)
-        );
+    if (snapshot.exists()) {
+      const data = snapshot.data() as CustomerFirestoreData;
+      let name = data.name || '';
+      let address = data.address || '';
+      const createdAt = data.createdAt || new Date().toISOString();
+
+      // Requirement: If demo number has a different name in Firestore, update it to "Yaya"
+      if (normPhone === normalizePhoneNumber(DEFAULT_DEMO_PHONE)) {
+        if (name !== DEFAULT_DEMO_NAME || address !== DEFAULT_DEMO_ADDRESS) {
+          name = DEFAULT_DEMO_NAME;
+          address = DEFAULT_DEMO_ADDRESS;
+          updateDoc(customerDocRef, { name, address }).catch((e) =>
+            console.warn('Failed updating demo account name in Firestore:', e)
+          );
+        }
       }
-    }
 
-    return {
-      name,
-      address,
-      phone: data.phone || normPhone,
-      createdAt,
-    };
+      return {
+        name,
+        address,
+        phone: data.phone || normPhone,
+        createdAt,
+      };
+    }
+  } catch (err) {
+    console.warn('Error reading customer doc from Firestore, checking seed customers:', err);
   }
 
   // If this phone matches any of our seed customers, auto-create it in Firestore
@@ -181,7 +195,18 @@ export async function seedSampleCustomersIfMissing(): Promise<void> {
 export async function saveCustomerToFirestore(
   phone: string,
   name: string,
-  address: string
+  address: string,
+  structuredAddress?: {
+    provinceName?: string;
+    provinceId?: string;
+    regencyName?: string;
+    regencyId?: string;
+    districtName?: string;
+    districtId?: string;
+    villageName?: string;
+    villageId?: string;
+    streetAddress?: string;
+  }
 ): Promise<CustomerFirestoreData> {
   const normPhone = normalizePhoneNumber(phone);
   if (!normPhone) {
@@ -199,6 +224,15 @@ export async function saveCustomerToFirestore(
     address: address.trim(),
     phone: phone.trim() || normPhone,
     createdAt: existingDoc && existingDoc.exists() ? (existingDoc.data()?.createdAt || nowIso) : nowIso,
+    ...(structuredAddress?.provinceName && { province: structuredAddress.provinceName }),
+    ...(structuredAddress?.provinceId && { provinceId: structuredAddress.provinceId }),
+    ...(structuredAddress?.regencyName && { city: structuredAddress.regencyName }),
+    ...(structuredAddress?.regencyId && { cityId: structuredAddress.regencyId }),
+    ...(structuredAddress?.districtName && { district: structuredAddress.districtName }),
+    ...(structuredAddress?.districtId && { districtId: structuredAddress.districtId }),
+    ...(structuredAddress?.villageName && { village: structuredAddress.villageName }),
+    ...(structuredAddress?.villageId && { villageId: structuredAddress.villageId }),
+    ...(structuredAddress?.streetAddress && { streetAddress: structuredAddress.streetAddress }),
   };
 
   await setDoc(customerDocRef, customerData);
@@ -208,7 +242,21 @@ export async function saveCustomerToFirestore(
 // Update existing customer profile in Firestore
 export async function updateCustomerInFirestore(
   phone: string,
-  fields: { name?: string; address?: string }
+  fields: {
+    name?: string;
+    address?: string;
+    structuredAddress?: {
+      provinceName?: string;
+      provinceId?: string;
+      regencyName?: string;
+      regencyId?: string;
+      districtName?: string;
+      districtId?: string;
+      villageName?: string;
+      villageId?: string;
+      streetAddress?: string;
+    };
+  }
 ): Promise<void> {
   const normPhone = normalizePhoneNumber(phone);
   if (!normPhone) return;
@@ -218,10 +266,24 @@ export async function updateCustomerInFirestore(
   const customerDocRef = doc(db, 'customers', normPhone);
   const snapshot = await getDoc(customerDocRef).catch(() => null);
 
+  const updatePayload: Record<string, string> = {};
+  if (fields.name) updatePayload.name = fields.name.trim();
+  if (fields.address) updatePayload.address = fields.address.trim();
+
+  if (fields.structuredAddress) {
+    const sa = fields.structuredAddress;
+    if (sa.provinceName) updatePayload.province = sa.provinceName;
+    if (sa.provinceId) updatePayload.provinceId = sa.provinceId;
+    if (sa.regencyName) updatePayload.city = sa.regencyName;
+    if (sa.regencyId) updatePayload.cityId = sa.regencyId;
+    if (sa.districtName) updatePayload.district = sa.districtName;
+    if (sa.districtId) updatePayload.districtId = sa.districtId;
+    if (sa.villageName) updatePayload.village = sa.villageName;
+    if (sa.villageId) updatePayload.villageId = sa.villageId;
+    if (sa.streetAddress) updatePayload.streetAddress = sa.streetAddress;
+  }
+
   if (snapshot && snapshot.exists()) {
-    const updatePayload: Record<string, string> = {};
-    if (fields.name) updatePayload.name = fields.name.trim();
-    if (fields.address) updatePayload.address = fields.address.trim();
     await updateDoc(customerDocRef, updatePayload);
   } else {
     const data: CustomerFirestoreData = {
@@ -229,6 +291,7 @@ export async function updateCustomerInFirestore(
       address: fields.address?.trim() || DEFAULT_DEMO_ADDRESS,
       phone: normPhone,
       createdAt: new Date().toISOString(),
+      ...updatePayload,
     };
     await setDoc(customerDocRef, data);
   }

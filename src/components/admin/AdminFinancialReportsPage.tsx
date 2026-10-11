@@ -38,7 +38,7 @@ export const AdminFinancialReportsPage: React.FC = () => {
 
   const getPeriodLabel = () => {
     if (dateFilter === 'today') return `Hari Ini (${todayReal})`;
-    if (dateFilter === '7days') return `7 Hari Terakhir (s.d. ${todayReal})`;
+    if (dateFilter === '7days') return `7 Hari Terakhir (sampai ${todayReal})`;
     if (dateFilter === 'month') {
       const monthNames = [
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -47,7 +47,7 @@ export const AdminFinancialReportsPage: React.FC = () => {
       const monthIdx = parseInt(todayReal.slice(5, 7), 10) - 1;
       return `Bulan ${monthNames[monthIdx] || ''} ${todayReal.slice(0, 4)}`;
     }
-    if (dateFilter === 'custom') return `${customStartDate || 'Awal'} s.d. ${customEndDate || 'Akhir'}`;
+    if (dateFilter === 'custom') return `${customStartDate || 'Awal'} sampai ${customEndDate || 'Akhir'}`;
     return 'Semua Periode';
   };
 
@@ -92,7 +92,16 @@ export const AdminFinancialReportsPage: React.FC = () => {
       const currentMonthIdx = now.getMonth();
 
       // Show 6 months ending at current calendar month
-      const monthsList: { label: string; revenue: number; cost: number; orders: number }[] = [];
+      const monthsList: {
+        key: string;
+        topLabel: string;
+        bottomLabel: string;
+        label: string;
+        revenue: number;
+        cost: number;
+        orders: number;
+      }[] = [];
+
       for (let i = 5; i >= 0; i--) {
         const mIdx = (currentMonthIdx - i + 12) % 12;
         const y = currentMonthIdx - i < 0 ? currentYear - 1 : currentYear;
@@ -105,6 +114,9 @@ export const AdminFinancialReportsPage: React.FC = () => {
           .reduce((sum, c) => sum + (c.amount || 0), 0);
 
         monthsList.push({
+          key: monthKey,
+          topLabel: monthNames[mIdx],
+          bottomLabel: `'${String(y).slice(2)}`,
           label: `${monthNames[mIdx]} '${String(y).slice(2)}`,
           revenue: rev,
           cost: cst,
@@ -114,17 +126,31 @@ export const AdminFinancialReportsPage: React.FC = () => {
       return monthsList;
     }
 
-    // Daily breakdown calculated identically for the active period filter
-    return getPeriodDailyPoints(dateFilter, filteredOrders, filteredCosts, customStartDate, customEndDate).map((p) => ({
-      label: p.dayLabel,
-      revenue: p.revenue,
-      cost: p.cost,
-      orders: p.orders,
-    }));
+    // Daily breakdown: two-line short labels under each group (weekday on top, date like "04/10" below, no parentheses)
+    return getPeriodDailyPoints(dateFilter, filteredOrders, filteredCosts, customStartDate, customEndDate).map((p) => {
+      const parts = p.dateStr.split('-');
+      const dObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const INDO_DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+      const dayName = INDO_DAYS[dObj.getDay()] || '';
+      const dayNum = parts[2];
+      const monthNum = parts[1];
+
+      return {
+        key: p.dateStr,
+        topLabel: dayName,
+        bottomLabel: `${dayNum}/${monthNum}`,
+        label: `${dayName} ${dayNum}/${monthNum}`,
+        revenue: p.revenue,
+        cost: p.cost,
+        orders: p.orders,
+      };
+    });
   };
 
   const chartData = generateRealChartData();
   const maxBarValue = Math.max(...chartData.map((d) => Math.max(d.revenue, d.cost)), 10000) * 1.15;
+
+  const [activeTooltipIdx, setActiveTooltipIdx] = useState<number | null>(null);
 
   const handleAddCost = (e: React.FormEvent) => {
     e.preventDefault();
@@ -380,7 +406,7 @@ export const AdminFinancialReportsPage: React.FC = () => {
         </div>
 
         {filteredOrders.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center p-6 text-center bg-gray-50/70 rounded-2xl border border-dashed border-gray-200">
+          <div className="h-52 sm:h-64 flex flex-col items-center justify-center p-6 text-center bg-gray-50/70 rounded-2xl border border-dashed border-gray-200">
             <BarChart3 className="w-8 h-8 text-[#254117]/30 mb-2" />
             <p className="text-sm font-bold text-[#254117]/80">Belum ada pesanan pada periode ini</p>
             <p className="text-xs text-[#254117]/50 mt-1 max-w-xs">
@@ -388,47 +414,92 @@ export const AdminFinancialReportsPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          /* Custom Responsive SVG / Bar Visualization */
-          <div className="h-64 flex items-end justify-between gap-1 sm:gap-3 pt-6 px-2 overflow-x-auto">
-            {chartData.map((bar, idx) => {
-              const revenueHeight = Math.round((bar.revenue / maxBarValue) * 100);
-              const costHeight = Math.round((bar.cost / maxBarValue) * 100);
+          /* Custom Responsive Bar Visualization (Requirement 8) */
+          <div className="w-full overflow-hidden">
+            <div className="w-full overflow-x-auto pb-2 scrollbar-thin">
+              <div className="h-[200px] sm:h-[220px] min-w-full flex items-end justify-start sm:justify-between gap-2 sm:gap-3 pt-6 px-1 border-b border-gray-200">
+                {chartData.map((bar, idx) => {
+                  const revenueHeight = bar.revenue > 0 ? Math.max(4, Math.round((bar.revenue / maxBarValue) * 100)) : 0;
+                  const costHeight = bar.cost > 0 ? Math.max(4, Math.round((bar.cost / maxBarValue) * 100)) : 0;
+                  const isHoveredOrTapped = activeTooltipIdx === idx;
 
-              return (
-                <div key={idx} className="flex-1 min-w-[28px] flex flex-col items-center gap-2 h-full justify-end group">
-                  <div className="w-full flex items-end justify-center gap-1 sm:gap-2 h-full">
-                    {/* Revenue Bar (#97a273) */}
+                  // Format short amount for mobile (e.g. "Rp 100rb")
+                  const formatShortRupiah = (val: number) => {
+                    if (val === 0) return 'Rp 0';
+                    if (val >= 1000000) return `Rp ${(val / 1000000).toFixed(1).replace('.0', '')}jt`;
+                    if (val >= 1000) return `Rp ${Math.round(val / 1000)}rb`;
+                    return `Rp ${val}`;
+                  };
+
+                  return (
                     <div
-                      style={{ height: `${revenueHeight}%` }}
-                      className="w-full max-w-[28px] bg-[#97a273] hover:bg-[#859062] rounded-t-lg transition-all relative cursor-pointer"
+                      key={bar.key || idx}
+                      onClick={() => setActiveTooltipIdx(isHoveredOrTapped ? null : idx)}
+                      className="flex-1 min-w-[44px] sm:min-w-[48px] flex flex-col items-center h-full justify-end group cursor-pointer"
                     >
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[10px] py-1 px-1.5 rounded-md whitespace-nowrap z-20 pointer-events-none shadow-md">
-                        Rp {bar.revenue.toLocaleString('id-ID')}
+                      {/* Amounts above bars or on tap */}
+                      <div className="w-full flex items-end justify-center gap-1 sm:gap-1.5 h-full relative">
+                        {/* Interactive tooltip */}
+                        <div
+                          className={`transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[9.5px] py-1 px-1.5 rounded-md whitespace-nowrap z-20 pointer-events-none shadow-md ${
+                            isHoveredOrTapped ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          }`}
+                        >
+                          Rev: {formatShortRupiah(bar.revenue)} | Cost: {formatShortRupiah(bar.cost)}
+                        </div>
+
+                        {/* Revenue Bar (#97a273) - Zero renders no bar */}
+                        {revenueHeight > 0 ? (
+                          <div
+                            style={{ height: `${revenueHeight}%` }}
+                            className="w-full max-w-[18px] sm:max-w-[24px] bg-[#97a273] hover:bg-[#859062] rounded-t-md transition-all relative flex flex-col justify-start items-center"
+                          >
+                            <span className="text-[8px] font-bold text-gray-500 absolute -top-4 whitespace-nowrap hidden sm:group-hover:inline">
+                              {formatShortRupiah(bar.revenue)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="w-full max-w-[18px] sm:max-w-[24px] h-0" />
+                        )}
+
+                        {/* Cost Bar (#cd6184) - Zero renders no bar */}
+                        {costHeight > 0 ? (
+                          <div
+                            style={{ height: `${costHeight}%` }}
+                            className="w-full max-w-[18px] sm:max-w-[24px] bg-[#cd6184] hover:bg-[#b85373] rounded-t-md transition-all relative flex flex-col justify-start items-center"
+                          >
+                            <span className="text-[8px] font-bold text-gray-500 absolute -top-4 whitespace-nowrap hidden sm:group-hover:inline">
+                              {formatShortRupiah(bar.cost)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="w-full max-w-[18px] sm:max-w-[24px] h-0" />
+                        )}
+                      </div>
+
+                      {/* Two-line short labels under each group without parens */}
+                      <div className="text-center pt-1.5 pb-1 flex flex-col items-center justify-center leading-none select-none">
+                        <span className="text-[10px] font-bold text-[#254117] block">
+                          {bar.topLabel}
+                        </span>
+                        <span className="text-[9px] font-medium text-gray-500 block mt-0.5">
+                          {bar.bottomLabel}
+                        </span>
                       </div>
                     </div>
-
-                    {/* Cost Bar (#cd6184) */}
-                    <div
-                      style={{ height: `${costHeight}%` }}
-                      className="w-full max-w-[28px] bg-[#cd6184] hover:bg-[#b85373] rounded-t-lg transition-all relative cursor-pointer"
-                    >
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 -translate-x-1/2 bg-[#254117] text-white text-[10px] py-1 px-1.5 rounded-md whitespace-nowrap z-20 pointer-events-none shadow-md">
-                        Rp {bar.cost.toLocaleString('id-ID')}
-                      </div>
-                    </div>
-                  </div>
-
-                  <span className="text-[11px] font-bold text-[#254117] mt-1 truncate">{bar.label}</span>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Chart summary caption bar with non-awkward single-line wrapping */}
-        <div className="flex flex-row items-center justify-between pt-3.5 border-t border-gray-100 text-[10px] sm:text-xs text-[#254117]/70 gap-2 overflow-hidden">
-          <span className="truncate">Periode: {getPeriodLabel()}</span>
-          <span className="text-[#cd6184] font-bold shrink-0">
+        {/* Chart summary caption bar: wrap onto separate lines without ellipsis (Requirement 8) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-3 border-t border-gray-100 text-xs text-[#254117]/80 gap-1.5 sm:gap-2">
+          <span className="font-medium text-gray-700 break-words leading-relaxed">
+            Periode: {getPeriodLabel()}
+          </span>
+          <span className="text-[#cd6184] font-bold shrink-0 text-left sm:text-right">
             {filteredOrders.length} transaksi ({timeframe === 'daily' ? 'Harian' : 'Bulanan'})
           </span>
         </div>

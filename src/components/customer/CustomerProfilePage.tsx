@@ -14,6 +14,8 @@ import {
   MessageCircle,
   ShieldCheck,
 } from 'lucide-react';
+import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
+import { StructuredAddressData } from '../../services/wilayahService';
 
 interface CustomerProfilePageProps {
   onLogoutClick: () => void;
@@ -47,6 +49,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   const [tempName, setTempName] = useState(userName);
   const [tempEmail, setTempEmail] = useState(userEmail);
   const [tempAddress, setTempAddress] = useState(userAddress);
+  const [tempStructuredAddress, setTempStructuredAddress] = useState<StructuredAddressData | undefined>(undefined);
   const [tempNotes, setTempNotes] = useState(addressNotes);
 
   // Simpan Informasi Akun (Updates Firestore via AppContext)
@@ -59,14 +62,19 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
     setActiveModal(null);
   };
 
-  // Simpan Alamat (Updates Firestore via AppContext)
+  // Simpan Alamat (Updates Firestore via AppContext with structured address)
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUserAddress(tempAddress);
-    setAddressNotes(tempNotes);
-    localStorage.setItem(`laundrea_cust_address_notes_${customerPhone}`, tempNotes);
-    await updateCustomerProfile({ address: tempAddress });
-    setActiveModal(null);
+    if (tempAddress.trim()) {
+      setUserAddress(tempAddress.trim());
+      setAddressNotes(tempNotes.trim());
+      localStorage.setItem(`laundrea_cust_address_notes_${customerPhone}`, tempNotes.trim());
+      await updateCustomerProfile({
+        address: tempAddress.trim(),
+        structuredAddress: tempStructuredAddress,
+      });
+      setActiveModal(null);
+    }
   };
 
   return (
@@ -266,7 +274,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
       {/* MODAL: Ubah Alamat */}
       {activeModal === 'address' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-[#cd6184]" />
@@ -282,18 +290,15 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
             </div>
 
             <form onSubmit={handleSaveAddress} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-[#254117] mb-1">
-                  Alamat Lengkap
-                </label>
-                <textarea
-                  rows={3}
-                  value={tempAddress}
-                  onChange={(e) => setTempAddress(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-hidden focus:border-[#cd6184] text-xs font-semibold text-[#254117]"
-                  required
-                />
-              </div>
+              <CascadingAddressSelector
+                initialCombinedAddress={tempAddress}
+                onChange={({ combinedAddress, structured }) => {
+                  setTempAddress(combinedAddress);
+                  setTempStructuredAddress(structured);
+                }}
+                required
+                idPrefix="profile-modal-addr"
+              />
 
               <div>
                 <label className="block font-bold text-[#254117] mb-1">

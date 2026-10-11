@@ -34,6 +34,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
   onGoToProfile,
 }) => {
   const {
+    isCustomerVerified,
     customerPhone,
     customerName,
     customerAddress,
@@ -49,7 +50,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
 
   // Filter customer-specific orders
   const myOrders = orders.filter((o) => {
-    if (!customerPhone) return false;
+    if (!customerPhone || !isCustomerVerified) return false;
     let cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
     if (cleanOrderPhone.startsWith('62')) cleanOrderPhone = '0' + cleanOrderPhone.slice(2);
     let normCust = customerPhone.replace(/\D/g, '');
@@ -63,7 +64,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
     myOrders.find((o) => o.status !== 'delivered') ||
     myOrders[0];
 
-  const hasActiveOrder = activeOrder && activeOrder.status !== 'delivered';
+  const hasActiveOrder = isCustomerVerified && activeOrder && activeOrder.status !== 'delivered';
 
   const services: {
     id: PlanType;
@@ -114,7 +115,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
   return (
     <div id="customer-home-page" className="w-full space-y-4">
       {/* Top Greeting & Location Header */}
-      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#ffecf2] shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3 overflow-hidden">
+      <div className={`bg-white p-4 sm:p-5 rounded-3xl border border-[#ffecf2] shadow-xs flex flex-col ${isCustomerVerified ? 'md:flex-row md:items-center md:justify-between' : ''} gap-3 overflow-hidden`}>
         <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto min-w-0">
           <div className="flex items-center gap-3 min-w-0">
             <div
@@ -122,11 +123,11 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
               className="w-11 h-11 rounded-full bg-[#ffecf2] border-2 border-[#cd6184]/40 flex items-center justify-center font-black text-[#cd6184] text-sm shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
               title="Buka Profil"
             >
-              {userName.charAt(0).toUpperCase()}
+              {isCustomerVerified ? userName.charAt(0).toUpperCase() : 'L'}
             </div>
             <div className="min-w-0">
               <h1 className="text-base sm:text-lg font-black text-gray-900 leading-tight truncate">
-                Halo, {userName}! 👋
+                {isCustomerVerified ? `Halo, ${userName}! 👋` : 'Halo! Selamat datang di Laundrea 👋'}
               </h1>
               <p className="text-[11px] text-gray-500 font-medium">
                 Mau cuci pakaian apa hari ini?
@@ -144,32 +145,34 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
           </button>
         </div>
 
-        {/* Address Chip */}
-        <div className="w-full min-w-0 max-w-full md:w-auto">
-          <div
-            id="card-customer-address-chip"
-            onClick={onGoToProfile}
-            className="w-full min-w-0 max-w-full md:w-80 flex items-start sm:items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-left text-xs box-border overflow-hidden"
-            title="Ubah Alamat di Profil"
-          >
-            <div className="w-7 h-7 rounded-xl bg-[#ffecf2] flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-              <MapPin className="w-3.5 h-3.5 text-[#cd6184] shrink-0" />
+        {/* Address Chip (Hidden for guests) */}
+        {isCustomerVerified && (
+          <div className="w-full min-w-0 max-w-full md:w-auto">
+            <div
+              id="card-customer-address-chip"
+              onClick={onGoToProfile}
+              className="w-full min-w-0 max-w-full md:w-80 flex items-start sm:items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-left text-xs box-border overflow-hidden"
+              title="Ubah Alamat di Profil"
+            >
+              <div className="w-7 h-7 rounded-xl bg-[#ffecf2] flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+                <MapPin className="w-3.5 h-3.5 text-[#cd6184] shrink-0" />
+              </div>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <span className="text-[10px] text-gray-400 block font-semibold leading-tight mb-0.5">
+                  Alamat Penjemputan:
+                </span>
+                <p className="text-xs font-medium text-gray-800 break-words [overflow-wrap:anywhere] [word-break:break-word] line-clamp-2 leading-snug">
+                  {userAddress}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 mt-1 sm:mt-0" />
             </div>
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <span className="text-[10px] text-gray-400 block font-semibold leading-tight mb-0.5">
-                Alamat Penjemputan:
-              </span>
-              <p className="text-xs font-medium text-gray-800 break-words [overflow-wrap:anywhere] [word-break:break-word] line-clamp-2 leading-snug">
-                {userAddress}
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 mt-1 sm:mt-0" />
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Active Order Card (If any order exists and is active) */}
-      {hasActiveOrder && (
+      {/* Active Order Card (Hidden for guests) */}
+      {isCustomerVerified && hasActiveOrder && (
         <div className="bg-gradient-to-r from-[#254117] to-[#1c3311] rounded-3xl p-4 text-white shadow-md space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -238,7 +241,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
               className="flex-1 py-3 px-4 rounded-2xl bg-white hover:bg-gray-50 text-[#254117] font-bold text-xs border border-gray-200 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <Clock className="w-3.5 h-3.5 text-[#cd6184]" />
-              <span>Riwayat Pesanan ({orders.length})</span>
+              <span>{isCustomerVerified ? `Riwayat Pesanan (${myOrders.length})` : 'Riwayat Pesanan'}</span>
             </button>
           </div>
         </div>
@@ -305,10 +308,40 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
         </div>
       </div>
 
-      {/* Loyalty Stamp Teaser & 3-Step Simple How It Works in 2-column grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Loyalty Stamp Teaser (Hidden for guests) & 3-Step Simple How It Works in 2-column grid */}
+      <div className={`grid grid-cols-1 ${isCustomerVerified ? 'md:grid-cols-2' : ''} gap-4`}>
         {/* Loyalty Stamp Teaser */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#ffecf2] shadow-xs space-y-3 flex flex-col justify-between">
+        {isCustomerVerified && (
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#ffecf2] shadow-xs space-y-3 flex flex-col justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#ffecf2] text-[#cd6184] flex items-center justify-center shrink-0">
+                <Award className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-xs text-gray-900">Kartu Cap & Loyalty</h4>
+                  <span className="text-[11px] font-black text-[#cd6184] bg-[#ffecf2] px-2 py-0.5 rounded-md">
+                    {filledStamps} / 10 Cap
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                  Kumpulkan 10 cap untuk 1x cuci gratis 3 kg!
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onGoToLoyalty}
+              className="w-full py-2.5 px-3 rounded-xl text-xs font-bold text-[#cd6184] bg-[#ffecf2] hover:bg-[#ffecf2]/80 transition-colors cursor-pointer text-center"
+            >
+              Lihat Hadiah Cap →
+            </button>
+          </div>
+        )}
+
+        {/* 3-Step Simple How It Works */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs space-y-3 flex flex-col justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#ffecf2] text-[#cd6184] flex items-center justify-center shrink-0">
               <Award className="w-5 h-5" />

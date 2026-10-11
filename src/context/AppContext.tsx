@@ -16,6 +16,7 @@ import {
   SystemUser,
   SystemRole,
   PermissionItem,
+  AppNotification,
 } from '../types';
 import {
   INITIAL_PLANS,
@@ -39,6 +40,38 @@ import {
   DEFAULT_DEMO_ADDRESS,
   seedSampleCustomersIfMissing,
 } from '../services/firebaseService';
+import {
+  seedFirestoreCollectionsIfEmpty,
+  subscribeToOrders,
+  saveOrderToFirestore,
+  updateOrderInFirestore,
+  subscribeToCouriers,
+  saveCourierToFirestore,
+  updateCourierInFirestore,
+  subscribeToPlans,
+  updatePlanInFirestore,
+  subscribeToPromos,
+  savePromoToFirestore,
+  updatePromoInFirestore,
+  subscribeToOperationalCosts,
+  saveOperationalCostToFirestore,
+  subscribeToSystemUsers,
+  saveSystemUserToFirestore,
+  updateSystemUserInFirestore,
+  deleteSystemUserFromFirestore,
+  subscribeToSystemRoles,
+  saveSystemRoleToFirestore,
+  updateSystemRoleInFirestore,
+  subscribeToStampHistory,
+  saveStampHistoryItem,
+  subscribeToCustomerVouchers,
+  saveCustomerVoucher,
+  updateCustomerVoucherInFirestore,
+  subscribeToNotifications,
+  sendOrUpdateNotification,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from '../services/firebaseRealtimeService';
 
 interface AppContextType {
   role: Role;
@@ -50,7 +83,11 @@ interface AppContextType {
   customerAddress: string;
   activeCustomerOrderId: string | null;
   verifyCustomer: (phone: string, profileData?: { name?: string; address?: string }) => void;
-  updateCustomerProfile: (data: { name?: string; address?: string }) => Promise<void>;
+  updateCustomerProfile: (data: {
+    name?: string;
+    address?: string;
+    structuredAddress?: any;
+  }) => Promise<void>;
   logoutCustomer: () => void;
   setActiveCustomerOrderId: (id: string | null) => void;
   // Courier Auth
@@ -74,6 +111,9 @@ interface AppContextType {
   systemUsers: SystemUser[];
   systemRoles: SystemRole[];
   systemPermissions: PermissionItem[];
+  hasPermission: (permissionId: string) => boolean;
+  currentStaffRole: SystemRole | null;
+  currentStaffUser: SystemUser | null;
   addSystemUser: (user: Omit<SystemUser, 'id' | 'createdAt'>) => void;
   updateSystemUser: (id: string, user: Partial<SystemUser>) => void;
   toggleSystemUserStatus: (id: string) => void;
@@ -89,6 +129,15 @@ interface AppContextType {
   addTestStamp: () => void;
   markVoucherAsUsed: (code: string, orderNumber: string) => void;
   redeemFreeWash: () => boolean;
+  // Notifications
+  notifications: AppNotification[];
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  newNotificationToast: AppNotification | null;
+  dismissToast: () => void;
+  // Connection state
+  isFirestoreLoading: boolean;
+  firestoreError: string | null;
   // Actions
   createOrder: (data: {
     customerName: string;
@@ -101,7 +150,6 @@ interface AppContextType {
     handoverMethod?: HandoverMethod;
     returnMethod?: ReturnMethod;
     notes?: string;
-    paymentMethod: PaymentMethod;
     voucherCode?: string;
     voucherDiscount?: number;
   }) => Order;
@@ -109,8 +157,10 @@ interface AppContextType {
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void;
   updateOrderPaymentStatus: (
     orderId: string,
-    paymentStatus: 'pending' | 'awaiting_verification' | 'paid'
+    paymentStatus: 'not_due' | 'pending' | 'awaiting_payment' | 'awaiting_verification' | 'paid'
   ) => void;
+  choosePaymentMethod: (orderId: string, method: PaymentMethod) => void;
+  confirmCodCashReceived: (orderId: string) => void;
   assignCourier: (orderId: string, courierId: string) => void;
   addCourier: (data: { name: string; phone: string; email?: string; vehicle?: string }) => void;
   toggleCourierStatus: (courierId: string) => void;
@@ -162,218 +212,231 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('laundrea_admin_user') || 'owner_laundrea';
   });
 
-  // Fresh initial load: ensure user sees the role selection screen on first arrival
-  useEffect(() => {
-    if (!localStorage.getItem('laundrea_role_auth_v2')) {
-      localStorage.setItem('laundrea_role_auth_v2', 'true');
-      setIsCustomerVerified(false);
-      setIsCourierLoggedIn(false);
-      setIsAdminLoggedIn(false);
-      localStorage.setItem('laundrea_cust_verified', 'false');
-      localStorage.setItem('laundrea_courier_logged_in', 'false');
-      localStorage.setItem('laundrea_admin_logged_in', 'false');
-      localStorage.removeItem('laundrea_current_role');
-    }
-    // Clean up old legacy keys so devices cleanly adopt phone-isolated and Firestore data
-    localStorage.removeItem('laundrea_orders');
-    localStorage.removeItem('laundrea_orders_v2');
-    localStorage.removeItem('laundrea_orders_v3');
-    localStorage.removeItem('laundrea_orders_v4');
-    localStorage.removeItem('laundrea_customers');
-    localStorage.removeItem('laundrea_customers_v2');
-    localStorage.removeItem('laundrea_customers_v3');
-    localStorage.removeItem('laundrea_customers_v4');
-    localStorage.removeItem('laundrea_cust_name');
-    localStorage.removeItem('laundrea_cust_name_v2');
-    localStorage.removeItem('laundrea_cust_name_v3');
-    localStorage.removeItem('laundrea_cust_name_v4');
-    localStorage.removeItem('laundrea_cust_address');
-    localStorage.removeItem('laundrea_cust_address_v2');
-    localStorage.removeItem('laundrea_cust_address_v3');
-    localStorage.removeItem('laundrea_cust_address_v4');
+  // Real-time Firestore driven states (No localStorage persistence for shared data)
+  const [plans, setPlans] = useState<Plan[]>(INITIAL_PLANS);
+  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [couriers, setCouriers] = useState<Courier[]>(INITIAL_COURIERS);
+  const [customers, setCustomers] = useState<CustomerProfile[]>(INITIAL_CUSTOMERS);
+  const [promos, setPromos] = useState<PromoCode[]>(INITIAL_PROMOS);
+  const [operationalCosts, setOperationalCosts] = useState<OperationalCostItem[]>(INITIAL_OPERATIONAL_COSTS);
+  const [systemUsers, setSystemUsers] = useState<SystemUser[]>(INITIAL_SYSTEM_USERS);
+  const [systemRoles, setSystemRoles] = useState<SystemRole[]>(INITIAL_SYSTEM_ROLES);
+  const [systemPermissions] = useState<PermissionItem[]>(INITIAL_SYSTEM_PERMISSIONS);
+  const [stampHistory, setStampHistory] = useState<StampHistoryItem[]>(INITIAL_STAMP_HISTORY);
+  const [customerVouchers, setCustomerVouchers] = useState<CustomerVoucher[]>(INITIAL_CUSTOMER_VOUCHERS);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-    // Make the sample customers real accounts in Firestore on app boot
+  const [isFirestoreLoading, setIsFirestoreLoading] = useState<boolean>(true);
+  const [firestoreError, setFirestoreError] = useState<string | null>(null);
+  const [newNotificationToast, setNewNotificationToast] = useState<AppNotification | null>(null);
+
+  // Clean old localStorage keys on load as instructed
+  useEffect(() => {
+    const keysToRemove = [
+      'laundrea_plans',
+      'laundrea_orders',
+      'laundrea_orders_v2',
+      'laundrea_orders_v3',
+      'laundrea_orders_v4',
+      'laundrea_orders_v5',
+      'laundrea_couriers',
+      'laundrea_couriers_v2',
+      'laundrea_customers',
+      'laundrea_customers_v2',
+      'laundrea_customers_v3',
+      'laundrea_customers_v4',
+      'laundrea_customers_v5',
+      'laundrea_promos',
+      'laundrea_costs',
+      'laundrea_system_users',
+      'laundrea_system_users_v2',
+      'laundrea_system_users_v3',
+      'laundrea_system_roles',
+      'laundrea_system_roles_v2',
+      'laundrea_stamps_count',
+      'laundrea_stamps_count_v2',
+      'laundrea_stamps_count_v3',
+      'laundrea_stamp_history',
+      'laundrea_stamp_history_v2',
+      'laundrea_stamp_history_v3',
+    ];
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+
+    // Clear legacy stamp & voucher keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('laundrea_stamp_history_v4_') || key.startsWith('laundrea_customer_vouchers_v4_'))) {
+        localStorage.removeItem(key);
+      }
+    }
+  }, []);
+
+  // Initialize and Seed Firestore collections
+  useEffect(() => {
+    seedFirestoreCollectionsIfEmpty().catch((err) => {
+      console.warn('Seeding firestore error:', err);
+    });
     seedSampleCustomersIfMissing().catch(() => {});
   }, []);
 
-  // Helper to ensure plan text is in Indonesian if old cached English exists
-  const translatePlanIfEnglish = (p: Plan): Plan => {
-    let turnaround = p.turnaroundTime;
-    if (turnaround === 'Ready in 2 days') turnaround = 'Siap dalam 2 hari';
-    if (turnaround === 'Ready same day') turnaround = 'Siap di hari yang sama';
-    if (turnaround === 'Ready in 2×24 hours') turnaround = 'Siap dalam 2×24 jam';
+  // Listeners for all shared datasets
+  useEffect(() => {
+    setIsFirestoreLoading(true);
+    setFirestoreError(null);
 
-    const features = p.features.map((f) => {
-      if (f === 'Wash + dry + fold') return 'Cuci + keringkan + lipat';
-      if (f === 'Eco-friendly detergent') return 'Deterjen ramah lingkungan';
-      if (f === 'Free pickup & delivery') return 'Antar-jemput gratis';
-      if (f === 'Min. order 3 kg') return 'Min. pemesanan 3 kg';
-      if (f === 'Priority queue') return 'Antrean prioritas pengerjaan';
-      if (f === 'Jackets, suits, dresses, rugs') return 'Jaket, jas, gaun, karpet';
-      if (f === 'Special item care') return 'Perawatan serat kain khusus';
-      if (f === 'Price estimate before processing') return 'Estimasi biaya sebelum proses cuci';
-      return f;
-    });
+    const unsubs: (() => void)[] = [];
 
-    return { ...p, turnaroundTime: turnaround, features };
-  };
-
-  // Main datasets with local storage persistence
-  const [plans, setPlans] = useState<Plan[]>(() => {
-    const saved = localStorage.getItem('laundrea_plans');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(translatePlanIfEnglish);
+    // 1. Orders
+    unsubs.push(
+      subscribeToOrders(
+        (data) => {
+          if (data && data.length > 0) setOrders(data);
+          setIsFirestoreLoading(false);
+        },
+        (err) => {
+          console.error('Firestore orders listener error:', err);
+          setFirestoreError('Tidak dapat terhubung ke server database Firestore. Silakan periksa koneksi internet Anda.');
+          setIsFirestoreLoading(false);
         }
-      } catch {
-        // fallback
-      }
-    }
-    return INITIAL_PLANS;
-  });
+      )
+    );
 
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('laundrea_orders_v5');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
-  });
+    // 2. Couriers
+    unsubs.push(
+      subscribeToCouriers((data) => {
+        if (data && data.length > 0) setCouriers(data);
+      })
+    );
 
-  const [couriers, setCouriers] = useState<Courier[]>(() => {
-    const saved = localStorage.getItem('laundrea_couriers_v2');
-    if (!saved) {
-      localStorage.removeItem('laundrea_couriers');
-      return INITIAL_COURIERS;
-    }
-    try {
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_COURIERS;
-      return parsed;
-    } catch {
-      return INITIAL_COURIERS;
-    }
-  });
+    // 3. Plans
+    unsubs.push(
+      subscribeToPlans((data) => {
+        if (data && data.length > 0) setPlans(data);
+      })
+    );
 
-  const [customers, setCustomers] = useState<CustomerProfile[]>(() => {
-    const saved = localStorage.getItem('laundrea_customers_v5');
-    return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
-  });
+    // 4. Promos
+    unsubs.push(
+      subscribeToPromos((data) => {
+        if (data) setPromos(data);
+      })
+    );
 
-  const [promos, setPromos] = useState<PromoCode[]>(() => {
-    const saved = localStorage.getItem('laundrea_promos');
-    return saved ? JSON.parse(saved) : INITIAL_PROMOS;
-  });
+    // 5. Operational Costs
+    unsubs.push(
+      subscribeToOperationalCosts((data) => {
+        if (data) setOperationalCosts(data);
+      })
+    );
 
-  const [operationalCosts, setOperationalCosts] = useState<OperationalCostItem[]>(() => {
-    const saved = localStorage.getItem('laundrea_costs');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((c: OperationalCostItem) => {
-            let cat = c.category;
-            if (cat === 'Detergent & Softener Eco-Friendly') cat = 'Deterjen & Pelembut Ramah Lingkungan';
-            if (cat === 'Fuel & Courier Operational Stipend') cat = 'Bahan Bakar & Tunjangan Kurir';
-            if (cat === 'Water & Electricity Utility') cat = 'Listrik & Air Gerai';
-            if (cat === 'Eco Packaging & Garment Covers') cat = 'Kemasan Ramah Lingkungan & Hanger';
-            return { ...c, category: cat };
-          });
+    // 6. System Users
+    unsubs.push(
+      subscribeToSystemUsers((data) => {
+        if (data && data.length > 0) setSystemUsers(data);
+      })
+    );
+
+    // 7. System Roles
+    unsubs.push(
+      subscribeToSystemRoles((data) => {
+        if (data && data.length > 0) setSystemRoles(data);
+      })
+    );
+
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, []);
+
+  // Real-time listeners for Customer-isolated data (stampHistory, customerVouchers, notifications)
+  useEffect(() => {
+    if (!customerPhone) return;
+    const unsubs: (() => void)[] = [];
+
+    unsubs.push(
+      subscribeToStampHistory(customerPhone, (data) => {
+        setStampHistory(data);
+      })
+    );
+
+    unsubs.push(
+      subscribeToCustomerVouchers(customerPhone, (data) => {
+        setCustomerVouchers(data);
+      })
+    );
+
+    let initialNotifsLoaded = false;
+    unsubs.push(
+      subscribeToNotifications(customerPhone, (data) => {
+        if (initialNotifsLoaded) {
+          // Detect newly arrived notification
+          const latest = data[0];
+          if (latest && !latest.read) {
+            setNewNotificationToast(latest);
+            setTimeout(() => setNewNotificationToast(null), 5000);
+          }
+        } else {
+          initialNotifsLoaded = true;
         }
-      } catch {
-        // fallback
-      }
-    }
-    return INITIAL_OPERATIONAL_COSTS;
-  });
+        setNotifications(data);
+      })
+    );
 
-  // System Management State (Admin & Courier accounts only: 1 Super Admin, 2 Admin Kasir/Operasional, 2 Kurir)
-  const [systemUsers, setSystemUsers] = useState<SystemUser[]>(() => {
-    const saved = localStorage.getItem('laundrea_system_users_v3');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch {
-        // fallback to INITIAL_SYSTEM_USERS
-      }
-    }
-    localStorage.removeItem('laundrea_system_users');
-    localStorage.removeItem('laundrea_system_users_v2');
-    return INITIAL_SYSTEM_USERS;
-  });
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, [customerPhone]);
 
-  const [systemRoles, setSystemRoles] = useState<SystemRole[]>(() => {
-    const saved = localStorage.getItem('laundrea_system_roles_v2');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === 3) {
-          return parsed;
-        }
-      } catch {
-        // fallback to INITIAL_SYSTEM_ROLES
-      }
-    }
-    localStorage.removeItem('laundrea_system_roles');
-    return INITIAL_SYSTEM_ROLES;
-  });
-
-  const [systemPermissions] = useState<PermissionItem[]>(INITIAL_SYSTEM_PERMISSIONS);
-
-  // Stamps Loyalty State (isolated per customer phone)
-  const getStampStorageKey = (phone: string) => {
-    const norm = normalizePhoneNumber(phone) || 'default';
-    return `laundrea_stamp_history_v4_${norm}`;
-  };
-
-  const getVoucherStorageKey = (phone: string) => {
-    const norm = normalizePhoneNumber(phone) || 'default';
-    return `laundrea_customer_vouchers_v4_${norm}`;
-  };
-
-  const [stampHistory, setStampHistory] = useState<StampHistoryItem[]>(() => {
-    const norm = normalizePhoneNumber(customerPhone);
-    const key = getStampStorageKey(customerPhone);
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        // fallback
-      }
-    }
-    // Only the demo phone starts with seed history; new numbers start with empty history
-    if (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE)) {
-      return INITIAL_STAMP_HISTORY;
-    }
-    return [];
-  });
-
-  // Stamp balance derived directly from stampHistory (sum of all pointsChange values)
+  // Derived stamp balance
   const stampsCount = stampHistory.reduce((sum, item) => sum + (item.pointsChange || 0), 0);
 
-  // Customer Vouchers State (isolated per customer phone)
-  const [customerVouchers, setCustomerVouchers] = useState<CustomerVoucher[]>(() => {
-    const norm = normalizePhoneNumber(customerPhone);
-    const key = getVoucherStorageKey(customerPhone);
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        // fallback
-      }
-    }
-    // Only the demo phone starts with seed vouchers; new numbers start with empty vouchers
-    if (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE)) {
-      return INITIAL_CUSTOMER_VOUCHERS;
-    }
-    return [];
-  });
+  // Staff User & Live Permission Resolution
+  const activeUsername = role === 'admin' ? adminUsername : courierUsername;
+  const currentStaffUser = systemUsers.find((u) => u.username === activeUsername) || null;
+  const currentStaffRole =
+    (currentStaffUser && systemRoles.find((r) => r.id === currentStaffUser.roleId)) || null;
 
-  // Persist customer profile and auth state
+  const hasPermission = (permissionId: string): boolean => {
+    if (!currentStaffRole) {
+      // Fallback for default super admin owner
+      if (role === 'admin' && adminUsername === 'owner_laundrea') return true;
+      if (role === 'courier') {
+        return ['courier_task_access', 'orders_view', 'orders_weigh', 'courier_handover_update'].includes(
+          permissionId
+        );
+      }
+      return false;
+    }
+    return currentStaffRole.permissions.includes(permissionId);
+  };
+
+  // Automated 10-second payment detection loop across any active client (idempotent)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      orders.forEach((ord) => {
+        if (
+          ord.paymentChosenAt &&
+          (ord.paymentMethod === 'bank_transfer' || ord.paymentMethod === 'qris') &&
+          ord.paymentStatus !== 'awaiting_verification' &&
+          ord.paymentStatus !== 'paid'
+        ) {
+          const chosenTime = new Date(ord.paymentChosenAt).getTime();
+          if (now - chosenTime >= 10000) {
+            // Transition idempotently to awaiting_verification
+            updateOrderInFirestore(ord.id, {
+              paymentStatus: 'awaiting_verification',
+              lastUpdatedLabel: 'Pembayaran terdeteksi otomatis',
+            }).catch(() => {});
+          }
+        }
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [orders]);
+
+  // Per-device local storage persistence (Only login sessions and phone identity)
   useEffect(() => {
     localStorage.setItem('laundrea_cust_verified', String(isCustomerVerified));
     localStorage.setItem('laundrea_cust_phone', customerPhone);
@@ -394,49 +457,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('laundrea_admin_user', adminUsername);
   }, [isAdminLoggedIn, adminUsername]);
 
-  useEffect(() => {
-    localStorage.setItem('laundrea_plans', JSON.stringify(plans));
-  }, [plans]);
-
-  useEffect(() => {
-    localStorage.setItem('laundrea_orders_v5', JSON.stringify(orders));
-  }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('laundrea_couriers_v2', JSON.stringify(couriers));
-  }, [couriers]);
-
-  useEffect(() => {
-    localStorage.setItem('laundrea_customers_v5', JSON.stringify(customers));
-  }, [customers]);
-
-  useEffect(() => {
-    localStorage.setItem('laundrea_promos', JSON.stringify(promos));
-  }, [promos]);
-
-  useEffect(() => {
-    localStorage.setItem('laundrea_costs', JSON.stringify(operationalCosts));
-  }, [operationalCosts]);
-
-  useEffect(() => {
-    const key = getStampStorageKey(customerPhone);
-    localStorage.setItem(key, JSON.stringify(stampHistory));
-  }, [customerPhone, stampHistory]);
-
-  useEffect(() => {
-    const key = getVoucherStorageKey(customerPhone);
-    localStorage.setItem(key, JSON.stringify(customerVouchers));
-  }, [customerPhone, customerVouchers]);
-
-  useEffect(() => {
-    localStorage.setItem('laundrea_system_users_v3', JSON.stringify(systemUsers));
-  }, [systemUsers]);
-
-  useEffect(() => {
-    localStorage.setItem('laundrea_system_roles_v2', JSON.stringify(systemRoles));
-  }, [systemRoles]);
-
-  // Actions
+  // Auth Functions
   const verifyCustomer = (
     phone: string,
     profileData?: { name?: string; address?: string }
@@ -446,37 +467,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCustomerPhone(phone);
 
     const norm = normalizePhoneNumber(phone);
-    const finalName = profileData?.name?.trim() || (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? DEFAULT_DEMO_NAME : 'Pelanggan Laundrea');
-    const finalAddress = profileData?.address?.trim() || (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? DEFAULT_DEMO_ADDRESS : '');
+    const finalName =
+      profileData?.name?.trim() ||
+      (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? DEFAULT_DEMO_NAME : 'Pelanggan Laundrea');
+    const finalAddress =
+      profileData?.address?.trim() ||
+      (norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? DEFAULT_DEMO_ADDRESS : '');
 
     setCustomerName(finalName);
     setCustomerAddress(finalAddress);
-
-    // Load stamp history for this phone
-    const stampKey = getStampStorageKey(phone);
-    const savedStamps = localStorage.getItem(stampKey);
-    if (savedStamps) {
-      try {
-        setStampHistory(JSON.parse(savedStamps));
-      } catch {
-        setStampHistory(norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? INITIAL_STAMP_HISTORY : []);
-      }
-    } else {
-      setStampHistory(norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? INITIAL_STAMP_HISTORY : []);
-    }
-
-    // Load vouchers for this phone
-    const voucherKey = getVoucherStorageKey(phone);
-    const savedVouchers = localStorage.getItem(voucherKey);
-    if (savedVouchers) {
-      try {
-        setCustomerVouchers(JSON.parse(savedVouchers));
-      } catch {
-        setCustomerVouchers(norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? INITIAL_CUSTOMER_VOUCHERS : []);
-      }
-    } else {
-      setCustomerVouchers(norm === normalizePhoneNumber(DEFAULT_DEMO_PHONE) ? INITIAL_CUSTOMER_VOUCHERS : []);
-    }
 
     localStorage.setItem('laundrea_cust_verified', 'true');
     localStorage.setItem('laundrea_cust_phone', phone);
@@ -493,26 +492,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateCustomerProfile = async (data: { name?: string; address?: string }) => {
+  const updateCustomerProfile = async (data: {
+    name?: string;
+    address?: string;
+    structuredAddress?: any;
+  }) => {
     if (data.name) setCustomerName(data.name.trim());
     if (data.address) setCustomerAddress(data.address.trim());
     if (data.name) localStorage.setItem('laundrea_cust_name_v5', data.name.trim());
     if (data.address) localStorage.setItem('laundrea_cust_address_v5', data.address.trim());
 
-    // Update customers list in local state as well
-    setCustomers((prev) =>
-      prev.map((c) =>
-        normalizePhoneNumber(c.phone) === normalizePhoneNumber(customerPhone)
-          ? {
-              ...c,
-              name: data.name?.trim() || c.name,
-              address: data.address?.trim() || c.address,
-            }
-          : c
-      )
-    );
-
-    // Save to Firestore as source of truth
     try {
       await updateCustomerInFirestore(customerPhone, data);
     } catch (err) {
@@ -592,6 +581,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Loyalty Mutations
   const claimLoyaltyVoucher = (): CustomerVoucher | null => {
     if (stampsCount < 10) return null;
     const now = new Date();
@@ -610,7 +600,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: dateStr,
     };
 
-    setCustomerVouchers((prev) => [newVoucher, ...prev]);
+    saveCustomerVoucher(customerPhone, newVoucher).catch(() => {});
 
     const newItem: StampHistoryItem = {
       id: `stmp-${Date.now()}`,
@@ -619,7 +609,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: `Klaim Voucher Cuci Gratis (Kode: ${newVoucher.code})`,
       pointsChange: -10,
     };
-    setStampHistory((prev) => [newItem, ...prev]);
+    saveStampHistoryItem(customerPhone, newItem).catch(() => {});
 
     return newVoucher;
   };
@@ -633,17 +623,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: 'Bonus Stempel Loyalitas (+1 Stempel)',
       pointsChange: 1,
     };
-    setStampHistory((prev) => [newItem, ...prev]);
+    saveStampHistoryItem(customerPhone, newItem).catch(() => {});
   };
 
   const markVoucherAsUsed = (code: string, orderNumber: string) => {
-    setCustomerVouchers((prev) =>
-      prev.map((v) =>
-        v.code.toUpperCase() === code.toUpperCase()
-          ? { ...v, isUsed: true, usedAtOrderNumber: orderNumber }
-          : v
-      )
-    );
+    const found = customerVouchers.find((v) => v.code.toUpperCase() === code.toUpperCase());
+    if (found) {
+      updateCustomerVoucherInFirestore(found.id, {
+        isUsed: true,
+        usedAtOrderNumber: orderNumber,
+      }).catch(() => {});
+    }
   };
 
   const redeemFreeWash = (): boolean => {
@@ -651,6 +641,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return claimed !== null;
   };
 
+  // Notification actions
+  const markNotificationRead = (id: string) => {
+    markNotificationAsRead(id).catch(() => {});
+  };
+
+  const markAllNotificationsRead = () => {
+    markAllNotificationsAsRead(customerPhone).catch(() => {});
+  };
+
+  const dismissToast = () => {
+    setNewNotificationToast(null);
+  };
+
+  // Orders Mutations (Requirement 1, 2, 3, 4, 5, 6, 7)
   const createOrder = (data: {
     customerName: string;
     customerPhone: string;
@@ -662,14 +666,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     handoverMethod?: HandoverMethod;
     returnMethod?: ReturnMethod;
     notes?: string;
-    paymentMethod: PaymentMethod;
     voucherCode?: string;
     voucherDiscount?: number;
   }): Order => {
     const selectedPlan = plans.find((p) => p.id === data.planId) || plans[0];
     const unitPrice = selectedPlan.price;
     const subtotalPrice = unitPrice * data.estimatedQuantity;
-    const discount = data.voucherDiscount && data.voucherDiscount > 0 ? Math.min(data.voucherDiscount, subtotalPrice) : 0;
+    const discount =
+      data.voucherDiscount && data.voucherDiscount > 0
+        ? Math.min(data.voucherDiscount, subtotalPrice)
+        : 0;
     const estimatedPrice = Math.max(0, subtotalPrice - discount);
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
@@ -677,7 +683,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const orderNumber = `LND-${dateStr}-${randomSuffix}`;
     const newId = `ord-${Date.now()}`;
 
-    // Auto-assign first active courier
     const activeCourier = couriers.find((c) => c.status === 'active') || couriers[0];
 
     const newOrder: Order = {
@@ -699,28 +704,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       pickupTime: data.pickupTime,
       handoverMethod: data.handoverMethod || 'pickup_by_courier',
       returnMethod: data.returnMethod || 'deliver_to_me',
-      status: 'pickup', // Initial booking queued for pickup
+      status: 'pickup',
       statusTimestamps: {
-        booked: `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        pickup: `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        booked: `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`,
+        pickup: `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`,
       },
       courierId: activeCourier?.id,
       courierName: activeCourier?.name,
       notes: data.notes,
-      paymentMethod: data.paymentMethod,
-      paymentStatus: 'pending',
-      lastUpdatedLabel: 'Baru saja',
+      paymentStatus: 'not_due',
+      paymentFlowV2: true,
+      lastUpdatedLabel: 'Pesanan dibuat',
     };
 
-    setOrders((prev) => [newOrder, ...prev]);
+    saveOrderToFirestore(newOrder).catch((err) => {
+      console.error('saveOrderToFirestore error:', err);
+    });
+
     setActiveCustomerOrderId(newId);
 
-    // If a voucher was used, mark it as consumed
     if (data.voucherCode) {
       markVoucherAsUsed(data.voucherCode, orderNumber);
     }
 
-    // Award +1 stamp in loyalty
     const newStamp: StampHistoryItem = {
       id: `stmp-${Date.now()}`,
       orderNumber,
@@ -729,106 +741,193 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: `Pesanan ${selectedPlan.name} (${data.estimatedQuantity} ${selectedPlan.unit})`,
       pointsChange: 1,
     };
-    setStampHistory((prev) => [newStamp, ...prev]);
-
-    // Update or add customer profile
-    setCustomers((prev) => {
-      const existing = prev.find((c) => c.phone === data.customerPhone);
-      if (existing) {
-        const nextTotal = existing.totalOrders + 1;
-        const lifetimeEarned = stampHistory.filter((s) => s.type === 'earned').length + 1;
-        const nextTier = lifetimeEarned >= 10 ? 'Gold' : lifetimeEarned >= 5 ? 'Silver' : 'Bronze';
-        return prev.map((c) =>
-          c.phone === data.customerPhone
-            ? {
-                ...c,
-                totalOrders: nextTotal,
-                lastOrderDate: now.toISOString().slice(0, 10),
-                totalSpent: c.totalSpent + estimatedPrice,
-                stampsCount: (c.stampsCount || 0) + 1,
-                tier: nextTier,
-              }
-            : c
-        );
-      } else {
-        const newCust: CustomerProfile = {
-          id: `cust-${Date.now()}`,
-          name: data.customerName,
-          phone: data.customerPhone,
-          address: data.customerAddress,
-          totalOrders: 1,
-          lastOrderDate: now.toISOString().slice(0, 10),
-          totalSpent: estimatedPrice,
-          stampsCount: 1,
-          tier: 'Bronze',
-        };
-        return [newCust, ...prev];
-      }
-    });
+    saveStampHistoryItem(data.customerPhone, newStamp).catch(() => {});
 
     return newOrder;
   };
 
+  /**
+   * Courier weighs order:
+   * Opens payment if status was not_due or legacy pending.
+   * Recalculates final amount (actual price minus voucher discount, min 0).
+   * Creates or updates notification idempotently.
+   */
   const updateOrderWeight = (orderId: string, actualWeight: number) => {
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id === orderId) {
-          const actualPrice = Math.round(ord.unitPrice * actualWeight);
-          return {
-            ...ord,
-            actualQuantity: actualWeight,
-            actualPrice,
-            lastUpdatedLabel: 'Weight verified',
-          };
-        }
-        return ord;
-      })
-    );
+    const ord = orders.find((o) => o.id === orderId);
+    if (!ord) return;
+
+    const grossPrice = Math.round(ord.unitPrice * actualWeight);
+    let recalculatedDiscount = 0;
+    if (ord.voucherCode) {
+      if (ord.voucherDiscount && ord.voucherDiscount > 0) {
+        recalculatedDiscount = Math.min(ord.voucherDiscount, grossPrice);
+      }
+    }
+    const finalAmount = Math.max(0, grossPrice - recalculatedDiscount);
+
+    // Apply payment opening only if payment status is not_due or legacy pending; never if paid or awaiting_verification
+    const shouldOpenPayment =
+      !ord.paymentStatus || ord.paymentStatus === 'not_due' || ord.paymentStatus === 'pending';
+
+    const nextPaymentStatus = shouldOpenPayment ? 'awaiting_payment' : ord.paymentStatus;
+
+    const partialUpdate: Partial<Order> = {
+      actualQuantity: actualWeight,
+      actualPrice: finalAmount,
+      subtotalPrice: grossPrice,
+      voucherDiscount: recalculatedDiscount,
+      paymentStatus: nextPaymentStatus,
+      lastUpdatedLabel: 'Ditimbang kurir',
+    };
+
+    updateOrderInFirestore(orderId, partialUpdate).catch(() => {});
+
+    // Notification rule: create payment opened notification once, or update amount if weight edited before method chosen
+    if (shouldOpenPayment) {
+      sendOrUpdateNotification({
+        customerPhone: ord.customerPhone,
+        orderId: ord.id,
+        orderNumber: ord.orderNumber,
+        title: `Pembayaran Menunggu — Pesanan ${ord.orderNumber}`,
+        body: `Pembayaran Menunggu — Pesanan ${ord.orderNumber}: hasil timbang ${actualWeight} ${ord.unit}. Total Rp ${finalAmount.toLocaleString('id-ID')}. Pilih metode pembayaran sekarang.`,
+        isPaymentOpening: true,
+      }).catch(() => {});
+    }
+  };
+
+  const choosePaymentMethod = (orderId: string, method: PaymentMethod) => {
+    const ord = orders.find((o) => o.id === orderId);
+    if (!ord) return;
+
+    const nowIso = new Date().toISOString();
+    const partial: Partial<Order> = {
+      paymentMethod: method,
+      paymentChosenAt: nowIso,
+      lastUpdatedLabel: `Metode ${method} dipilih`,
+    };
+
+    updateOrderInFirestore(orderId, partial).catch(() => {});
+  };
+
+  const confirmCodCashReceived = (orderId: string) => {
+    if (!hasPermission('courier_handover_update')) {
+      alert('Akses ditolak: Anda tidak memiliki hak akses courier_handover_update.');
+      return;
+    }
+    const ord = orders.find((o) => o.id === orderId);
+    if (!ord) return;
+
+    const courierName = currentStaffUser?.name || courierUsername || 'Kurir Laundrea';
+    const nowIso = new Date().toISOString();
+
+    updateOrderInFirestore(orderId, {
+      paymentStatus: 'paid',
+      paidTo: courierName,
+      paidAt: nowIso,
+      lastUpdatedLabel: `Dibayar tunai ke kurir ${courierName}`,
+    }).catch(() => {});
+
+    sendOrUpdateNotification({
+      customerPhone: ord.customerPhone,
+      orderId: ord.id,
+      orderNumber: ord.orderNumber,
+      title: `Pembayaran Tunai Diterima`,
+      body: `Pembayaran Tunai Diterima — Pesanan ${ord.orderNumber}.`,
+      type: 'cash_received',
+    }).catch(() => {});
   };
 
   const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    const now = new Date();
-    const timeStr = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const ord = orders.find((o) => o.id === orderId);
+    if (!ord) return;
 
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id === orderId) {
-          const updatedTimestamps = {
-            ...ord.statusTimestamps,
-            [newStatus]: timeStr,
-          };
-          return {
-            ...ord,
-            status: newStatus,
-            statusTimestamps: updatedTimestamps,
-            lastUpdatedLabel: 'Updated just now',
-          };
-        }
-        return ord;
-      })
-    );
+    // Requirement 5: For paymentFlowV2 orders, cannot move to washing or later until payment status is 'paid'
+    if (ord.paymentFlowV2) {
+      const processingStatuses: OrderStatus[] = ['washing', 'drying', 'ironing', 'ready', 'delivered'];
+      if (processingStatuses.includes(newStatus) && ord.paymentStatus !== 'paid') {
+        alert('Menunggu pembayaran terverifikasi sebelum memulai pencucian.');
+        return;
+      }
+    }
+
+    const now = new Date();
+    const timeStr = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+
+    const updatedTimestamps = {
+      ...ord.statusTimestamps,
+      [newStatus]: timeStr,
+    };
+
+    updateOrderInFirestore(orderId, {
+      status: newStatus,
+      statusTimestamps: updatedTimestamps,
+      lastUpdatedLabel: `Status ${newStatus}`,
+    }).catch(() => {});
+
+    // Notification rule: order status change
+    const statusLabels: Record<string, string> = {
+      pickup: 'Penjemputan',
+      picked_up: 'Dijemput Kurir',
+      washing: 'Pencucian',
+      drying: 'Pengeringan',
+      ironing: 'Penyetrikaan',
+      ready: 'Siap Antar',
+      delivered: 'Selesai Diantar',
+    };
+
+    sendOrUpdateNotification({
+      customerPhone: ord.customerPhone,
+      orderId: ord.id,
+      orderNumber: ord.orderNumber,
+      title: `Status Pesanan Diperbarui`,
+      body: `Pesanan ${ord.orderNumber} sekarang: ${statusLabels[newStatus] || newStatus}`,
+      type: 'status_changed',
+    }).catch(() => {});
   };
 
   const updateOrderPaymentStatus = (
     orderId: string,
-    paymentStatus: 'pending' | 'awaiting_verification' | 'paid'
+    paymentStatus: 'not_due' | 'pending' | 'awaiting_payment' | 'awaiting_verification' | 'paid'
   ) => {
-    setOrders((prev) =>
-      prev.map((ord) => (ord.id === orderId ? { ...ord, paymentStatus } : ord))
-    );
+    const ord = orders.find((o) => o.id === orderId);
+    if (!ord) return;
+
+    if (paymentStatus === 'paid') {
+      if (!hasPermission('payment_confirm')) {
+        alert('Akses ditolak: Anda tidak memiliki hak akses payment_confirm.');
+        return;
+      }
+      sendOrUpdateNotification({
+        customerPhone: ord.customerPhone,
+        orderId: ord.id,
+        orderNumber: ord.orderNumber,
+        title: `Pembayaran Terverifikasi`,
+        body: `Pembayaran Terverifikasi — Pesanan ${ord.orderNumber} masuk antrean pencucian.`,
+        type: 'payment_verified',
+      }).catch(() => {});
+    }
+
+    updateOrderInFirestore(orderId, {
+      paymentStatus,
+      lastUpdatedLabel: `Pembayaran: ${paymentStatus}`,
+    }).catch(() => {});
   };
 
   const assignCourier = (orderId: string, courierId: string) => {
+    if (!hasPermission('orders_dispatch')) {
+      alert('Akses ditolak: Anda tidak memiliki hak akses orders_dispatch.');
+      return;
+    }
     const selectedCourier = couriers.find((c) => c.id === courierId);
     if (!selectedCourier) return;
 
-    setOrders((prev) =>
-      prev.map((ord) =>
-        ord.id === orderId
-          ? { ...ord, courierId: selectedCourier.id, courierName: selectedCourier.name }
-          : ord
-      )
-    );
+    updateOrderInFirestore(orderId, {
+      courierId: selectedCourier.id,
+      courierName: selectedCourier.name,
+    }).catch(() => {});
   };
 
   const addCourier = (data: { name: string; phone: string; email?: string; vehicle?: string }) => {
@@ -844,31 +943,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       averageRating: 5.0,
       vehicle: data.vehicle || 'Motor Operasional Laundrea',
     };
-    setCouriers((prev) => [...prev, newCourier]);
+    saveCourierToFirestore(newCourier).catch(() => {});
   };
 
   const toggleCourierStatus = (courierId: string) => {
-    setCouriers((prev) =>
-      prev.map((c) =>
-        c.id === courierId
-          ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' }
-          : c
-      )
-    );
+    const cr = couriers.find((c) => c.id === courierId);
+    if (!cr) return;
+    updateCourierInFirestore(courierId, {
+      status: cr.status === 'active' ? 'inactive' : 'active',
+    }).catch(() => {});
   };
 
   const scheduleDelivery = (orderId: string, deliveryTime: string) => {
-    setOrders((prev) =>
-      prev.map((ord) =>
-        ord.id === orderId
-          ? { ...ord, deliveryScheduledTime: deliveryTime }
-          : ord
-      )
-    );
+    updateOrderInFirestore(orderId, { deliveryScheduledTime: deliveryTime }).catch(() => {});
   };
 
   const updatePlan = (updatedPlan: Plan) => {
-    setPlans((prev) => prev.map((p) => (p.id === updatedPlan.id ? updatedPlan : p)));
+    updatePlanInFirestore(updatedPlan.id, updatedPlan).catch(() => {});
   };
 
   const addPromo = (code: string, discount: number, minOrder: number = 0) => {
@@ -879,13 +970,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isActive: true,
       minOrderValue: minOrder,
     };
-    setPromos((prev) => [newPromo, ...prev]);
+    savePromoToFirestore(newPromo).catch(() => {});
   };
 
   const togglePromo = (id: string) => {
-    setPromos((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p))
-    );
+    const pr = promos.find((p) => p.id === id);
+    if (!pr) return;
+    updatePromoInFirestore(id, { isActive: !pr.isActive }).catch(() => {});
   };
 
   const addOperationalCost = (category: string, amount: number) => {
@@ -895,30 +986,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       amount,
       date: new Date().toISOString().slice(0, 10),
     };
-    setOperationalCosts((prev) => [newCost, ...prev]);
+    saveOperationalCostToFirestore(newCost).catch(() => {});
   };
 
-  // System Management Actions (Admin & Courier accounts only)
   const addSystemUser = (user: Omit<SystemUser, 'id' | 'createdAt'>) => {
-    const prefix = user.roleCategory === 'admin' ? 'usr-adm' : 'usr-cr';
-    const newId = `${prefix}-${Date.now()}`;
-    const today = new Date().toISOString().slice(0, 10);
-    const avatarBg =
-      user.roleCategory === 'admin'
-        ? 'from-[#254117] to-[#cd6184]'
-        : 'from-[#0284c7] to-[#254117]';
-
     const newUser: SystemUser = {
       ...user,
-      id: newId,
-      createdAt: today,
-      lastLogin: 'Belum pernah login',
-      avatarBg,
+      id: `usr-${Date.now()}`,
+      createdAt: new Date().toISOString().slice(0, 10),
     };
-
-    setSystemUsers((prev) => [newUser, ...prev]);
-
-    // If it's a courier, also synchronize to couriers list if not already present
+    saveSystemUserToFirestore(newUser).catch(() => {});
     if (user.roleCategory === 'courier') {
       const existingCourier = couriers.find(
         (c) => c.phone === user.phone || c.name.toLowerCase() === user.name.toLowerCase()
@@ -935,51 +1012,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateSystemUser = (id: string, partial: Partial<SystemUser>) => {
-    setSystemUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, ...partial } : u))
-    );
+    updateSystemUserInFirestore(id, partial).catch(() => {});
   };
 
   const toggleSystemUserStatus = (id: string) => {
-    setSystemUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === id) {
-          const nextStatus = u.status === 'active' ? 'inactive' : 'active';
-          // Also sync courier status if courier
-          if (u.roleCategory === 'courier') {
-            const matchedCourier = couriers.find((c) => c.phone === u.phone || c.name === u.name);
-            if (matchedCourier) {
-              toggleCourierStatus(matchedCourier.id);
-            }
-          }
-          return { ...u, status: nextStatus };
-        }
-        return u;
-      })
-    );
+    const u = systemUsers.find((user) => user.id === id);
+    if (!u) return;
+    const nextStatus = u.status === 'active' ? 'inactive' : 'active';
+    updateSystemUserInFirestore(id, { status: nextStatus }).catch(() => {});
+    if (u.roleCategory === 'courier') {
+      const matchedCourier = couriers.find((c) => c.phone === u.phone || c.name === u.name);
+      if (matchedCourier) {
+        toggleCourierStatus(matchedCourier.id);
+      }
+    }
   };
 
   const deleteSystemUser = (id: string) => {
-    setSystemUsers((prev) => prev.filter((u) => u.id !== id));
+    deleteSystemUserFromFirestore(id).catch(() => {});
   };
 
   const resetUserPasswordOrPin = (id: string, _tempSecret: string) => {
-    setSystemUsers((prev) =>
-      prev.map((u) =>
-        u.id === id
-          ? {
-              ...u,
-              lastLogin: `Kredensial direset (${new Date().toLocaleDateString('id-ID')})`,
-            }
-          : u
-      )
-    );
+    updateSystemUserInFirestore(id, {
+      lastLogin: `Kredensial direset (${new Date().toLocaleDateString('id-ID')})`,
+    }).catch(() => {});
   };
 
   const updateRolePermissions = (roleId: string, permissions: string[]) => {
-    setSystemRoles((prev) =>
-      prev.map((r) => (r.id === roleId ? { ...r, permissions } : r))
-    );
+    updateSystemRoleInFirestore(roleId, { permissions }).catch(() => {});
   };
 
   const addSystemRole = (role: Omit<SystemRole, 'id'>) => {
@@ -987,7 +1047,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...role,
       id: `role-${Date.now()}`,
     };
-    setSystemRoles((prev) => [...prev, newRole]);
+    saveSystemRoleToFirestore(newRole).catch(() => {});
   };
 
   const resetAllData = () => {
@@ -1000,30 +1060,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSystemUsers(INITIAL_SYSTEM_USERS);
     setSystemRoles(INITIAL_SYSTEM_ROLES);
     setStampHistory(INITIAL_STAMP_HISTORY);
-    localStorage.removeItem('laundrea_plans');
-    localStorage.removeItem('laundrea_orders');
-    localStorage.removeItem('laundrea_orders_v4');
-    localStorage.removeItem('laundrea_orders_v5');
-    localStorage.removeItem('laundrea_couriers');
-    localStorage.removeItem('laundrea_couriers_v2');
-    localStorage.removeItem('laundrea_customers');
-    localStorage.removeItem('laundrea_customers_v4');
-    localStorage.removeItem('laundrea_customers_v5');
-    localStorage.removeItem('laundrea_cust_name_v5');
-    localStorage.removeItem('laundrea_cust_address_v5');
-    localStorage.removeItem('laundrea_promos');
-    localStorage.removeItem('laundrea_costs');
-    localStorage.removeItem('laundrea_system_users');
-    localStorage.removeItem('laundrea_system_users_v2');
-    localStorage.removeItem('laundrea_system_users_v3');
-    localStorage.removeItem('laundrea_system_roles');
-    localStorage.removeItem('laundrea_system_roles_v2');
-    localStorage.removeItem('laundrea_stamps_count');
-    localStorage.removeItem('laundrea_stamps_count_v2');
-    localStorage.removeItem('laundrea_stamps_count_v3');
-    localStorage.removeItem('laundrea_stamp_history');
-    localStorage.removeItem('laundrea_stamp_history_v2');
-    localStorage.removeItem('laundrea_stamp_history_v3');
   };
 
   return (
@@ -1057,6 +1093,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         systemUsers,
         systemRoles,
         systemPermissions,
+        hasPermission,
+        currentStaffRole,
+        currentStaffUser,
         addSystemUser,
         updateSystemUser,
         toggleSystemUserStatus,
@@ -1071,10 +1110,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addTestStamp,
         markVoucherAsUsed,
         redeemFreeWash,
+        notifications,
+        markNotificationRead,
+        markAllNotificationsRead,
+        newNotificationToast,
+        dismissToast,
+        isFirestoreLoading,
+        firestoreError,
         createOrder,
         updateOrderWeight,
         updateOrderStatus,
         updateOrderPaymentStatus,
+        choosePaymentMethod,
+        confirmCodCashReceived,
         assignCourier,
         addCourier,
         toggleCourierStatus,
@@ -1091,11 +1139,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
-export const useApp = (): AppContextType => {
+export const useApp = () => {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('useApp must be used within an AppProvider');
   }
   return context;
 };
-

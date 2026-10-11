@@ -3,19 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isValidId(id) {
-      return id is string && id.size() >= 5 && id.size() <= 30 && id.matches('^[0-9]+$');
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function isValidCustomer(data, phoneId) {
-      return data.keys().hasAll(['name', 'address', 'phone'])
-        && data.name is string && data.name.size() >= 1 && data.name.size() <= 150
-        && data.address is string && data.address.size() >= 1 && data.address.size() <= 500
-        && data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 30
-        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 100));
+      return id is string && id.size() >= 3 && id.size() <= 64;
     }
 
     // Default-deny catch-all
@@ -25,16 +13,77 @@ service cloud.firestore {
 
     // Customer accounts collection keyed by normalized phone digits
     match /customers/{phoneId} {
-      // Allow get for individual check and list for Admin customer directory
-      allow get: if isValidId(phoneId);
-      allow list: if true;
+      allow read: if true;
+      allow create, update: if isValidId(phoneId);
+      allow delete: if false;
+    }
 
-      // Allow creating account if valid id and valid customer schema
-      allow create: if isValidId(phoneId) && isValidCustomer(incoming(), phoneId);
+    // Orders collection
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create, update: if isValidId(orderId);
+      allow delete: if false;
+    }
 
-      // Allow updating profile (e.g. name or address changes)
-      allow update: if isValidId(phoneId) && isValidCustomer(incoming(), phoneId);
+    // Notifications collection
+    match /notifications/{notifId} {
+      allow read: if true;
+      allow create, update: if isValidId(notifId);
+      allow delete: if false;
+    }
 
+    // Couriers collection
+    match /couriers/{courierId} {
+      allow read: if true;
+      allow create, update: if isValidId(courierId);
+      allow delete: if false;
+    }
+
+    // Plans collection
+    match /plans/{planId} {
+      allow read: if true;
+      allow create, update: if isValidId(planId);
+      allow delete: if false;
+    }
+
+    // Promos collection
+    match /promos/{promoId} {
+      allow read: if true;
+      allow create, update: if isValidId(promoId);
+      allow delete: if false;
+    }
+
+    // Operational costs collection
+    match /operationalCosts/{costId} {
+      allow read: if true;
+      allow create, update: if isValidId(costId);
+      allow delete: if false;
+    }
+
+    // System users collection
+    match /systemUsers/{userId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(userId);
+    }
+
+    // System roles collection
+    match /systemRoles/{roleId} {
+      allow read: if true;
+      allow create, update: if isValidId(roleId);
+      allow delete: if false;
+    }
+
+    // Stamp history per customer
+    match /stampHistory/{stampId} {
+      allow read: if true;
+      allow create, update: if isValidId(stampId);
+      allow delete: if false;
+    }
+
+    // Customer vouchers per customer
+    match /customerVouchers/{voucherId} {
+      allow read: if true;
+      allow create, update: if isValidId(voucherId);
       allow delete: if false;
     }
   }

@@ -21,6 +21,8 @@ import {
   DEFAULT_DEMO_ADDRESS,
   CustomerFirestoreData,
 } from '../../services/firebaseService';
+import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
+import { StructuredAddressData } from '../../services/wilayahService';
 
 interface CustomerVerificationProps {
   onVerified: (phone: string, profileData?: { name?: string; address?: string }) => void;
@@ -42,6 +44,7 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
   // New registration fields for new numbers
   const [regName, setRegName] = useState('');
   const [regAddress, setRegAddress] = useState('');
+  const [regStructured, setRegStructured] = useState<StructuredAddressData | undefined>(undefined);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
 
@@ -144,7 +147,7 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
     setIsLoading(true);
 
     try {
-      const savedDoc = await saveCustomerToFirestore(phone, regName, regAddress);
+      const savedDoc = await saveCustomerToFirestore(phone, regName, regAddress, regStructured);
       setIsLoading(false);
       setStep('success');
 
@@ -189,12 +192,22 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
         ) : step === 'register' ? (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#cd6184] uppercase tracking-wider">
-                <User className="w-4 h-4" />
-                <span>Lengkapi Profil</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('phone');
+                  setOtp('');
+                  setRegName('');
+                  setRegAddress('');
+                  setAuthError(null);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#cd6184] hover:text-[#b85373] hover:bg-[#ffecf2] px-2.5 py-1 -ml-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Kembali</span>
+              </button>
               <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                Langkah Terakhir
+                Pendaftaran Baru
               </span>
             </div>
 
@@ -235,22 +248,15 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#254117] mb-1.5">
-                  Alamat Penjemputan <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute top-3 left-3.5 pointer-events-none text-[#254117]/40">
-                    <MapPin className="w-4 h-4" />
-                  </div>
-                  <textarea
-                    rows={2}
-                    value={regAddress}
-                    onChange={(e) => setRegAddress(e.target.value)}
-                    placeholder="Alamat lengkap rumah/apartemen/kantor..."
-                    required
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all resize-none"
-                  />
-                </div>
+                <CascadingAddressSelector
+                  initialCombinedAddress=""
+                  onChange={({ combinedAddress, structured }) => {
+                    setRegAddress(combinedAddress);
+                    setRegStructured(structured);
+                  }}
+                  required
+                  idPrefix="verification-register-addr"
+                />
               </div>
 
               <button
