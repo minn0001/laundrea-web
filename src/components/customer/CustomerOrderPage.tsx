@@ -977,7 +977,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
           <div className="bg-[#ffecf2] border border-[#cd6184]/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#254117]">
             <Info className="w-4 h-4 text-[#cd6184] shrink-0 mt-0.5" />
             <p className="leading-relaxed font-medium">
-              Berat sebenarnya dan total biaya akhir akan dikonfirmasi melalui WhatsApp sebelum proses pencucian dimulai.
+              Berat sebenarnya dan total biaya ditentukan setelah kurir menjemput.
             </p>
           </div>
 
