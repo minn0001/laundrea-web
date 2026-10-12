@@ -11,7 +11,13 @@ import {
   orderBy,
   limit,
 } from 'firebase/firestore';
-import { db, ensureSilentAuth, normalizePhoneNumber, DEFAULT_DEMO_PHONE } from './firebaseService';
+import {
+  db,
+  ensureSilentAuth,
+  normalizePhoneNumber,
+  DEFAULT_DEMO_PHONE,
+  sanitizeFirestoreData,
+} from './firebaseService';
 import {
   Order,
   Courier,
@@ -168,12 +174,12 @@ export function subscribeToOrders(
 
 export async function saveOrderToFirestore(order: Order): Promise<void> {
   await ensureSilentAuth();
-  await setDoc(doc(db, 'orders', order.id), order);
+  await setDoc(doc(db, 'orders', order.id), sanitizeFirestoreData(order));
 }
 
 export async function updateOrderInFirestore(orderId: string, partial: Partial<Order>): Promise<void> {
   await ensureSilentAuth();
-  await updateDoc(doc(db, 'orders', orderId), partial);
+  await updateDoc(doc(db, 'orders', orderId), sanitizeFirestoreData(partial));
 }
 
 // ================= NOTIFICATIONS =================
@@ -228,7 +234,7 @@ export async function sendOrUpdateNotification(params: {
       const notifId = `payment-due-${params.orderId}`;
       await setDoc(
         doc(db, 'notifications', notifId),
-        {
+        sanitizeFirestoreData({
           id: notifId,
           customerPhone: norm,
           orderId: params.orderId,
@@ -238,24 +244,27 @@ export async function sendOrUpdateNotification(params: {
           type: 'payment_opened',
           createdAt: new Date().toISOString(),
           read: false,
-        },
+        }),
         { merge: true }
       );
       return;
     }
 
     const newId = `notif-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
-    await setDoc(doc(db, 'notifications', newId), {
-      id: newId,
-      customerPhone: norm,
-      orderId: params.orderId,
-      orderNumber: params.orderNumber,
-      title: params.title,
-      body: params.body,
-      type: params.type || 'status_changed',
-      createdAt: new Date().toISOString(),
-      read: false,
-    });
+    await setDoc(
+      doc(db, 'notifications', newId),
+      sanitizeFirestoreData({
+        id: newId,
+        customerPhone: norm,
+        orderId: params.orderId,
+        orderNumber: params.orderNumber,
+        title: params.title,
+        body: params.body,
+        type: params.type || 'status_changed',
+        createdAt: new Date().toISOString(),
+        read: false,
+      })
+    );
   } catch (err) {
     console.warn('sendOrUpdateNotification notice:', err);
   }
@@ -310,12 +319,12 @@ export function subscribeToCouriers(
 
 export async function saveCourierToFirestore(courier: Courier): Promise<void> {
   await ensureSilentAuth();
-  await setDoc(doc(db, 'couriers', courier.id), courier);
+  await setDoc(doc(db, 'couriers', courier.id), sanitizeFirestoreData(courier));
 }
 
 export async function updateCourierInFirestore(courierId: string, partial: Partial<Courier>): Promise<void> {
   await ensureSilentAuth();
-  await updateDoc(doc(db, 'couriers', courierId), partial);
+  await updateDoc(doc(db, 'couriers', courierId), sanitizeFirestoreData(partial));
 }
 
 // ================= PLANS =================
@@ -340,7 +349,7 @@ export function subscribeToPlans(
 
 export async function updatePlanInFirestore(planId: string, partial: Partial<Plan>): Promise<void> {
   await ensureSilentAuth();
-  await updateDoc(doc(db, 'plans', planId), partial);
+  await updateDoc(doc(db, 'plans', planId), sanitizeFirestoreData(partial));
 }
 
 // ================= PROMOS =================
@@ -365,12 +374,12 @@ export function subscribeToPromos(
 
 export async function savePromoToFirestore(promo: PromoCode): Promise<void> {
   await ensureSilentAuth();
-  await setDoc(doc(db, 'promos', promo.id), promo);
+  await setDoc(doc(db, 'promos', promo.id), sanitizeFirestoreData(promo));
 }
 
 export async function updatePromoInFirestore(promoId: string, partial: Partial<PromoCode>): Promise<void> {
   await ensureSilentAuth();
-  await updateDoc(doc(db, 'promos', promoId), partial);
+  await updateDoc(doc(db, 'promos', promoId), sanitizeFirestoreData(partial));
 }
 
 // ================= OPERATIONAL COSTS =================
@@ -396,7 +405,7 @@ export function subscribeToOperationalCosts(
 
 export async function saveOperationalCostToFirestore(cost: OperationalCostItem): Promise<void> {
   await ensureSilentAuth();
-  await setDoc(doc(db, 'operationalCosts', cost.id), cost);
+  await setDoc(doc(db, 'operationalCosts', cost.id), sanitizeFirestoreData(cost));
 }
 
 // ================= SYSTEM USERS & ROLES =================
@@ -421,12 +430,12 @@ export function subscribeToSystemUsers(
 
 export async function saveSystemUserToFirestore(user: SystemUser): Promise<void> {
   await ensureSilentAuth();
-  await setDoc(doc(db, 'systemUsers', user.id), user);
+  await setDoc(doc(db, 'systemUsers', user.id), sanitizeFirestoreData(user));
 }
 
 export async function updateSystemUserInFirestore(userId: string, partial: Partial<SystemUser>): Promise<void> {
   await ensureSilentAuth();
-  await updateDoc(doc(db, 'systemUsers', userId), partial);
+  await updateDoc(doc(db, 'systemUsers', userId), sanitizeFirestoreData(partial));
 }
 
 export async function deleteSystemUserFromFirestore(userId: string): Promise<void> {
@@ -454,12 +463,12 @@ export function subscribeToSystemRoles(
 
 export async function saveSystemRoleToFirestore(role: SystemRole): Promise<void> {
   await ensureSilentAuth();
-  await setDoc(doc(db, 'systemRoles', role.id), role);
+  await setDoc(doc(db, 'systemRoles', role.id), sanitizeFirestoreData(role));
 }
 
 export async function updateSystemRoleInFirestore(roleId: string, partial: Partial<SystemRole>): Promise<void> {
   await ensureSilentAuth();
-  await updateDoc(doc(db, 'systemRoles', roleId), partial);
+  await updateDoc(doc(db, 'systemRoles', roleId), sanitizeFirestoreData(partial));
 }
 
 // ================= STAMPS & VOUCHERS PER CUSTOMER =================
@@ -494,10 +503,13 @@ export function subscribeToStampHistory(
 export async function saveStampHistoryItem(phone: string, item: StampHistoryItem): Promise<void> {
   await ensureSilentAuth();
   const norm = normalizePhoneNumber(phone);
-  await setDoc(doc(db, 'stampHistory', item.id), {
-    ...item,
-    customerPhone: norm,
-  });
+  await setDoc(
+    doc(db, 'stampHistory', item.id),
+    sanitizeFirestoreData({
+      ...item,
+      customerPhone: norm,
+    })
+  );
 }
 
 export function subscribeToCustomerVouchers(
@@ -530,10 +542,13 @@ export function subscribeToCustomerVouchers(
 export async function saveCustomerVoucher(phone: string, voucher: CustomerVoucher): Promise<void> {
   await ensureSilentAuth();
   const norm = normalizePhoneNumber(phone);
-  await setDoc(doc(db, 'customerVouchers', voucher.id), {
-    ...voucher,
-    customerPhone: norm,
-  });
+  await setDoc(
+    doc(db, 'customerVouchers', voucher.id),
+    sanitizeFirestoreData({
+      ...voucher,
+      customerPhone: norm,
+    })
+  );
 }
 
 export async function updateCustomerVoucherInFirestore(
@@ -541,5 +556,5 @@ export async function updateCustomerVoucherInFirestore(
   partial: Partial<CustomerVoucher>
 ): Promise<void> {
   await ensureSilentAuth();
-  await updateDoc(doc(db, 'customerVouchers', voucherId), partial);
+  await updateDoc(doc(db, 'customerVouchers', voucherId), sanitizeFirestoreData(partial));
 }

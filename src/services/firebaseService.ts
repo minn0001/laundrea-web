@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import {
+  initializeFirestore,
   getFirestore,
   doc,
   getDoc,
@@ -14,11 +15,47 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with specific database ID if present in config
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
+// Initialize Firestore with specific database ID and enable ignoreUndefinedProperties
+let firestoreDb;
+try {
+  firestoreDb = initializeFirestore(
+    app,
+    { ignoreUndefinedProperties: true },
+    firebaseConfig.firestoreDatabaseId || undefined
+  );
+} catch {
+  firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
+}
+export const db = firestoreDb;
 
 // Initialize Auth
 export const auth = getAuth(app);
+
+/**
+ * Safely removes undefined values recursively from an object/array so Firestore setDoc/updateDoc never fails.
+ */
+export function sanitizeFirestoreData<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as unknown as T;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeFirestoreData(item)) as unknown as T;
+  }
+  if (typeof obj === 'object') {
+    // If it's a special object like Date or non-plain object, keep it
+    if (obj instanceof Date || (obj.constructor && obj.constructor.name !== 'Object')) {
+      return obj;
+    }
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = sanitizeFirestoreData(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
 
 // Normalizes phone numbers: digits only, treating leading '62' and leading '0' identically.
 export function normalizePhoneNumber(phone: string): string {
@@ -235,7 +272,7 @@ export async function saveCustomerToFirestore(
     ...(structuredAddress?.streetAddress && { streetAddress: structuredAddress.streetAddress }),
   };
 
-  await setDoc(customerDocRef, customerData);
+  await setDoc(customerDocRef, sanitizeFirestoreData(customerData));
   return customerData;
 }
 
@@ -284,7 +321,7 @@ export async function updateCustomerInFirestore(
   }
 
   if (snapshot && snapshot.exists()) {
-    await updateDoc(customerDocRef, updatePayload);
+    await updateDoc(customerDocRef, sanitizeFirestoreData(updatePayload));
   } else {
     const data: CustomerFirestoreData = {
       name: fields.name?.trim() || DEFAULT_DEMO_NAME,
@@ -293,7 +330,7 @@ export async function updateCustomerInFirestore(
       createdAt: new Date().toISOString(),
       ...updatePayload,
     };
-    await setDoc(customerDocRef, data);
+    await setDoc(customerDocRef, sanitizeFirestoreData(data));
   }
 }
 

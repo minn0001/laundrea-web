@@ -702,8 +702,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unitPrice,
       estimatedQuantity: data.estimatedQuantity,
       subtotalPrice,
-      voucherCode: data.voucherCode,
-      voucherDiscount: discount,
       estimatedPrice,
       unit: selectedPlan.unit,
       pickupDate: data.pickupDate,
@@ -721,12 +719,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           minute: '2-digit',
         })}`,
       },
-      courierId: activeCourier?.id,
-      courierName: activeCourier?.name,
-      notes: data.notes,
       paymentStatus: 'not_due',
       paymentFlowV2: true,
       lastUpdatedLabel: 'Pesanan dibuat',
+      ...(data.voucherCode ? { voucherCode: data.voucherCode } : {}),
+      ...(discount > 0 ? { voucherDiscount: discount } : {}),
+      ...(activeCourier?.id ? { courierId: activeCourier.id } : {}),
+      ...(activeCourier?.name ? { courierName: activeCourier.name } : {}),
+      ...(data.notes?.trim() ? { notes: data.notes.trim() } : {}),
     };
 
     // Immediate optimistic local update so order is visible instantly
