@@ -343,6 +343,7 @@ export const CustomerApp: React.FC = () => {
             })
           }
         />
+      )}
         
         {activeTab === 'create_order' && (
           <CustomerOrderPage
@@ -370,6 +371,8 @@ export const CustomerApp: React.FC = () => {
         {activeTab === 'profile' && (
           <CustomerProfilePage
             onLogoutClick={() => setShowLogoutConfirm(true)}
+            autoOpenAddress={openAddressModal}
+            onAddressModalHandled={() => setOpenAddressModal(false)}
             onNavigateTab={(tab) => {
               if (tab === 'tracking' || tab === 'order') {
                 setActiveTab('order');
