@@ -941,13 +941,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       [newStatus]: timeStr,
     };
 
+        // Cap hanya diberikan sekali, saat admin mengubah status menjadi Selesai (delivered).
+    // Dicek lewat penanda stampGiven di pesanan (bukan stampHistory milik akun yang login),
+    // dan hanya untuk user yang punya izin ubah status (kurir tidak punya).
+    const shouldAwardStamp =
+      newStatus === 'delivered' &&
+      hasPermission('orders_status_update') &&
+      !ord.stampGiven &&
+      !stampHistory.some((sh) => sh.orderNumber === ord.orderNumber && sh.type === 'earned');
+
     updateOrderInFirestore(orderId, {
       status: newStatus,
       statusTimestamps: updatedTimestamps,
       lastUpdatedLabel: `Status ${newStatus}`,
+      ...(shouldAwardStamp ? { stampGiven: true } : {}),
     }).catch(() => {});
 
-    // Notification rule: order status change
+    // Cegah klik ganda sebelum Firestore sempat sinkron
+    if (shouldAwardStamp) {
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, stampGiven: true } : o)));
+    }
+
     const statusLabels: Record<string, string> = {
       pickup: 'Penjemputan',
       picked_up: 'Dijemput Kurir',
@@ -955,45 +969,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       drying: 'Pengeringan',
       ironing: 'Penyetrikaan',
       ready: 'Siap Antar',
-      delivered: 'Selesai Diantar',
+      delivered: 'Selesai',
     };
 
-    // Requirement 3: Stamps are earned when the order is DELIVERED
-    if (newStatus === 'delivered') {
-      const alreadyAwarded = stampHistory.some(
-        (sh) => sh.orderNumber === ord.orderNumber && sh.type === 'earned'
-      );
-      if (!alreadyAwarded) {
-        const finalQty = ord.actualQuantity || ord.estimatedQuantity;
-        const newStamp: StampHistoryItem = {
-          id: `stmp-${Date.now()}`,
-          orderNumber: ord.orderNumber,
-          date: now.toISOString().slice(0, 10),
-          type: 'earned',
-          title: `Pesanan ${ord.planName} (${finalQty} ${ord.unit})`,
-          pointsChange: 1,
-        };
-        saveStampHistoryItem(ord.customerPhone, newStamp).catch(() => {});
-
-        // Notification: "Stempel Didapatkan — +1 stempel dari pesanan {no}. Terima kasih!" (+ optional card full notice)
-        const currentBalance = stampsCount;
-        const newBalance = currentBalance + 1;
-        let notifBody = `Stempel Didapatkan — +1 stempel dari pesanan ${ord.orderNumber}. Terima kasih!`;
-        if (newBalance >= 10) {
-          notifBody += ' Kartu stempel penuh, klaim voucher cuci gratis!';
-        }
-
-        sendOrUpdateNotification({
-          customerPhone: ord.customerPhone,
-          orderId: ord.id,
-          orderNumber: ord.orderNumber,
-          title: `Stempel Didapatkan`,
-          body: notifBody,
-          type: 'status_changed',
-        }).catch(() => {});
-      }
-    }
-
+    // 1) Notifikasi status DULU
     sendOrUpdateNotification({
       customerPhone: ord.customerPhone,
       orderId: ord.id,
@@ -1002,6 +981,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       body: `Pesanan ${ord.orderNumber} sekarang: ${statusLabels[newStatus] || newStatus}`,
       type: 'status_changed',
     }).catch(() => {});
+
+    // 2) Cap + notifikasi cap SESUDAH, supaya jadi notifikasi terbaru (yang muncul di toast)
+    if (shouldAwardStamp) {
+      const finalQty = ord.actualQuantity || ord.estimatedQuantity;
+      const newStamp: StampHistoryItem = {
+        id: `stmp-${Date.now()}`,
+        orderNumber: ord.orderNumber,
+        date: now.toISOString().slice(0, 10),
+        type: 'earned',
+        title: `Pesanan ${ord.planName} (${finalQty} ${ord.unit})`,
+        pointsChange: 1,
+      };
+      // Pakai ord.customerPhone = akun pemilik pesanan, bukan nama di form pemesanan
+      saveStampHistoryItem(ord.customerPhone, newStamp).catch(() => {});
+
+      
+      sendOrUpdateNotification({
+        customerPhone: ord.customerPhone,
+        orderId: ord.id,
+        orderNumber: ord.orderNumber,
+        title: `Stempel Bertambah 🎉`,
+        body: `Selamat! Kamu berhasil mendapatkan 1 stempel dari pesanan ${ord.orderNumber}.`,
+        type: 'stamp_earned',
+      }).catch(() => {});
+    }
   };
 
   const updateOrderPaymentStatus = (
