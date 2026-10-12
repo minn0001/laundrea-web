@@ -34,6 +34,7 @@ export const CourierApp: React.FC = () => {
     loginCourier,
     logoutCourier,
     courierUsername,
+    currentStaffUser,
     orders,
     couriers,
     updateOrderWeight,
@@ -78,17 +79,24 @@ export const CourierApp: React.FC = () => {
     );
   }
 
-    // Current logged in courier data with resilient fallbacks
-  const usernameKey = (courierUsername || '').toLowerCase();
+      // Cocokkan kurir: 1) lewat akun sistem, 2) lewat username, 3) tidak ada
+  const usernameKey = (courierUsername || '').toLowerCase().replace('@', '');
   const rawCourier =
+    couriers.find(
+      (c) =>
+        currentStaffUser &&
+        (c.name.toLowerCase() === currentStaffUser.name.toLowerCase() ||
+          c.phone === currentStaffUser.phone)
+    ) ||
     couriers.find((c) => {
       const firstName = (c.name || '').toLowerCase().split(' ')[0];
       return firstName && usernameKey.includes(firstName);
-    }) || couriers[0];
+    }) ||
+    undefined;
 
   const currentCourier = {
-    id: rawCourier?.id || 'cr-1',
-    name: rawCourier?.name || 'Dimas Pratama',
+    id: rawCourier?.id || 'cr-unknown',
+    name: rawCourier?.name || courierUsername,
     phone: rawCourier?.phone || '0812-8877-1122',
     status: rawCourier?.status || 'active',
     activePickupsCount: rawCourier?.activePickupsCount ?? 2,
