@@ -179,7 +179,7 @@ export const StaffLoginPortal: React.FC<StaffLoginPortalProps> = ({
                 </div>
 
                 <div className="p-2.5 bg-[#254117]/10 rounded-xl border border-[#254117]/20 text-[11px] text-[#254117]">
-                  <span className="font-semibold">Info Demo:</span> Username: <code className="font-bold">kurir_dimas</code>, password terisi otomatis.
+                  <span className="font-semibold">Info Demo:</span> Username: <code className="font-bold">kurir_dimas</code> atau <code className="font-bold">kurir_budi</code>, password terisi otomatis.
                 </div>
 
                 <button
