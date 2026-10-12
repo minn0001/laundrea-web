@@ -78,15 +78,13 @@ export const CourierApp: React.FC = () => {
     );
   }
 
-  // Current logged in courier data with resilient fallbacks
-  const myOrders = orders.filter((o) => o.courierId === currentCourier.id);
-  const activeOrders = myOrders.filter((o) => o.status !== 'delivered');
-  const completedOrders = myOrders.filter((o) => o.status === 'delivered');
-    couriers.find(
-      (c) =>
-        (c.phone && c.phone.includes('812')) ||
-        (c.name && c.name.toLowerCase().includes('dimas'))
-    ) || couriers[0];
+    // Current logged in courier data with resilient fallbacks
+  const usernameKey = (courierUsername || '').toLowerCase();
+  const rawCourier =
+    couriers.find((c) => {
+      const firstName = (c.name || '').toLowerCase().split(' ')[0];
+      return firstName && usernameKey.includes(firstName);
+    }) || couriers[0];
 
   const currentCourier = {
     id: rawCourier?.id || 'cr-1',
@@ -99,9 +97,10 @@ export const CourierApp: React.FC = () => {
     vehicle: rawCourier?.vehicle || 'Motor Honda Vario (B 4829 SJA)',
   };
 
-  // Filter orders for courier:
-  const activeOrders = orders.filter((o) => o.status !== 'delivered');
-  const completedOrders = orders.filter((o) => o.status === 'delivered');
+  // Filter orders: hanya tugas milik kurir yang sedang login
+  const myOrders = orders.filter((o) => o.courierId === currentCourier.id);
+  const activeOrders = myOrders.filter((o) => o.status !== 'delivered');
+  const completedOrders = myOrders.filter((o) => o.status === 'delivered');
 
   const pickupTasksCount = activeOrders.filter(
     (o) => (o.status === 'pickup' || o.status === 'picked_up') && o.handoverMethod !== 'store_dropoff'
