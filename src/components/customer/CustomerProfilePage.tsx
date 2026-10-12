@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   User,
@@ -19,13 +19,15 @@ import { StructuredAddressData } from '../../services/wilayahService';
 
 interface CustomerProfilePageProps {
   onLogoutClick: () => void;
-  autoOpenAddress={openAddressModal}
-  onAddressModalHandled={() => setOpenAddressModal(false)}
   onNavigateTab?: (tab: 'order' | 'tracking' | 'loyalty') => void;
+  autoOpenAddress?: boolean;
+  onAddressModalHandled?: () => void;
 }
 
 export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   onLogoutClick,
+  autoOpenAddress,
+  onAddressModalHandled,
 }) => {
   const { customerPhone, customerName, customerAddress, stampsCount, updateCustomerProfile } = useApp();
 
@@ -54,6 +56,17 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   const [tempStructuredAddress, setTempStructuredAddress] = useState<StructuredAddressData | undefined>(undefined);
   const [tempNotes, setTempNotes] = useState(addressNotes);
 
+    // Buka modal alamat otomatis kalau datang dari Beranda
+  useEffect(() => {
+    if (autoOpenAddress) {
+      setTempAddress(userAddress);
+      setTempNotes(addressNotes);
+      setActiveModal('address');
+      onAddressModalHandled?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenAddress]);
+  
   // Simpan Informasi Akun (Updates Firestore via AppContext)
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -395,7 +408,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                 <Clock className="w-3.5 h-3.5 text-[#97a273]" />
                 <span>Jam Operasional Layanan:</span>
               </div>
-              <p>Senin – Minggu: 07:00 – 21:00 WIB</p>
+              <p>Senin – Minggu: 07:00 – 20:00 WIB</p>
               <p>Alamat Gerai: Jl. Senopati No. 18, Jakarta Selatan</p>
             </div>
 
