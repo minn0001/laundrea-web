@@ -93,14 +93,14 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const isKg = selectedPlan.unit === 'kg';
   const minQty = selectedPlan.minOrder || 1;
   const currentPrice = selectedPlan.price * estimatedQuantity;
-
+  const isDropoff = handoverMethod === 'store_dropoff';
   // Validation rules: All fields required before proceeding EXCEPT voucher
   const isPlanValid = Boolean(selectedPlanId);
   const isQuantityValid = typeof estimatedQuantity === 'number' && estimatedQuantity >= minQty;
   const isHandoverValid = Boolean(handoverMethod);
   const isReturnValid = Boolean(returnMethod);
-  const isDateValid = Boolean(scheduleDate && scheduleDate.trim().length > 0);
-  const isTimeValid = Boolean(scheduleTime && scheduleTime.trim().length > 0);
+  const isDateValid = isDropoff || Boolean(scheduleDate && scheduleDate.trim().length > 0);
+  const isTimeValid = isDropoff || Boolean(scheduleTime && scheduleTime.trim().length > 0);
   const isNameValid = Boolean(orderRecipientName && orderRecipientName.trim().length > 0);
   const isPhoneValid = Boolean(orderContactPhone && orderContactPhone.trim().length > 0);
   const isAddressValid = Boolean(effectiveAddress && effectiveAddress.trim().length > 0);
@@ -225,8 +225,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
             : effectiveAddress,
         planId: selectedPlanId,
         estimatedQuantity,
-        pickupDate: scheduleDate,
-        pickupTime: scheduleTime,
+        pickupDate: isDropoff ? 'Langsung ke gerai' : scheduleDate,
+        pickupTime: isDropoff ? '07:00 - 20:00' : scheduleTime,
         handoverMethod,
         returnMethod,
         notes,
@@ -248,7 +248,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const scheduleLabel =
     handoverMethod === 'pickup_by_courier'
       ? 'Jadwal Penjemputan'
-      : 'Jadwal Antar ke Gerai';
+      : 'Informasi Antar ke Gerai';
 
   return (
     <div id="customer-order-flow" className="w-full">
@@ -629,6 +629,17 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Date & Time */}
+              {isDropoff ? (
+                <div className="bg-[#ffecf2]/50 p-5 rounded-2xl border border-[#cd6184]/25 space-y-2 shadow-xs">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[#254117]">
+                    <Store className="w-4 h-4 text-[#cd6184]" />
+                    <span>Antar Sendiri ke Gerai</span>
+                  </div>
+                  <p className="text-xs text-[#254117]/75 leading-relaxed">
+                    Tidak perlu memilih jadwal. Silakan datang langsung ke gerai Laundrea setiap hari pukul 07:00 - 20:00 WIB.
+                  </p>
+                </div>
+              ) : (
               <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-xs">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -727,6 +738,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   )}
                 </div>
               </div>
+              )}
 
               {/* Customer Info (For this order only) */}
               <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-xs">
