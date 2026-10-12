@@ -79,7 +79,9 @@ export const CourierApp: React.FC = () => {
   }
 
   // Current logged in courier data with resilient fallbacks
-  const rawCourier =
+  const myOrders = orders.filter((o) => o.courierId === currentCourier.id);
+  const activeOrders = myOrders.filter((o) => o.status !== 'delivered');
+  const completedOrders = myOrders.filter((o) => o.status === 'delivered');
     couriers.find(
       (c) =>
         (c.phone && c.phone.includes('812')) ||
