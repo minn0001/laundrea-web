@@ -140,6 +140,7 @@ interface AppContextType {
   isFirestoreLoading: boolean;
   firestoreError: string | null;
   // Actions
+  import { SERVICE_SLOTS } from '../data/serviceSlots';
   createOrder: (data: {
     customerName: string;
     customerPhone: string;
@@ -752,7 +753,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const orderNumber = `LND-${dateStr}-${randomSuffix}`;
     const newId = `ord-${Date.now()}`;
 
-    const activeCourier = couriers.find((c) => c.status === 'active') || couriers[0];
+    // Penugasan otomatis berdasarkan slot jam yang dipilih (Dimas = pagi, Budi = sore)
+    const chosenSlot = SERVICE_SLOTS.find((s) => s.label === data.pickupTime);
+    const slotCourier = chosenSlot
+      ? couriers.find((c) => c.name.toLowerCase().includes(chosenSlot.courierKey))
+      : undefined;
+    const activeCourier =
+      slotCourier || couriers.find((c) => c.status === 'active') || couriers[0];
 
     const newOrder: Order = {
       id: newId,
