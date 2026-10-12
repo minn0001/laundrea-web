@@ -26,10 +26,10 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
   required = true,
   idPrefix = 'addr',
   placeholder = 'Ketik nama jalan, komplek, atau area (min. 3 karakter)...',
-  helperText = 'Tulis alamat selengkap mungkin: nama jalan, nomor rumah, RT/RW, kelurahan, kecamatan, kota, dan patokan.',
+  helperText = 'Tulis ciri khas lokasi supaya kurir mudah menemukan, misalnya warna pagar atau bangunan terdekat.',
 }) => {
   const [searchTerm, setSearchTerm] = useState(initialValue);
-  const [fullAddress, setFullAddress] = useState(initialValue);
+  const [patokan, setPatokan] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -38,13 +38,12 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync external initialValue if it changes externally
-  useEffect(() => {
-    if (initialValue && initialValue !== fullAddress) {
-      setFullAddress(initialValue);
-      setSearchTerm(initialValue);
-    }
-  }, [initialValue]);
+  // Gabungkan alamat (autocomplete) + patokan, lalu kirim ke komponen induk
+  const emit = (addr: string, pat: string) => {
+    const a = addr.trim();
+    const p = pat.trim();
+    onChange(a ? (p ? `${a} (Patokan: ${p})` : a) : '');
+  };
 
   // Click outside to close suggestion dropdown
   useEffect(() => {
@@ -59,6 +58,7 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
 
   const handleSearchChange = (val: string) => {
     setSearchTerm(val);
+    emit(val, patokan);
 
     // Cancel previous request
     if (abortControllerRef.current) {
@@ -85,8 +85,6 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
       abortControllerRef.current = controller;
 
       try {
-        // Bias to Indonesia with lat/lon approximate center (e.g. lat=-6.2, lon=106.81 or bbox/bias)
-        // Photon supports &lang=en&limit=5&lat=-6.2088&lon=106.8456 or standard q with Indonesia bias
         const query = encodeURIComponent(val.trim());
         const res = await fetch(
           `https://photon.komoot.io/api/?q=${query}&limit=5&lang=en&lat=-6.2088&lon=106.8456`,
@@ -102,7 +100,6 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
           const list: string[] = [];
           for (const feat of data.features) {
             const p = feat.properties || {};
-            // Build nice Indonesian format: street, kelurahan/district, city, state
             const parts: string[] = [];
             if (p.name) parts.push(p.name);
             if (p.street && p.street !== p.name) parts.push(p.street);
@@ -137,35 +134,24 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
     setSearchTerm(suggestion);
     setIsDropdownOpen(false);
     setSuggestions([]);
-
-    // If textarea is empty or just matches search, populate or append
-    setFullAddress((prev) => {
-      let next = prev.trim();
-      if (!next || next === searchTerm) {
-        next = suggestion;
-      } else if (!next.includes(suggestion)) {
-        next = `${next}, ${suggestion}`;
-      }
-      onChange(next);
-      return next;
-    });
+    emit(suggestion, patokan);
   };
 
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handlePatokanChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
-    setFullAddress(val);
-    onChange(val);
+    setPatokan(val);
+    emit(searchTerm, val);
   };
 
   return (
     <div className="space-y-3" ref={dropdownRef}>
-      {/* 1. Search field with live suggestions using Photon API */}
+      {/* 1. Alamat: cari dengan autocomplete Photon, boleh juga diketik manual */}
       <div>
         <label
           htmlFor={`${idPrefix}-search`}
           className="block text-[11px] font-bold text-[#254117] mb-1"
         >
-          Cari Lokasi / Area (Autocomplete)
+          Cari Lokasi / Area (Autocomplete) {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#254117]/50">
@@ -184,6 +170,7 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
               if (suggestions.length > 0) setIsDropdownOpen(true);
             }}
             placeholder={placeholder}
+            required={required}
             className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-[#254117] placeholder:text-gray-400 focus:outline-none focus:border-[#cd6184] focus:ring-1 focus:ring-[#cd6184]/20 transition-all shadow-xs"
           />
           {searchTerm && (
@@ -193,6 +180,7 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
                 setSearchTerm('');
                 setSuggestions([]);
                 setIsDropdownOpen(false);
+                emit('', patokan);
               }}
               className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
             >
@@ -222,25 +210,22 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
         </div>
       </div>
 
-      {/* 2. Required Textarea: Alamat Lengkap with standard helper text */}
+      {/* 2. Patokan */}
       <div>
         <label
-          htmlFor={`${idPrefix}-full`}
+          htmlFor={`${idPrefix}-patokan`}
           className="block text-[11px] font-bold text-[#254117] mb-1"
         >
-          Alamat Lengkap {required && <span className="text-red-500">*</span>}
+          Patokan
         </label>
-        <div className="relative">
-          <textarea
-            id={`${idPrefix}-full`}
-            rows={3}
-            value={fullAddress}
-            onChange={handleTextareaChange}
-            placeholder="Contoh: Jl. Senopati No. 42, RT 02/RW 05, Kel. Selong, Kec. Kebayoran Baru, Jakarta Selatan (Pagar hitam samping pos satpam)"
-            required={required}
-            className="w-full p-3 rounded-xl border border-gray-200 bg-white text-xs font-medium text-[#254117] placeholder:text-gray-400 focus:outline-none focus:border-[#cd6184] focus:ring-1 focus:ring-[#cd6184]/20 transition-all resize-none shadow-xs"
-          />
-        </div>
+        <textarea
+          id={`${idPrefix}-patokan`}
+          rows={2}
+          value={patokan}
+          onChange={handlePatokanChange}
+          placeholder="Contoh: Dekat Indomaret, pagar hitam, lantai 2"
+          className="w-full p-3 rounded-xl border border-gray-200 bg-white text-xs font-medium text-[#254117] placeholder:text-gray-400 focus:outline-none focus:border-[#cd6184] focus:ring-1 focus:ring-[#cd6184]/20 transition-all resize-none shadow-xs"
+        />
         <p className="text-[11px] text-[#254117]/60 mt-1 leading-relaxed">
           {helperText}
         </p>
