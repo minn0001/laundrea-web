@@ -533,8 +533,9 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                 </p>
                 <button
                   type="button"
+                  disabled={!hasPermission('payment_confirm')}
                   onClick={() => handleConfirmPaymentLunas(selectedOrder.id)}
-                  className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Verifikasi & Konfirmasi Lunas</span>
@@ -563,6 +564,7 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                 )}
               </div>
               <button
+                disabled={!hasPermission('payment_confirm')}
                 onClick={() => {
                   if (!hasPermission('payment_confirm')) {
                     alert('Akses ditolak: Anda tidak memiliki hak akses payment_confirm.');
@@ -574,7 +576,7 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                     handleTogglePayment(selectedOrder.id, selectedOrder.paymentStatus);
                   }
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                   selectedOrder.paymentStatus === 'paid'
                     ? 'bg-[#97a273] text-white'
                     : selectedOrder.paymentStatus === 'awaiting_verification'
@@ -597,8 +599,9 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
               </label>
               <select
                 value={selectedOrder.courierId || ''}
+                disabled={!hasPermission('orders_dispatch')}
                 onChange={(e) => handleAssignCourier(selectedOrder.id, e.target.value)}
-                className="w-full text-xs font-medium p-2.5 rounded-xl border border-gray-300 bg-white focus:outline-none focus:border-[#cd6184]"
+                className="w-full text-xs font-medium p-2.5 rounded-xl border border-gray-300 bg-white focus:outline-none focus:border-[#cd6184] disabled:opacity-50 disabled:bg-gray-100"
               >
                 <option value="">-- Pilih Kurir --</option>
                 {couriers.map((cr) => (
@@ -626,18 +629,25 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                 {allStatuses.map((st) => {
                   const isProcessing = ['washing', 'drying', 'ironing', 'ready', 'delivered'].includes(st.id);
                   const isLockedByPayment = selectedOrder.paymentFlowV2 && isProcessing && selectedOrder.paymentStatus !== 'paid';
+                  const isDisabled = isLockedByPayment || !hasPermission('orders_status_update');
 
                   return (
                     <button
                       key={st.id}
                       type="button"
-                      disabled={isLockedByPayment}
+                      disabled={isDisabled}
                       onClick={() => handleStatusChange(selectedOrder.id, st.id)}
-                      title={isLockedByPayment ? 'Menunggu pembayaran terverifikasi' : ''}
+                      title={
+                        isLockedByPayment
+                          ? 'Menunggu pembayaran terverifikasi'
+                          : !hasPermission('orders_status_update')
+                          ? 'Tidak memiliki izin perbarui status cucian'
+                          : ''
+                      }
                       className={`py-2 px-1.5 rounded-xl font-bold uppercase text-[10px] transition-all text-center ${
                         selectedOrder.status === st.id
                           ? 'bg-[#cd6184] text-white shadow-xs'
-                          : isLockedByPayment
+                          : isDisabled
                           ? 'bg-gray-100 text-gray-400 opacity-60 cursor-not-allowed border border-gray-200'
                           : 'bg-gray-100 hover:bg-gray-200 text-[#254117] cursor-pointer'
                       }`}

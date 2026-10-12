@@ -1,4 +1,5 @@
 import React from 'react';
+import { useApp } from '../../context/AppContext';
 import { BrandWordmark } from '../common/BrandWordmark';
 import {
   LayoutDashboard,
@@ -36,15 +37,65 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onLogout,
   onCloseMobile,
 }) => {
-  const navItems: { id: AdminView; label: string; icon: React.ElementType }[] = [
-    { id: 'dashboard', label: 'Dasbor Utama', icon: LayoutDashboard },
-    { id: 'orders', label: 'Kelola Pesanan', icon: ShoppingBag },
-    { id: 'couriers', label: 'Kelola Kurir', icon: Truck },
-    { id: 'customers', label: 'Data Pelanggan', icon: Users },
-    { id: 'pricing', label: 'Tarif & Promo', icon: Tag },
-    { id: 'financials', label: 'Laporan Keuangan', icon: BarChart3 },
-    { id: 'settings', label: 'Pengaturan Sistem', icon: Settings },
+  const { staffRoleLabel, hasPermission } = useApp();
+
+  const allNavItems: {
+    id: AdminView;
+    label: string;
+    icon: React.ElementType;
+    isAllowed: boolean;
+  }[] = [
+    {
+      id: 'dashboard',
+      label: 'Dasbor Utama',
+      icon: LayoutDashboard,
+      isAllowed: true,
+    },
+    {
+      id: 'orders',
+      label: 'Kelola Pesanan',
+      icon: ShoppingBag,
+      isAllowed: hasPermission('orders_view'),
+    },
+    {
+      id: 'couriers',
+      label: 'Kelola Kurir',
+      icon: Truck,
+      isAllowed: hasPermission('orders_dispatch') || hasPermission('system_users_manage'),
+    },
+    {
+      id: 'customers',
+      label: 'Data Pelanggan',
+      icon: Users,
+      isAllowed: hasPermission('orders_view'),
+    },
+    {
+      id: 'pricing',
+      label: 'Tarif & Promo',
+      icon: Tag,
+      isAllowed: hasPermission('pricing_edit') || hasPermission('promo_manage'),
+    },
+    {
+      id: 'financials',
+      label: 'Laporan Keuangan',
+      icon: BarChart3,
+      isAllowed:
+        hasPermission('financial_full_report') ||
+        hasPermission('expense_manage') ||
+        hasPermission('financial_export'),
+    },
+    {
+      id: 'settings',
+      label: 'Pengaturan Sistem',
+      icon: Settings,
+      isAllowed:
+        hasPermission('system_users_manage') ||
+        hasPermission('system_roles_manage') ||
+        hasPermission('audit_logs_view'),
+    },
   ];
+
+  const navItems = allNavItems.filter((item) => item.isAllowed);
 
   return (
     <aside className="w-64 bg-[#254117] text-white flex flex-col justify-between shrink-0 h-full border-r border-[#254117]/80 shadow-2xl md:shadow-none">
@@ -94,7 +145,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-bold text-white leading-tight truncate">
-              Admin
+              {staffRoleLabel}
             </span>
             <span className="text-[11px] text-white/60 truncate">@{adminUsername}</span>
           </div>

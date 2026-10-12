@@ -106,7 +106,17 @@ export async function seedFirestoreCollectionsIfEmpty(): Promise<void> {
     const rolesSnap = await getDocs(collection(db, 'systemRoles'));
     if (rolesSnap.empty) {
       for (const r of INITIAL_SYSTEM_ROLES) {
-        await setDoc(doc(db, 'systemRoles', r.id), r);
+        await setDoc(doc(db, 'systemRoles', r.id), sanitizeFirestoreData(r));
+      }
+    } else {
+      // Ensure default system roles have the strictly enforced permissions
+      for (const r of INITIAL_SYSTEM_ROLES) {
+        const existingDoc = rolesSnap.docs.find((d) => d.id === r.id);
+        if (existingDoc) {
+          await setDoc(doc(db, 'systemRoles', r.id), sanitizeFirestoreData(r), { merge: true });
+        } else {
+          await setDoc(doc(db, 'systemRoles', r.id), sanitizeFirestoreData(r));
+        }
       }
     }
 
@@ -452,7 +462,27 @@ export function subscribeToSystemRoles(
     collection(db, 'systemRoles'),
     (snap) => {
       const list: SystemRole[] = [];
-      snap.forEach((d) => list.push({ id: d.id, ...(d.data() as any) }));
+      snap.forEach((d) => {
+        const item = { id: d.id, ...(d.data() as any) } as SystemRole;
+        // Strictly ensure default role permissions adhere to system boundaries
+        if (item.id === 'super_admin') {
+          item.permissions = (item.permissions || []).filter(
+            (p) => !['orders_weigh', 'courier_handover_update', 'courier_task_access'].includes(p)
+          );
+        } else if (item.id === 'admin_operasional') {
+          item.permissions = (item.permissions || []).filter(
+            (p) => !['orders_weigh', 'courier_handover_update', 'courier_task_access'].includes(p)
+          );
+        } else if (item.id === 'courier') {
+          item.permissions = [
+            'orders_view',
+            'orders_weigh',
+            'courier_handover_update',
+            'courier_task_access',
+          ];
+        }
+        list.push(item);
+      });
       if (list.length > 0) onSuccess(list);
     },
     (err) => {
@@ -463,12 +493,33 @@ export function subscribeToSystemRoles(
 
 export async function saveSystemRoleToFirestore(role: SystemRole): Promise<void> {
   await ensureSilentAuth();
-  await setDoc(doc(db, 'systemRoles', role.id), sanitizeFirestoreData(role));
+  let sanitizedRole = { ...role };
+  if (sanitizedRole.id === 'super_admin' || sanitizedRole.id === 'admin_operasional') {
+    sanitizedRole.permissions = (sanitizedRole.permissions || []).filter(
+      (p) => !['orders_weigh', 'courier_handover_update', 'courier_task_access'].includes(p)
+    );
+  }
+  await setDoc(doc(db, 'systemRoles', sanitizedRole.id), sanitizeFirestoreData(sanitizedRole));
 }
 
 export async function updateSystemRoleInFirestore(roleId: string, partial: Partial<SystemRole>): Promise<void> {
   await ensureSilentAuth();
-  await updateDoc(doc(db, 'systemRoles', roleId), sanitizeFirestoreData(partial));
+  let sanitizedPartial = { ...partial };
+  if (roleId === 'super_admin' || roleId === 'admin_operasional') {
+    if (sanitizedPartial.permissions) {
+      sanitizedPartial.permissions = sanitizedPartial.permissions.filter(
+        (p) => !['orders_weigh', 'courier_handover_update', 'courier_task_access'].includes(p)
+      );
+    }
+  } else if (roleId === 'courier' && sanitizedPartial.permissions) {
+    sanitizedPartial.permissions = [
+      'orders_view',
+      'orders_weigh',
+      'courier_handover_update',
+      'courier_task_access',
+    ];
+  }
+  await updateDoc(doc(db, 'systemRoles', roleId), sanitizeFirestoreData(sanitizedPartial));
 }
 
 // ================= STAMPS & VOUCHERS PER CUSTOMER =================

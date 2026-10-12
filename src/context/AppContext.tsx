@@ -112,6 +112,7 @@ interface AppContextType {
   systemRoles: SystemRole[];
   systemPermissions: PermissionItem[];
   hasPermission: (permissionId: string) => boolean;
+  staffRoleLabel: string;
   currentStaffRole: SystemRole | null;
   currentStaffUser: SystemUser | null;
   addSystemUser: (user: Omit<SystemUser, 'id' | 'createdAt'>) => void;
@@ -398,17 +399,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentStaffRole =
     (currentStaffUser && systemRoles.find((r) => r.id === currentStaffUser.roleId)) || null;
 
+  // Derive staff role label for the UI (Super Admin -> "Admin", Admin Kasir & Operasional -> "Admin Kasir dan Operasional", Kurir -> "Kurir")
+  const staffRoleLabel = (() => {
+    if (role === 'courier' || currentStaffRole?.id === 'courier' || currentStaffUser?.roleCategory === 'courier') {
+      return 'Kurir';
+    }
+    if (currentStaffRole) {
+      if (currentStaffRole.id === 'super_admin' || currentStaffRole.name === 'Super Admin') {
+        return 'Admin';
+      }
+      if (
+        currentStaffRole.id === 'admin_operasional' ||
+        currentStaffRole.name.toLowerCase().includes('operasional') ||
+        currentStaffRole.name.toLowerCase().includes('kasir')
+      ) {
+        return 'Admin Kasir dan Operasional';
+      }
+      return currentStaffRole.name;
+    }
+    // Fallback based on logged-in username if role document is still resolving
+    if (adminUsername === 'owner_laundrea') return 'Admin';
+    if (adminUsername.startsWith('admin_')) return 'Admin Kasir dan Operasional';
+    if (adminUsername.startsWith('kurir_')) return 'Kurir';
+    return 'Admin';
+  })();
+
   const hasPermission = (permissionId: string): boolean => {
+    // 1) Weighing: ONLY the courier can weigh and enter the actual weight
+    if (permissionId === 'orders_weigh') {
+      return (
+        role === 'courier' ||
+        currentStaffRole?.id === 'courier' ||
+        currentStaffUser?.roleCategory === 'courier'
+      );
+    }
+
+    // Courier-only permissions: Konfirmasi Antar & Jemput Kurir, Akses Portal & Tugas Kurir
+    if (['courier_handover_update', 'courier_task_access'].includes(permissionId)) {
+      return (
+        role === 'courier' ||
+        currentStaffRole?.id === 'courier' ||
+        currentStaffUser?.roleCategory === 'courier'
+      );
+    }
+
+    // If active user is Courier, they have NOTHING ELSE except 'orders_view'
+    if (role === 'courier' || currentStaffRole?.id === 'courier' || currentStaffUser?.roleCategory === 'courier') {
+      return permissionId === 'orders_view';
+    }
+
+    // For Admin users:
     if (!currentStaffRole) {
       // Fallback for default super admin owner
-      if (role === 'admin' && adminUsername === 'owner_laundrea') return true;
-      if (role === 'courier') {
-        return ['courier_task_access', 'orders_view', 'orders_weigh', 'courier_handover_update'].includes(
-          permissionId
-        );
+      if (role === 'admin' && adminUsername === 'owner_laundrea') {
+        return true; // Already ruled out courier-only permissions above
+      }
+      // Fallback for default admin kasir
+      if (role === 'admin' && adminUsername.startsWith('admin_')) {
+        return [
+          'orders_view',
+          'orders_create',
+          'orders_status_update',
+          'orders_dispatch',
+          'payment_confirm',
+          'financial_summary_view',
+          'promo_manage',
+        ].includes(permissionId);
       }
       return false;
     }
+
+    if (currentStaffRole.id === 'super_admin') {
+      // Super admin has all admin permissions (courier-only already filtered out above)
+      return currentStaffRole.permissions.includes(permissionId);
+    }
+
     return currentStaffRole.permissions.includes(permissionId);
   };
 
@@ -752,6 +817,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * Creates or updates notification idempotently.
    */
   const updateOrderWeight = (orderId: string, actualWeight: number) => {
+    // 1) Weighing: ONLY the courier can weigh and enter the actual weight
+    if (!hasPermission('orders_weigh')) {
+      console.warn('Unauthorized: Wewenang timbang & verifikasi berat hanya dimiliki oleh Kurir.');
+      return;
+    }
+
     const ord = orders.find((o) => o.id === orderId);
     if (!ord) return;
 
@@ -1129,6 +1200,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         systemRoles,
         systemPermissions,
         hasPermission,
+        staffRoleLabel,
         currentStaffRole,
         currentStaffUser,
         addSystemUser,

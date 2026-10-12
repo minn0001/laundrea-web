@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 export const AdminFinancialReportsPage: React.FC = () => {
-  const { orders, operationalCosts, addOperationalCost } = useApp();
+  const { orders, operationalCosts, addOperationalCost, hasPermission } = useApp();
 
   const [dateFilter, setDateFilter] = useState<'today' | '7days' | 'month' | 'custom'>('7days');
   const [customStartDate, setCustomStartDate] = useState('2026-09-01');
@@ -154,6 +154,7 @@ export const AdminFinancialReportsPage: React.FC = () => {
 
   const handleAddCost = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPermission('expense_manage')) return;
     if (!newCostCategory.trim()) return;
 
     addOperationalCost(newCostCategory, newCostAmount);
@@ -161,6 +162,7 @@ export const AdminFinancialReportsPage: React.FC = () => {
   };
 
   const handleExportReport = () => {
+    if (!hasPermission('financial_export')) return;
     setDownloadToast(true);
     setTimeout(() => setDownloadToast(false), 3500);
 
@@ -200,13 +202,15 @@ export const AdminFinancialReportsPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-[#254117]">Laporan Keuangan & Analisis</h1>
         </div>
 
-        <button
-          onClick={handleExportReport}
-          className="px-4 py-2 rounded-xl bg-[#254117] hover:bg-[#1d3312] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
-        >
-          <Download className="w-4 h-4 text-[#ffbd59]" />
-          <span>Unduh Rekap Laporan (.CSV)</span>
-        </button>
+        {hasPermission('financial_export') && (
+          <button
+            onClick={handleExportReport}
+            className="px-4 py-2 rounded-xl bg-[#254117] hover:bg-[#1d3312] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-[#ffbd59]" />
+            <span>Unduh Rekap Laporan (.CSV)</span>
+          </button>
+        )}
       </div>
 
       {downloadToast && (
@@ -558,42 +562,48 @@ export const AdminFinancialReportsPage: React.FC = () => {
             <span>Catat Pengeluaran Operasional</span>
           </h3>
 
-          <form onSubmit={handleAddCost} className="space-y-3 p-3.5 bg-[#ffecf2]/50 rounded-2xl border border-[#cd6184]/20">
-            <div>
-              <label className="block text-xs font-semibold text-[#254117] mb-1">
-                Kategori Pengeluaran
-              </label>
-              <input
-                type="text"
-                value={newCostCategory}
-                onChange={(e) => setNewCostCategory(e.target.value)}
-                placeholder="Contoh: Pembelian Plastik Eco Cover & Hanger"
-                className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-[#cd6184]"
-                required
-              />
-            </div>
+          {hasPermission('expense_manage') ? (
+            <form onSubmit={handleAddCost} className="space-y-3 p-3.5 bg-[#ffecf2]/50 rounded-2xl border border-[#cd6184]/20">
+              <div>
+                <label className="block text-xs font-semibold text-[#254117] mb-1">
+                  Kategori Pengeluaran
+                </label>
+                <input
+                  type="text"
+                  value={newCostCategory}
+                  onChange={(e) => setNewCostCategory(e.target.value)}
+                  placeholder="Contoh: Pembelian Plastik Eco Cover & Hanger"
+                  className="w-full text-xs p-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-[#cd6184]"
+                  required
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-[#254117] mb-1">
-                Nominal Biaya (Rp)
-              </label>
-              <input
-                type="number"
-                step="10000"
-                value={newCostAmount}
-                onChange={(e) => setNewCostAmount(parseInt(e.target.value) || 0)}
-                className="w-full text-xs p-2.5 rounded-xl border border-gray-300 font-bold focus:outline-none focus:border-[#cd6184]"
-                required
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#254117] mb-1">
+                  Nominal Biaya (Rp)
+                </label>
+                <input
+                  type="number"
+                  step="10000"
+                  value={newCostAmount}
+                  onChange={(e) => setNewCostAmount(parseInt(e.target.value) || 0)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-gray-300 font-bold focus:outline-none focus:border-[#cd6184]"
+                  required
+                />
+              </div>
 
-            <button
-              type="submit"
-              className="w-full py-2.5 px-4 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
-            >
-              + Catat Biaya Operasional
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              >
+                + Catat Biaya Operasional
+              </button>
+            </form>
+          ) : (
+            <div className="p-4 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-xs text-gray-400 text-center italic">
+              Pencatatan pengeluaran operasional dikunci (Wewenang Super Admin).
+            </div>
+          )}
 
           {/* Cost items list */}
           <div className="space-y-2 max-h-48 overflow-y-auto pr-1">

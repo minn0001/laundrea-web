@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export const AdminCouriersPage: React.FC = () => {
-  const { couriers, orders, addCourier, toggleCourierStatus } = useApp();
+  const { couriers, orders, addCourier, toggleCourierStatus, hasPermission } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -72,13 +72,15 @@ export const AdminCouriersPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-[#254117]">Kelola Armada Kurir</h1>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Kurir Baru</span>
-        </button>
+        {hasPermission('system_users_manage') && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Kurir Baru</span>
+          </button>
+        )}
       </div>
 
       {/* Summary metric cards */}
@@ -355,19 +357,21 @@ export const AdminCouriersPage: React.FC = () => {
               </div>
 
               {/* Action Button */}
-              <div className="pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => toggleCourierStatus(courier.id)}
-                  className={`w-full py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                    courier.status === 'active'
-                      ? 'border-red-200 text-red-600 hover:bg-red-50'
-                      : 'border-[#97a273] bg-[#97a273]/10 text-[#97a273] hover:bg-[#97a273]/20'
-                  }`}
-                >
-                  {courier.status === 'active' ? 'Nonaktifkan Kurir' : 'Aktifkan Kurir'}
-                </button>
-              </div>
+              {hasPermission('system_users_manage') ? (
+                <div className="pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => toggleCourierStatus(courier.id)}
+                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      courier.status === 'active'
+                        ? 'border-red-200 text-red-600 hover:bg-red-50'
+                        : 'border-[#97a273] bg-[#97a273]/10 text-[#97a273] hover:bg-[#97a273]/20'
+                    }`}
+                  >
+                    {courier.status === 'active' ? 'Nonaktifkan Kurir' : 'Aktifkan Kurir'}
+                  </button>
+                </div>
+              ) : null}
             </div>
           );
         })}

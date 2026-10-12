@@ -4,7 +4,7 @@ import { Plan, PlanType } from '../../types';
 import { Tag, Edit2, Check, Plus, Percent, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export const AdminPricingPromoPage: React.FC = () => {
-  const { plans, updatePlan, promos, addPromo, togglePromo } = useApp();
+  const { plans, updatePlan, promos, addPromo, togglePromo, hasPermission } = useApp();
 
   const [editingPlanId, setEditingPlanId] = useState<PlanType | null>(null);
   const [editPrice, setEditPrice] = useState<number>(0);
@@ -18,6 +18,7 @@ export const AdminPricingPromoPage: React.FC = () => {
   const [newMinOrder, setNewMinOrder] = useState<number>(50000);
 
   const startEditing = (plan: Plan) => {
+    if (!hasPermission('pricing_edit')) return;
     setEditingPlanId(plan.id);
     setEditPrice(plan.price);
     setEditTurnaround(plan.turnaroundTime);
@@ -25,6 +26,7 @@ export const AdminPricingPromoPage: React.FC = () => {
   };
 
   const savePlanEdit = (plan: Plan) => {
+    if (!hasPermission('pricing_edit')) return;
     const updatedFeatures = editFeatures
       .split('\n')
       .map((f) => f.trim())
@@ -44,6 +46,7 @@ export const AdminPricingPromoPage: React.FC = () => {
 
   const handleCreatePromo = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPermission('promo_manage')) return;
     if (!newPromoCode.trim()) return;
 
     addPromo(newPromoCode, newDiscount, newMinOrder);
@@ -179,7 +182,7 @@ export const AdminPricingPromoPage: React.FC = () => {
                         Simpan
                       </button>
                     </div>
-                  ) : (
+                  ) : hasPermission('pricing_edit') ? (
                     <button
                       type="button"
                       onClick={() => startEditing(plan)}
@@ -188,6 +191,10 @@ export const AdminPricingPromoPage: React.FC = () => {
                       <Edit2 className="w-3.5 h-3.5" />
                       <span>Ubah Tarif & Poin</span>
                     </button>
+                  ) : (
+                    <div className="w-full py-2 text-center text-[11px] text-gray-400 font-semibold italic bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                      Tarif Terkunci (Wewenang Super Admin)
+                    </div>
                   )}
                 </div>
               </div>

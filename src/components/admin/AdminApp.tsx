@@ -13,7 +13,7 @@ import { Menu, X } from 'lucide-react';
 import { BrandWordmark } from '../common/BrandWordmark';
 
 export const AdminApp: React.FC = () => {
-  const { isAdminLoggedIn, adminUsername, loginAdmin, logoutAdmin } = useApp();
+  const { isAdminLoggedIn, adminUsername, loginAdmin, logoutAdmin, hasPermission } = useApp();
 
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   const [selectedOrderIdForDetail, setSelectedOrderIdForDetail] = useState<string | null>(null);
@@ -23,9 +23,43 @@ export const AdminApp: React.FC = () => {
     return <AdminLogin onLogin={loginAdmin} />;
   }
 
+  // View permission guard
+  const isViewAllowed = (view: AdminView): boolean => {
+    switch (view) {
+      case 'dashboard':
+        return true;
+      case 'orders':
+        return hasPermission('orders_view');
+      case 'couriers':
+        return hasPermission('orders_dispatch') || hasPermission('system_users_manage');
+      case 'customers':
+        return hasPermission('orders_view');
+      case 'pricing':
+        return hasPermission('pricing_edit') || hasPermission('promo_manage');
+      case 'financials':
+        return (
+          hasPermission('financial_full_report') ||
+          hasPermission('expense_manage') ||
+          hasPermission('financial_export')
+        );
+      case 'settings':
+        return (
+          hasPermission('system_users_manage') ||
+          hasPermission('system_roles_manage') ||
+          hasPermission('audit_logs_view')
+        );
+      default:
+        return false;
+    }
+  };
+
+  const activeView = isViewAllowed(currentView) ? currentView : 'dashboard';
+
   const handleSelectOrderAndGo = (orderId: string) => {
     setSelectedOrderIdForDetail(orderId);
-    setCurrentView('orders');
+    if (isViewAllowed('orders')) {
+      setCurrentView('orders');
+    }
   };
 
   return (
@@ -59,9 +93,11 @@ export const AdminApp: React.FC = () => {
         } md:flex md:sticky md:top-0 md:h-screen md:self-stretch md:shrink-0 z-40`}
       >
         <AdminSidebar
-          currentView={currentView}
+          currentView={activeView}
           onSelectView={(v) => {
-            setCurrentView(v);
+            if (isViewAllowed(v)) {
+              setCurrentView(v);
+            }
             setMobileSidebarOpen(false);
           }}
           adminUsername={adminUsername}
@@ -72,26 +108,28 @@ export const AdminApp: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full">
-        {currentView === 'dashboard' && (
+        {activeView === 'dashboard' && (
           <AdminDashboardHome
-            onNavigate={setCurrentView}
+            onNavigate={(v) => {
+              if (isViewAllowed(v)) setCurrentView(v);
+            }}
             onSelectOrder={handleSelectOrderAndGo}
           />
         )}
 
-        {currentView === 'orders' && (
+        {activeView === 'orders' && (
           <AdminOrdersPage initialSelectedOrderId={selectedOrderIdForDetail} />
         )}
 
-        {currentView === 'couriers' && <AdminCouriersPage />}
+        {activeView === 'couriers' && <AdminCouriersPage />}
 
-        {currentView === 'customers' && <AdminCustomersPage />}
+        {activeView === 'customers' && <AdminCustomersPage />}
 
-        {currentView === 'pricing' && <AdminPricingPromoPage />}
+        {activeView === 'pricing' && <AdminPricingPromoPage />}
 
-        {currentView === 'financials' && <AdminFinancialReportsPage />}
+        {activeView === 'financials' && <AdminFinancialReportsPage />}
 
-        {currentView === 'settings' && <AdminSystemSettingsPage />}
+        {activeView === 'settings' && <AdminSystemSettingsPage />}
       </main>
     </div>
   );

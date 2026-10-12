@@ -111,14 +111,39 @@ export const AdminSystemSettingsPage: React.FC = () => {
   // Sync draft permissions when role changes
   React.useEffect(() => {
     if (selectedRole) {
-      setDraftPermissions(selectedRole.permissions);
+      if (selectedRole.id === 'super_admin' || selectedRole.id === 'admin_operasional') {
+        setDraftPermissions(
+          selectedRole.permissions.filter(
+            (p) => !['orders_weigh', 'courier_handover_update', 'courier_task_access'].includes(p)
+          )
+        );
+      } else {
+        setDraftPermissions(selectedRole.permissions);
+      }
     }
   }, [selectedRoleId, systemRoles]);
 
   // Handle toggle of single permission
   const handleTogglePermission = (permId: string) => {
     if (selectedRole?.id === 'super_admin') {
-      showToast('Peran Super Admin memiliki hak akses penuh permanen.');
+      showToast('Peran Super Admin memiliki hak akses administratif default penuh permanen.');
+      return;
+    }
+
+    // 1) Weighing: ONLY the courier can weigh and enter actual weight
+    if (
+      selectedRole?.category === 'admin' &&
+      ['orders_weigh', 'courier_handover_update', 'courier_task_access'].includes(permId)
+    ) {
+      showToast('Wewenang timbang dan tugas kurir hanya eksklusif untuk Kurir.');
+      return;
+    }
+
+    if (
+      selectedRole?.category === 'courier' &&
+      !['orders_view', 'orders_weigh', 'courier_handover_update', 'courier_task_access'].includes(permId)
+    ) {
+      showToast('Peran Kurir dibatasi khusus untuk wewenang operasional lapangan.');
       return;
     }
 
@@ -129,7 +154,20 @@ export const AdminSystemSettingsPage: React.FC = () => {
 
   const handleSaveRolePermissions = () => {
     if (!selectedRole) return;
-    updateRolePermissions(selectedRole.id, draftPermissions);
+    let cleaned = [...draftPermissions];
+    if (selectedRole.category === 'admin' || selectedRole.id === 'super_admin' || selectedRole.id === 'admin_operasional') {
+      cleaned = cleaned.filter(
+        (p) => !['orders_weigh', 'courier_handover_update', 'courier_task_access'].includes(p)
+      );
+    } else if (selectedRole.category === 'courier' || selectedRole.id === 'courier') {
+      cleaned = [
+        'orders_view',
+        'orders_weigh',
+        'courier_handover_update',
+        'courier_task_access',
+      ];
+    }
+    updateRolePermissions(selectedRole.id, cleaned);
     showToast(`Hak akses peran "${selectedRole.name}" berhasil diperbarui!`);
   };
 

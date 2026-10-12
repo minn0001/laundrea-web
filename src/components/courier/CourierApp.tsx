@@ -58,6 +58,26 @@ export const CourierApp: React.FC = () => {
     return <CourierLogin onLogin={loginCourier} />;
   }
 
+  if (!hasPermission('courier_task_access')) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h2 className="text-lg font-bold text-[#254117]">Akses Ditolak</h2>
+        <p className="text-xs text-gray-600 mt-1 max-w-sm">
+          Akun Anda tidak memiliki wewenang Akses Portal & Tugas Kurir (courier_task_access).
+        </p>
+        <button
+          onClick={logoutCourier}
+          className="mt-4 px-4 py-2 bg-[#254117] text-white rounded-xl text-xs font-bold cursor-pointer"
+        >
+          Keluar
+        </button>
+      </div>
+    );
+  }
+
   // Current logged in courier data with resilient fallbacks
   const rawCourier =
     couriers.find(
@@ -142,6 +162,10 @@ export const CourierApp: React.FC = () => {
   const handleWeightSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrder) return;
+    if (!hasPermission('orders_weigh')) {
+      alert('Akses ditolak: Hanya kurir yang memiliki hak akses timbang & verifikasi berat.');
+      return;
+    }
     const num = parseFloat(weightInput);
     if (isNaN(num) || num <= 0) return;
 
@@ -158,6 +182,10 @@ export const CourierApp: React.FC = () => {
   // Courier Handover Actions: Courier only handles Pickup and Delivery
   const handleConfirmPickup = () => {
     if (!selectedOrder) return;
+    if (!hasPermission('courier_handover_update')) {
+      alert('Akses ditolak: Anda tidak memiliki wewenang konfirmasi jemput kurir.');
+      return;
+    }
     setIsUpdating(true);
     setTimeout(() => {
       updateOrderStatus(selectedOrder.id, 'picked_up');
@@ -169,6 +197,10 @@ export const CourierApp: React.FC = () => {
 
   const handleConfirmDelivery = () => {
     if (!selectedOrder) return;
+    if (!hasPermission('courier_handover_update')) {
+      alert('Akses ditolak: Anda tidak memiliki wewenang serah terima antar kurir.');
+      return;
+    }
     setIsUpdating(true);
     setTimeout(() => {
       updateOrderStatus(selectedOrder.id, 'delivered');
