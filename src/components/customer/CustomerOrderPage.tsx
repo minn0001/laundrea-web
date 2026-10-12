@@ -731,6 +731,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       <span className="block text-[10px] font-normal opacity-70">{slot.shift}</span>
                     </button>
                   ))}
+                  </div>
                   {formAttempted && !isTimeValid && (
                     <p className="text-[11px] text-red-500 font-medium mt-1.5 flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
