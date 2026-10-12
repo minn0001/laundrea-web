@@ -24,6 +24,7 @@ interface CustomerHomePageProps {
   onGoToHistory?: () => void;
   onGoToLoyalty: () => void;
   onGoToProfile: () => void;
+  onGoToAddress?: () => void;
 }
 
 export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
@@ -32,6 +33,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
   onGoToHistory,
   onGoToLoyalty,
   onGoToProfile,
+  onGoToAddress,
 }) => {
   const {
     isCustomerVerified,
@@ -150,7 +152,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
           <div className="w-full min-w-0 max-w-full md:w-auto">
             <div
               id="card-customer-address-chip"
-              onClick={onGoToProfile}
+              onClick={onGoToAddress || onGoToProfile}
               className="w-full min-w-0 max-w-full md:w-80 flex items-start sm:items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-left text-xs box-border overflow-hidden"
               title="Ubah Alamat di Profil"
             >
