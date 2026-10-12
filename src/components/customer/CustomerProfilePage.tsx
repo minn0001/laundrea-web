@@ -19,6 +19,8 @@ import { StructuredAddressData } from '../../services/wilayahService';
 
 interface CustomerProfilePageProps {
   onLogoutClick: () => void;
+  autoOpenAddress={openAddressModal}
+  onAddressModalHandled={() => setOpenAddressModal(false)}
   onNavigateTab?: (tab: 'order' | 'tracking' | 'loyalty') => void;
 }
 
