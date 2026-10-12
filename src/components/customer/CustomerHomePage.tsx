@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PlanType } from '../../types';
+import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
+import { StructuredAddressData } from '../../services/wilayahService';
 import {
   Sparkles,
   Truck,
@@ -16,6 +18,8 @@ import {
   Zap,
   Sparkle,
   User,
+   X,
+  Building2,
 } from 'lucide-react';
 
 interface CustomerHomePageProps {
@@ -43,12 +47,38 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
     stampsCount,
     orders,
     activeCustomerOrderId,
+    updateCustomerProfile,
   } = useApp();
 
   const filledStamps = Math.min(Math.max(0, stampsCount), 10);
 
   const userName = customerName || 'Pelanggan';
   const userAddress = customerAddress || 'Alamat belum diatur';
+    // Popup ubah alamat (langsung di Beranda)
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [tempAddress, setTempAddress] = useState('');
+  const [tempStructuredAddress, setTempStructuredAddress] = useState<StructuredAddressData | undefined>(undefined);
+  const [tempNotes, setTempNotes] = useState('');
+
+  const openAddressModal = () => {
+    setTempAddress(customerAddress || '');
+    setTempNotes(
+      localStorage.getItem(`laundrea_cust_address_notes_${customerPhone}`) ||
+        'Pagar hitam, sebelah mini market'
+    );
+    setIsAddressModalOpen(true);
+  };
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempAddress.trim()) return;
+    localStorage.setItem(`laundrea_cust_address_notes_${customerPhone}`, tempNotes.trim());
+    await updateCustomerProfile({
+      address: tempAddress.trim(),
+      structuredAddress: tempStructuredAddress,
+    });
+    setIsAddressModalOpen(false);
+  };
 
   // Filter customer-specific orders
   const myOrders = orders.filter((o) => {
@@ -152,9 +182,9 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
           <div className="w-full min-w-0 max-w-full md:w-auto">
             <div
               id="card-customer-address-chip"
-              onClick={onGoToAddress || onGoToProfile}
+              onClick={openAddressModal}
               className="w-full min-w-0 max-w-full md:w-80 flex items-start sm:items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-200/80 cursor-pointer transition-colors text-left text-xs box-border overflow-hidden"
-              title="Ubah Alamat di Profil"
+              title="Ubah Alamat"
             >
               <div className="w-7 h-7 rounded-xl bg-[#ffecf2] flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                 <MapPin className="w-3.5 h-3.5 text-[#cd6184] shrink-0" />
@@ -344,34 +374,6 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
 
         {/* 3-Step Simple How It Works */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs space-y-3 flex flex-col justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#ffecf2] text-[#cd6184] flex items-center justify-center shrink-0">
-              <Award className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-xs text-gray-900">Kartu Cap & Loyalty</h4>
-                <span className="text-[11px] font-black text-[#cd6184] bg-[#ffecf2] px-2 py-0.5 rounded-md">
-                  {filledStamps} / 10 Cap
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                Kumpulkan 10 cap untuk 1x cuci gratis 3 kg!
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onGoToLoyalty}
-            className="w-full py-2.5 px-3 rounded-xl text-xs font-bold text-[#cd6184] bg-[#ffecf2] hover:bg-[#ffecf2]/80 transition-colors cursor-pointer text-center"
-          >
-            Lihat Hadiah Cap →
-          </button>
-        </div>
-
-        {/* 3-Step Simple How It Works */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs space-y-3 flex flex-col justify-between">
           <h3 className="text-xs font-black text-gray-900 text-center uppercase tracking-wider text-[#cd6184]">
             Cara Kerja Penjemputan
           </h3>
@@ -404,7 +406,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
         </div>
       </div>
 
-      {/* Quality Guarantees */}
+            {/* Quality Guarantees */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="p-3 rounded-xl bg-white border border-gray-200/80 flex items-center gap-2.5">
           <Truck className="w-4 h-4 text-[#97a273] shrink-0" />
@@ -422,6 +424,68 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* MODAL: Ubah Alamat */}
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-[#cd6184]" />
+                <h3 className="text-base font-black text-[#254117]">Alamat Pengiriman</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddressModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAddress} className="space-y-3.5 text-xs">
+              <CascadingAddressSelector
+                initialCombinedAddress={tempAddress}
+                onChange={({ combinedAddress, structured }) => {
+                  setTempAddress(combinedAddress);
+                  setTempStructuredAddress(structured);
+                }}
+                required
+                idPrefix="home-modal-addr"
+              />
+
+              <div>
+                <label className="block font-bold text-[#254117] mb-1">
+                  Catatan untuk Kurir Penjemput
+                </label>
+                <input
+                  type="text"
+                  value={tempNotes}
+                  onChange={(e) => setTempNotes(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-hidden focus:border-[#cd6184] text-xs font-semibold text-[#254117]"
+                  placeholder="Contoh: Pagar warna hitam, titip satpam"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddressModalOpen(false)}
+                  className="py-2.5 px-4 rounded-xl text-xs font-bold text-[#254117] bg-gray-100 hover:bg-gray-200 transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#cd6184] hover:bg-[#b85373] shadow-xs transition-all cursor-pointer"
+                >
+                  Simpan Alamat
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
