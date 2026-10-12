@@ -336,8 +336,14 @@ export const CustomerApp: React.FC = () => {
             onGoToHistory={() => requireAuth(() => setActiveTab('history'))}
             onGoToLoyalty={() => requireAuth(() => setActiveTab('loyalty'))}
             onGoToProfile={() => requireAuth(() => setActiveTab('profile'))}
-          />
-        )}
+            onGoToAddress={() =>
+            requireAuth(() => {
+              setOpenAddressModal(true);
+              setActiveTab('profile');
+            })
+          }
+        />
+        
         {activeTab === 'create_order' && (
           <CustomerOrderPage
             onOrderSuccess={handleOrderSuccess}
