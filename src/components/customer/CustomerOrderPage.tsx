@@ -69,6 +69,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   // Effective address used for this order
   const effectiveAddress = addressMode === 'account' ? (loggedInAddress || '') : customAddress;
 
+  const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qris');
 
   // Pickup schedule states: Mandatory before user can proceed
@@ -902,12 +903,9 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#cd6184] transition-colors"
                   />
                 </div>
-                    </p>
-                  )}
-                </div>
               </div>
+             </div>
             </div>
-          </div>
 
           {/* Section 6: Voucher / Kupon Diskon (Opsional) */}
           <div className="bg-[#ffecf2]/60 rounded-3xl p-5 sm:p-6 border border-[#cd6184]/25 space-y-4">
