@@ -224,8 +224,8 @@ export async function sendOrUpdateNotification(params: {
     if (!norm) return;
 
     if (params.isPaymentOpening) {
-      // Deterministic ID per order for payment opening notification to guarantee single create & live update
-      const notifId = `notif-payment-${params.orderId}`;
+      // Deterministic document ID payment-due-{orderId}
+      const notifId = `payment-due-${params.orderId}`;
       await setDoc(
         doc(db, 'notifications', notifId),
         {

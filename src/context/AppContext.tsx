@@ -152,6 +152,8 @@ interface AppContextType {
     notes?: string;
     voucherCode?: string;
     voucherDiscount?: number;
+    recipientName?: string;
+    contactPhone?: string;
   }) => Order;
   updateOrderWeight: (orderId: string, actualWeight: number) => void;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void;
@@ -668,6 +670,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notes?: string;
     voucherCode?: string;
     voucherDiscount?: number;
+    recipientName?: string;
+    contactPhone?: string;
   }): Order => {
     const selectedPlan = plans.find((p) => p.id === data.planId) || plans[0];
     const unitPrice = selectedPlan.price;
@@ -691,6 +695,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       customerName: data.customerName,
       customerPhone: data.customerPhone,
       customerAddress: data.customerAddress,
+      recipientName: data.recipientName || data.customerName,
+      contactPhone: data.contactPhone || data.customerPhone,
       planId: data.planId,
       planName: selectedPlan.name,
       unitPrice,
@@ -723,26 +729,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastUpdatedLabel: 'Pesanan dibuat',
     };
 
+    // Immediate optimistic local update so order is visible instantly
+    setOrders((prev) => [newOrder, ...prev.filter((o) => o.id !== newId)]);
+    setActiveCustomerOrderId(newId);
+
     saveOrderToFirestore(newOrder).catch((err) => {
       console.error('saveOrderToFirestore error:', err);
     });
-
-    setActiveCustomerOrderId(newId);
 
     if (data.voucherCode) {
       markVoucherAsUsed(data.voucherCode, orderNumber);
     }
 
-    const newStamp: StampHistoryItem = {
-      id: `stmp-${Date.now()}`,
-      orderNumber,
-      date: now.toISOString().slice(0, 10),
-      type: 'earned',
-      title: `Pesanan ${selectedPlan.name} (${data.estimatedQuantity} ${selectedPlan.unit})`,
-      pointsChange: 1,
-    };
-    saveStampHistoryItem(data.customerPhone, newStamp).catch(() => {});
-
+    // Note: Stamps are earned when the order is DELIVERED, not at creation (Requirement 3).
     return newOrder;
   };
 
@@ -788,8 +787,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         customerPhone: ord.customerPhone,
         orderId: ord.id,
         orderNumber: ord.orderNumber,
-        title: `Pembayaran Menunggu — Pesanan ${ord.orderNumber}`,
-        body: `Pembayaran Menunggu — Pesanan ${ord.orderNumber}: hasil timbang ${actualWeight} ${ord.unit}. Total Rp ${finalAmount.toLocaleString('id-ID')}. Pilih metode pembayaran sekarang.`,
+        title: 'Pembayaran Menunggu',
+        body: `Pembayaran Menunggu — berat aktual ${actualWeight} ${ord.unit}, total Rp${finalAmount.toLocaleString('id-ID')}. Silakan pilih metode pembayaran.`,
         isPaymentOpening: true,
       }).catch(() => {});
     }
@@ -877,6 +876,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ready: 'Siap Antar',
       delivered: 'Selesai Diantar',
     };
+
+    // Requirement 3: Stamps are earned when the order is DELIVERED
+    if (newStatus === 'delivered') {
+      const alreadyAwarded = stampHistory.some(
+        (sh) => sh.orderNumber === ord.orderNumber && sh.type === 'earned'
+      );
+      if (!alreadyAwarded) {
+        const finalQty = ord.actualQuantity || ord.estimatedQuantity;
+        const newStamp: StampHistoryItem = {
+          id: `stmp-${Date.now()}`,
+          orderNumber: ord.orderNumber,
+          date: now.toISOString().slice(0, 10),
+          type: 'earned',
+          title: `Pesanan ${ord.planName} (${finalQty} ${ord.unit})`,
+          pointsChange: 1,
+        };
+        saveStampHistoryItem(ord.customerPhone, newStamp).catch(() => {});
+
+        // Notification: "Stempel Didapatkan — +1 stempel dari pesanan {no}. Terima kasih!" (+ optional card full notice)
+        const currentBalance = stampsCount;
+        const newBalance = currentBalance + 1;
+        let notifBody = `Stempel Didapatkan — +1 stempel dari pesanan ${ord.orderNumber}. Terima kasih!`;
+        if (newBalance >= 10) {
+          notifBody += ' Kartu stempel penuh, klaim voucher cuci gratis!';
+        }
+
+        sendOrUpdateNotification({
+          customerPhone: ord.customerPhone,
+          orderId: ord.id,
+          orderNumber: ord.orderNumber,
+          title: `Stempel Didapatkan`,
+          body: notifBody,
+          type: 'status_changed',
+        }).catch(() => {});
+      }
+    }
 
     sendOrUpdateNotification({
       customerPhone: ord.customerPhone,

@@ -33,6 +33,8 @@ export interface Order {
   customerName: string;
   customerPhone: string;
   customerAddress: string;
+  recipientName?: string;
+  contactPhone?: string;
   planId: PlanType;
   planName: string;
   unitPrice: number;

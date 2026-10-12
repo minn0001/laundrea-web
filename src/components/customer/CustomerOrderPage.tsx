@@ -23,6 +23,7 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  Phone,
 } from 'lucide-react';
 import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
 import { StructuredAddressData } from '../../services/wilayahService';
@@ -47,7 +48,6 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     customerName: loggedInName,
     customerAddress: loggedInAddress,
     customerVouchers,
-    updateCustomerProfile,
   } = useApp();
 
   // Step in checkout flow: 'select' (plan, quantity, handover, return, schedule) or 'confirm' (summary & payment)
@@ -59,13 +59,15 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const [handoverMethod, setHandoverMethod] = useState<HandoverMethod>('pickup_by_courier');
   const [returnMethod, setReturnMethod] = useState<ReturnMethod>('deliver_to_me');
 
-  const [customerName, setCustomerName] = useState(() => {
-    return loggedInName || 'Pelanggan';
-  });
-  const [customerAddress, setCustomerAddress] = useState(() => {
-    return loggedInAddress || '';
-  });
-  const [orderStructuredAddress, setOrderStructuredAddress] = useState<StructuredAddressData | undefined>(undefined);
+  // Requirement 1 & 2: Pre-fills recipient name, phone, and address from account for THIS ORDER ONLY
+  const [orderRecipientName, setOrderRecipientName] = useState(() => loggedInName || 'Pelanggan');
+  const [orderContactPhone, setOrderContactPhone] = useState(() => customerPhone || '');
+  const [addressMode, setAddressMode] = useState<'account' | 'custom'>('account');
+  const [customAddress, setCustomAddress] = useState('');
+  
+  // Effective address used for this order
+  const effectiveAddress = addressMode === 'account' ? (loggedInAddress || '') : customAddress;
+
   const [notes, setNotes] = useState('Pakaian katun & kemeja kerja');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qris');
 
@@ -99,8 +101,9 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const isReturnValid = Boolean(returnMethod);
   const isDateValid = Boolean(scheduleDate && scheduleDate.trim().length > 0);
   const isTimeValid = Boolean(scheduleTime && scheduleTime.trim().length > 0);
-  const isNameValid = Boolean(customerName && customerName.trim().length > 0);
-  const isAddressValid = Boolean(customerAddress && customerAddress.trim().length > 0);
+  const isNameValid = Boolean(orderRecipientName && orderRecipientName.trim().length > 0);
+  const isPhoneValid = Boolean(orderContactPhone && orderContactPhone.trim().length > 0);
+  const isAddressValid = Boolean(effectiveAddress && effectiveAddress.trim().length > 0);
   const isNotesValid = Boolean(notes && notes.trim().length > 0);
 
   const isFormValid =
@@ -111,6 +114,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     isDateValid &&
     isTimeValid &&
     isNameValid &&
+    isPhoneValid &&
     isAddressValid &&
     isNotesValid;
 
@@ -205,23 +209,20 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
 
   const handleFinalConfirmOrder = () => {
     setIsSubmitting(true);
-    // Save structured parts and combined address to customer profile in Firestore
-    if (customerAddress) {
-      updateCustomerProfile({
-        name: customerName,
-        address: customerAddress,
-        structuredAddress: orderStructuredAddress,
-      }).catch(() => {});
-    }
+    // Requirement 1: Editing name, phone, or address applies ONLY to this order.
+    // It must NEVER update the customer's Firestore profile.
+    // Orders stay linked to the account by the logged-in phone number (customerPhone).
 
     setTimeout(() => {
       const newOrder = createOrder({
-        customerName,
-        customerPhone,
+        customerName: loggedInName || orderRecipientName,
+        customerPhone: customerPhone,
+        recipientName: orderRecipientName,
+        contactPhone: orderContactPhone,
         customerAddress:
           handoverMethod === 'store_dropoff' && returnMethod === 'self_pickup'
             ? 'Laundrea Central Hub (Drop-off & Ambil Sendiri)'
-            : customerAddress,
+            : effectiveAddress,
         planId: selectedPlanId,
         estimatedQuantity,
         pickupDate: scheduleDate,
@@ -727,58 +728,150 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
               </div>
 
-              {/* Customer Info */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-3.5 shadow-xs">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label htmlFor={nameInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-[#cd6184]" />
-                      <span>Nama Lengkap</span>
-                      <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
-                    </label>
-                  </div>
-                  <input
-                    id={nameInputId}
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Nama lengkap Anda"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-medium focus:outline-none transition-colors ${
-                      formAttempted && !isNameValid
-                        ? 'border-red-400 bg-red-50/20 focus:border-red-500'
-                        : 'border-gray-200 focus:border-[#cd6184]'
-                    }`}
-                    required
-                  />
-                  {formAttempted && !isNameValid && (
-                    <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      Silakan isi nama lengkap pemesan.
-                    </p>
-                  )}
+              {/* Customer Info (For this order only) */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-xs">
+                <div className="border-b border-gray-100 pb-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#cd6184]">
+                    Informasi Penerima / Kontak Pesanan Ini
+                  </h3>
+                  <p className="text-[11px] text-[#254117]/60 mt-0.5">
+                    Data di bawah hanya berlaku untuk pesanan ini dan tidak akan mengubah profil akun Anda.
+                  </p>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor={nameInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1 mb-1">
+                      <User className="w-3.5 h-3.5 text-[#cd6184]" />
+                      <span>Nama Penerima</span>
+                      <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
+                    </label>
+                    <input
+                      id={nameInputId}
+                      type="text"
+                      value={orderRecipientName}
+                      onChange={(e) => setOrderRecipientName(e.target.value)}
+                      placeholder="Nama penerima pesanan"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-medium focus:outline-none transition-colors ${
+                        formAttempted && !isNameValid
+                          ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                          : 'border-gray-200 focus:border-[#cd6184]'
+                      }`}
+                      required
+                    />
+                    {formAttempted && !isNameValid && (
+                      <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        Silakan isi nama penerima pesanan.
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-[#254117] flex items-center gap-1 mb-1">
+                      <Phone className="w-3.5 h-3.5 text-[#cd6184]" />
+                      <span>No. HP / WhatsApp Kontak</span>
+                      <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={orderContactPhone}
+                      onChange={(e) => setOrderContactPhone(e.target.value)}
+                      placeholder="08xxxxxxxxxx"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-medium focus:outline-none transition-colors ${
+                        formAttempted && !isPhoneValid
+                          ? 'border-red-400 bg-red-50/20 focus:border-red-500'
+                          : 'border-gray-200 focus:border-[#cd6184]'
+                      }`}
+                      required
+                    />
+                    {formAttempted && !isPhoneValid && (
+                      <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        Silakan isi no. kontak pesanan.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Address Section with 2 Options: "Alamat akun saya" and "Alamat lain" */}
+                <div className="space-y-3 pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-[#254117] flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-[#cd6184]" />
-                      <span>Alamat Penjemputan / Pengantaran</span>
+                      <span>Alamat Penjemputan & Pengantaran</span>
                       <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                     </label>
                   </div>
-                  <CascadingAddressSelector
-                    initialCombinedAddress={customerAddress}
-                    onChange={({ combinedAddress, structured }) => {
-                      setCustomerAddress(combinedAddress);
-                      setOrderStructuredAddress(structured);
-                    }}
-                    required
-                    idPrefix="order-pickup-addr"
-                  />
+
+                  {/* Two tabs: Alamat akun saya (default) & Alamat lain */}
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl max-w-sm">
+                    <button
+                      type="button"
+                      onClick={() => setAddressMode('account')}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        addressMode === 'account'
+                          ? 'bg-white text-[#254117] shadow-xs'
+                          : 'text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      Alamat akun saya
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddressMode('custom')}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        addressMode === 'custom'
+                          ? 'bg-white text-[#cd6184] shadow-xs'
+                          : 'text-gray-500 hover:text-gray-800'
+                      }`}
+                    >
+                      Alamat lain
+                    </button>
+                  </div>
+
+                  {addressMode === 'account' ? (
+                    <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                          Tersimpan di Akun (Hanya Baca)
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#97a273]/20 text-[#254117]">
+                          Akun Utama
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-[#254117] leading-relaxed">
+                        {loggedInAddress || 'Belum ada alamat tersimpan di akun Anda. Silakan pilih "Alamat lain" di atas atau lengkapi di halaman Profil.'}
+                      </p>
+                      <p className="text-[10px] text-gray-400 italic">
+                        *Untuk mengubah alamat permanen akun, buka halaman Profil Saya.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-[#ffecf2]/30 border border-[#cd6184]/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#cd6184]">
+                          Alamat Khusus Pesanan Ini
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          (Tidak mengubah profil)
+                        </span>
+                      </div>
+                      <CascadingAddressSelector
+                        initialCombinedAddress={customAddress}
+                        onChange={({ combinedAddress }) => {
+                          setCustomAddress(combinedAddress);
+                        }}
+                        required
+                        idPrefix="order-custom-addr"
+                      />
+                    </div>
+                  )}
+
                   {formAttempted && !isAddressValid && (
                     <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3 shrink-0" />
-                      Silakan isi alamat lengkap penjemputan/pengantaran.
+                      Silakan tentukan alamat lengkap untuk penjemputan/pengantaran.
                     </p>
                   )}
                 </div>
@@ -1135,10 +1228,10 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <span className="font-medium">Waktu:</span> {scheduleTime}
                 </p>
                 <p className="text-[#254117]/80">
-                  <span className="font-medium">Pemesan:</span> {customerName} ({customerPhone})
+                  <span className="font-medium">Penerima/Kontak:</span> {orderRecipientName} ({orderContactPhone})
                 </p>
                 <p className="text-[#254117]/80 line-clamp-2">
-                  <span className="font-medium">Alamat:</span> {customerAddress}
+                  <span className="font-medium">Alamat:</span> {effectiveAddress}
                 </p>
               </div>
             </div>

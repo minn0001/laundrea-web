@@ -42,21 +42,28 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
     setActiveCustomerOrderId,
     scheduleDelivery,
     updateOrderPaymentStatus,
+    choosePaymentMethod,
   } = useApp();
 
-  // Filter orders strictly for the logged-in customer
-  const customerOrders = orders.filter((o) => {
-    if (!customerPhone) return false;
-    let cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
-    if (cleanOrderPhone.startsWith('62')) cleanOrderPhone = '0' + cleanOrderPhone.slice(2);
-    let normCust = customerPhone.replace(/\D/g, '');
-    if (normCust.startsWith('62')) normCust = '0' + normCust.slice(2);
-    return cleanOrderPhone === normCust;
-  });
+  // Filter orders strictly for the logged-in customer (all statuses), newest first
+  const customerOrders = orders
+    .filter((o) => {
+      if (!customerPhone) return false;
+      let cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
+      if (cleanOrderPhone.startsWith('62')) cleanOrderPhone = '0' + cleanOrderPhone.slice(2);
+      let normCust = customerPhone.replace(/\D/g, '');
+      if (normCust.startsWith('62')) normCust = '0' + normCust.slice(2);
+      return cleanOrderPhone === normCust;
+    })
+    .sort((a, b) => {
+      const timeA = a.id.replace(/\D/g, '') || (a.statusTimestamps?.booked || '');
+      const timeB = b.id.replace(/\D/g, '') || (b.statusTimestamps?.booked || '');
+      return timeB.localeCompare(timeA);
+    });
 
   // Active tracked order
-  const currentOrderId = orderId || activeCustomerOrderId || customerOrders[0]?.id;
-  const currentOrder = customerOrders.find((o) => o.id === currentOrderId) || customerOrders[0];
+  const targetId = orderId || activeCustomerOrderId;
+  const currentOrder = (targetId ? customerOrders.find((o) => o.id === targetId) : null) || customerOrders[0];
 
   const [deliveryDate, setDeliveryDate] = useState('Hari ini, 17:00 - 19:00');
   const [isScheduling, setIsScheduling] = useState(false);
@@ -640,6 +647,10 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
                   ? 'bg-[#97a273]/20 text-[#97a273]'
                   : currentOrder.paymentStatus === 'awaiting_verification'
                   ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : currentOrder.paymentStatus === 'awaiting_payment'
+                  ? 'bg-rose-100 text-[#cd6184] border border-rose-200 animate-pulse'
+                  : (!currentOrder.actualQuantity || currentOrder.actualQuantity <= 0)
+                  ? 'bg-gray-100 text-gray-700 border border-gray-200'
                   : 'bg-[#ffbd59]/30 text-[#254117]'
               }`}
             >
@@ -647,11 +658,34 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
                 ? 'Lunas'
                 : currentOrder.paymentStatus === 'awaiting_verification'
                 ? 'Menunggu Verifikasi'
+                : currentOrder.paymentStatus === 'awaiting_payment'
+                ? 'Menunggu Pembayaran'
+                : (!currentOrder.actualQuantity || currentOrder.actualQuantity <= 0)
+                ? 'Menunggu Verifikasi Berat'
                 : 'Menunggu'}
             </span>
           </div>
 
-          {currentOrder.paymentStatus === 'paid' ? (
+          {/* Condition 1: Until the courier saves the weight */}
+          {(!currentOrder.actualQuantity || currentOrder.actualQuantity <= 0) &&
+          currentOrder.paymentStatus !== 'paid' &&
+          currentOrder.paymentStatus !== 'awaiting_verification' ? (
+            <div className="p-3.5 sm:p-4 bg-amber-50/70 border border-amber-200 rounded-xl sm:rounded-2xl space-y-2 animate-in fade-in">
+              <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Menunggu Verifikasi Berat</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Kurir akan menjemput dan menimbang cucian Anda. Tagihan final muncul setelah itu.
+              </p>
+              <div className="text-[10px] text-[#254117]/60 pt-1 border-t border-amber-200/50 flex items-center justify-between">
+                <span>Estimasi biaya awal:</span>
+                <span className="font-bold text-[#254117]">
+                  Rp {currentOrder.estimatedPrice.toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+          ) : currentOrder.paymentStatus === 'paid' ? (
             <div className="p-3 sm:p-4 bg-[#97a273]/10 border border-[#97a273]/30 rounded-xl sm:rounded-2xl space-y-2 sm:space-y-2.5 animate-in fade-in">
               <div className="flex items-center gap-2.5 text-[#254117]">
                 <div className="w-8 h-8 rounded-full bg-[#97a273] text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -723,59 +757,138 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
               </div>
             </div>
           ) : (
-            <>
-              {currentOrder.paymentMethod === 'qris' && (
-                <div className="text-center space-y-2.5">
-                  <div className="mx-auto max-w-[240px] bg-white p-2.5 rounded-2xl border border-gray-200 shadow-xs flex flex-col items-center justify-center">
-                    <img
-                      src="/qris.png"
-                      alt="QRIS Pembayaran Laundrea"
-                      className="w-full h-auto object-contain rounded-xl"
-                    />
-                  </div>
-                  <p className="text-[11px] text-[#254117]/70">
-                    Pindai dengan GoPay, OVO, Dana, BCA, ShopeePay, atau mobile banking.
-                  </p>
-                </div>
-              )}
-
-              {currentOrder.paymentMethod === 'bank_transfer' && (
-                <div className="space-y-2 text-xs">
-                  <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200">
-                    <span className="text-[#254117]/60 block text-[9px]">Virtual Account Mandiri</span>
-                    <span className="font-mono text-xs font-bold text-[#254117] tracking-wider block mt-0.5">
-                      8923 0812 3456 7890
+            <div className="space-y-3">
+              {/* If no method chosen yet, show method picker */}
+              {!currentOrder.paymentMethod ? (
+                <div className="space-y-2.5 animate-in fade-in">
+                  <div className="p-3 bg-[#ffecf2] rounded-2xl border border-[#cd6184]/30 text-xs">
+                    <span className="font-bold text-[#cd6184] block">Hasil Timbang Telah Siap!</span>
+                    <span className="text-[#254117]/80 block mt-0.5">
+                      Total tagihan final: <strong>Rp {(currentOrder.actualPrice || currentOrder.estimatedPrice).toLocaleString('id-ID')}</strong>. Silakan pilih salah satu metode pembayaran di bawah ini:
                     </span>
                   </div>
-                  <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200">
-                    <span className="text-[#254117]/60 block text-[9px]">Virtual Account BCA</span>
-                    <span className="font-mono text-xs font-bold text-[#254117] tracking-wider block mt-0.5">
-                      1280 0812 3456 7890
-                    </span>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => choosePaymentMethod(currentOrder.id, 'qris')}
+                      className="p-3 rounded-2xl border-2 border-gray-200 hover:border-[#cd6184] bg-white hover:bg-[#ffecf2]/30 flex items-center justify-between text-left transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-black text-xs">
+                          <QrCode className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-[#254117] block group-hover:text-[#cd6184]">
+                            QRIS (Instan)
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            BCA, GoPay, OVO, ShopeePay, Dana, dll.
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#cd6184]" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => choosePaymentMethod(currentOrder.id, 'bank_transfer')}
+                      className="p-3 rounded-2xl border-2 border-gray-200 hover:border-[#cd6184] bg-white hover:bg-[#ffecf2]/30 flex items-center justify-between text-left transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-black text-xs">
+                          <CreditCard className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-[#254117] block group-hover:text-[#cd6184]">
+                            Transfer Bank / Virtual Account
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            VA Mandiri & VA BCA
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#cd6184]" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => choosePaymentMethod(currentOrder.id, 'cod')}
+                      className="p-3 rounded-2xl border-2 border-gray-200 hover:border-[#cd6184] bg-white hover:bg-[#ffecf2]/30 flex items-center justify-between text-left transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-xs">
+                          <Banknote className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-[#254117] block group-hover:text-[#cd6184]">
+                            Bayar Tunai di Tempat (COD)
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            Bayar langsung ke kurir saat jemput/antar
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#cd6184]" />
+                    </button>
                   </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  {currentOrder.paymentMethod === 'qris' && (
+                    <div className="text-center space-y-2.5">
+                      <div className="mx-auto max-w-[240px] bg-white p-2.5 rounded-2xl border border-gray-200 shadow-xs flex flex-col items-center justify-center">
+                        <img
+                          src="/qris.png"
+                          alt="QRIS Pembayaran Laundrea"
+                          className="w-full h-auto object-contain rounded-xl"
+                        />
+                      </div>
+                      <p className="text-[11px] text-[#254117]/70">
+                        Pindai dengan GoPay, OVO, Dana, BCA, ShopeePay, atau mobile banking.
+                      </p>
+                    </div>
+                  )}
 
-              {currentOrder.paymentMethod === 'cod' && (
-                <div className="p-3 bg-[#ffecf2] rounded-2xl border border-[#cd6184]/30 text-center space-y-1">
-                  <Banknote className="w-6 h-6 text-[#cd6184] mx-auto" />
-                  <span className="text-xs font-bold text-[#254117] block">Bayar di Tempat (COD)</span>
-                  <p className="text-[10px] text-[#254117]/80">
-                    Silakan siapkan uang pas untuk diberikan kepada kurir saat pesanan tiba.
-                  </p>
-                </div>
-              )}
+                  {currentOrder.paymentMethod === 'bank_transfer' && (
+                    <div className="space-y-2 text-xs">
+                      <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200">
+                        <span className="text-[#254117]/60 block text-[9px]">Virtual Account Mandiri</span>
+                        <span className="font-mono text-xs font-bold text-[#254117] tracking-wider block mt-0.5">
+                          8923 0812 3456 7890
+                        </span>
+                      </div>
+                      <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200">
+                        <span className="text-[#254117]/60 block text-[9px]">Virtual Account BCA</span>
+                        <span className="font-mono text-xs font-bold text-[#254117] tracking-wider block mt-0.5">
+                          1280 0812 3456 7890
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
-              <button
-                type="button"
-                id="btn-mark-order-paid-sim"
-                onClick={() => updateOrderPaymentStatus(currentOrder.id, 'awaiting_verification')}
-                className="w-full py-2.5 px-3 rounded-xl bg-[#254117] hover:bg-[#1b3010] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4 text-[#ffbd59]" />
-                <span>Konfirmasi Saya Sudah Bayar</span>
-              </button>
-            </>
+                  {currentOrder.paymentMethod === 'cod' && (
+                    <div className="p-3 bg-[#ffecf2] rounded-2xl border border-[#cd6184]/30 text-center space-y-1">
+                      <Banknote className="w-6 h-6 text-[#cd6184] mx-auto" />
+                      <span className="text-xs font-bold text-[#254117] block">Bayar di Tempat (COD)</span>
+                      <p className="text-[10px] text-[#254117]/80">
+                        Silakan siapkan uang pas untuk diberikan kepada kurir saat pesanan tiba.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    id="btn-mark-order-paid-sim"
+                    onClick={() => updateOrderPaymentStatus(currentOrder.id, 'awaiting_verification')}
+                    className="w-full py-2.5 px-3 rounded-xl bg-[#254117] hover:bg-[#1b3010] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-[#ffbd59]" />
+                    <span>Konfirmasi Saya Sudah Bayar</span>
+                  </button>
+                </>
+              )}
+            </div>
           )}
 
           <div className="pt-1 text-[10px] text-[#254117]/60 flex items-center justify-between border-t border-gray-100">

@@ -37,16 +37,23 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
 
-  // Filter orders strictly by logged-in customer phone
-  const displayOrders = orders.filter((o) => {
-    if (!customerPhone) return false;
-    const cleanCustomer = customerPhone.replace(/\D/g, '');
-    let cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
-    if (cleanOrderPhone.startsWith('62')) cleanOrderPhone = '0' + cleanOrderPhone.slice(2);
-    let normCust = cleanCustomer;
-    if (normCust.startsWith('62')) normCust = '0' + normCust.slice(2);
-    return cleanOrderPhone === normCust;
-  });
+  // Filter orders strictly by logged-in customer phone, sorted newest first
+  const displayOrders = orders
+    .filter((o) => {
+      if (!customerPhone) return false;
+      const cleanCustomer = customerPhone.replace(/\D/g, '');
+      let cleanOrderPhone = o.customerPhone.replace(/\D/g, '');
+      if (cleanOrderPhone.startsWith('62')) cleanOrderPhone = '0' + cleanOrderPhone.slice(2);
+      let normCust = cleanCustomer;
+      if (normCust.startsWith('62')) normCust = '0' + normCust.slice(2);
+      return cleanOrderPhone === normCust;
+    })
+    .sort((a, b) => {
+      // Sort newest first by id timestamp or booked date
+      const timeA = a.id.replace(/\D/g, '') || (a.statusTimestamps?.booked || '');
+      const timeB = b.id.replace(/\D/g, '') || (b.statusTimestamps?.booked || '');
+      return timeB.localeCompare(timeA);
+    });
 
   // Filter by status and search
   const filteredOrders = displayOrders.filter((order) => {
