@@ -45,6 +45,7 @@ export const CustomerApp: React.FC = () => {
   const [selectedVoucherForOrder, setSelectedVoucherForOrder] = useState<string | undefined>(undefined);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState<boolean>(false);
+  const [openAddressModal, setOpenAddressModal] = useState<boolean>(false);
 
   // Guest authentication modal & pending action return
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
