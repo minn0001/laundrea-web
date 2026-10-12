@@ -74,6 +74,7 @@ export interface Order {
   voucherTitle?: string;
   voucherDiscount?: number;
   subtotalPrice?: number;
+  stampGiven?: boolean;
 }
 
 export interface AppNotification {
@@ -85,7 +86,7 @@ export interface AppNotification {
   body: string;
   createdAt: string;
   read: boolean;
-  type?: 'payment_opened' | 'cash_received' | 'payment_verified' | 'status_changed';
+  type?: 'payment_opened' | 'cash_received' | 'payment_verified' | 'status_changed' | 'stamp_earned';
 }
 
 export interface Courier {
