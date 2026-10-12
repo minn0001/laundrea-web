@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
 import { StructuredAddressData } from '../../services/wilayahService';
+import { SERVICE_SLOTS } from '../../data/serviceSlots';
 
 interface CustomerOrderPageProps {
   onOrderSuccess: (orderId: string) => void;
@@ -715,21 +716,21 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {['09:00 - 11:00', '11:00 - 13:00', '13:00 - 15:00', '15:00 - 17:00'].map((slot) => (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setScheduleTime(slot)}
-                        className={`py-2 px-2 text-xs rounded-lg font-medium border text-center transition-all cursor-pointer ${
-                          scheduleTime === slot
-                            ? 'border-[#cd6184] bg-[#ffecf2] text-[#cd6184] font-bold shadow-2xs'
-                            : 'border-gray-200 hover:bg-gray-50 text-[#254117]/80'
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    ))}
-                  </div>
+                    {SERVICE_SLOTS.map((slot) => (
+                    <button
+                      key={slot.label}
+                      type="button"
+                      onClick={() => setScheduleTime(slot.label)}
+                      className={`py-2 px-2 text-xs rounded-lg font-medium border text-center transition-all cursor-pointer ${
+                        scheduleTime === slot.label
+                          ? 'border-[#cd6184] bg-[#ffecf2] text-[#cd6184] font-bold shadow-2xs'
+                          : 'border-gray-200 hover:bg-gray-50 text-[#254117]/80'
+                      }`}
+                    >
+                      <span className="block">{slot.label}</span>
+                      <span className="block text-[10px] font-normal opacity-70">{slot.shift}</span>
+                    </button>
+                  ))}
                   {formAttempted && !isTimeValid && (
                     <p className="text-[11px] text-red-500 font-medium mt-1.5 flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
