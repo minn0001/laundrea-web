@@ -886,7 +886,6 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
 
                 <div>
-                                  <div>
                   <div className="flex items-center justify-between mb-1">
                     <label htmlFor={notesInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1">
                       <FileText className="w-3.5 h-3.5 text-[#cd6184]" />
