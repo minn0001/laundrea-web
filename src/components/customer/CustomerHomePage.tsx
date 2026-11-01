@@ -20,6 +20,7 @@ import {
   User,
    X,
   Building2,
+  Leaf,
 } from 'lucide-react';
 
 interface CustomerHomePageProps {
@@ -29,6 +30,7 @@ interface CustomerHomePageProps {
   onGoToLoyalty: () => void;
   onGoToProfile: () => void;
   onGoToAddress?: () => void;
+  onGoToPeduli?: () => void;
 }
 
 export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
@@ -38,6 +40,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
   onGoToLoyalty,
   onGoToProfile,
   onGoToAddress,
+  onGoToPeduli,
 }) => {
   const {
     isCustomerVerified,
@@ -48,6 +51,8 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
     orders,
     activeCustomerOrderId,
     updateCustomerProfile,
+    recycleSettings,
+    impactStats,
   } = useApp();
 
   const filledStamps = Math.min(Math.max(0, stampsCount), 10);
@@ -351,13 +356,13 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs text-gray-900">Kartu Cap & Loyalty</h4>
+                  <h4 className="font-bold text-xs text-gray-900">Kartu Stempel Loyalitas</h4>
                   <span className="text-[11px] font-black text-[#cd6184] bg-[#ffecf2] px-2 py-0.5 rounded-md">
-                    {filledStamps} / 10 Cap
+                    {filledStamps} / 10 Stempel
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                  Kumpulkan 10 cap untuk 1x cuci gratis 3 kg!
+                  Kumpulkan 10 stempel untuk 1x cuci gratis 3 kg!
                 </p>
               </div>
             </div>
@@ -367,7 +372,7 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
               onClick={onGoToLoyalty}
               className="w-full py-2.5 px-3 rounded-xl text-xs font-bold text-[#cd6184] bg-[#ffecf2] hover:bg-[#ffecf2]/80 transition-colors cursor-pointer text-center"
             >
-              Lihat Hadiah Cap →
+              Lihat Hadiah Stempel →
             </button>
           </div>
         )}
@@ -405,6 +410,66 @@ export const CustomerHomePage: React.FC<CustomerHomePageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Laundrea Peduli Full-Width Card */}
+      {(() => {
+        const customerContributedKg = myOrders
+          .filter((o) => o.recycle?.status === 'verified')
+          .reduce(
+            (sum, o) => sum + (o.recycle?.actualKg || o.recycle?.estimatedKg || 0),
+            0
+          );
+
+        const recycleKeyNumber =
+          customerContributedKg > 0
+            ? `Kamu sudah menyumbang ${customerContributedKg} kg`
+            : impactStats &&
+              typeof impactStats.totalKg === 'number' &&
+              impactStats.totalKg > 0
+            ? `${impactStats.totalKg} kg baju terkumpul`
+            : null;
+
+        const isProgramActive = recycleSettings?.programActive !== false;
+
+        return (
+          <div className="bg-[#254117] text-white rounded-2xl p-4 sm:p-5 border border-[#254117] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                <Leaf className="w-5 h-5 fill-emerald-400" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-black text-sm text-white tracking-tight">Laundrea Peduli</h4>
+                  {!isProgramActive && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300">
+                      Program sedang penuh
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-white/80 leading-snug">
+                  {isProgramActive
+                    ? 'Baju tak terpakai jadi karya pengrajin lokal.'
+                    : 'Program sedang penuh'}
+                </p>
+                {recycleKeyNumber && (
+                  <p className="text-[11px] font-bold text-[#ffbd59] pt-0.5">
+                    {recycleKeyNumber}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onGoToPeduli}
+              className="self-start sm:self-center py-2 px-4 rounded-xl text-xs font-bold text-[#254117] bg-[#ffbd59] hover:bg-[#e6a84d] transition-all cursor-pointer shrink-0 shadow-xs flex items-center gap-1.5 active:scale-98"
+            >
+              <span>Selengkapnya</span>
+              <span>→</span>
+            </button>
+          </div>
+        );
+      })()}
 
             {/* Quality Guarantees */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

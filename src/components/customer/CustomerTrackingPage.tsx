@@ -24,6 +24,7 @@ import {
   Lock,
   Info,
   ChevronDown,
+  Leaf,
 } from 'lucide-react';
 
 interface CustomerTrackingPageProps {
@@ -548,6 +549,47 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
                   <p className="text-[10px] text-[#254117]/60 italic">
                     *Total tagihan resmi akan dikunci otomatis setelah penimbangan fisik oleh kurir.
                   </p>
+                </div>
+              )}
+
+              {currentOrder.recycle?.enabled && (
+                <div className="mt-2.5 p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                      <Leaf className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Laundrea Peduli</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      {currentOrder.recycle.mode === 'clean' ? 'Baju Bersih & Kering' : 'Cuci Dulu Sesuai Tarif'}
+                    </span>
+                  </div>
+                  {currentOrder.recycle.actualKg === null ? (
+                    <p className="text-[11px] text-emerald-800 flex items-center gap-1 mt-1">
+                      <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Kurir akan menimbang baju daur ulang Anda.</span>
+                    </p>
+                  ) : (
+                    <div className="space-y-0.5 text-[11px] text-emerald-950 mt-1">
+                      <p className="flex items-center gap-1">
+                        <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>
+                          Baju daur ulang diterima ({currentOrder.recycle.actualKg} kg) •{' '}
+                          <strong>
+                            {currentOrder.recycle.status === 'verified'
+                              ? 'Stempel bonus ditambahkan'
+                              : currentOrder.recycle.status === 'pending_verification'
+                              ? 'Menunggu verifikasi'
+                              : `Tidak memenuhi syarat: ${currentOrder.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`}
+                          </strong>
+                        </span>
+                      </p>
+                      {currentOrder.recycle.mode === 'wash_first' && (
+                        <p className="text-[10px] text-emerald-700 italic">
+                          ({currentOrder.recycle.actualKg || currentOrder.recycle.estimatedKg} kg diserahkan ke daur ulang)
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

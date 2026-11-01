@@ -7,6 +7,7 @@ import { CustomerTrackingPage } from './CustomerTrackingPage';
 import { CustomerLoyaltyPage } from './CustomerLoyaltyPage';
 import { CustomerProfilePage } from './CustomerProfilePage';
 import { CustomerHistoryPage } from './CustomerHistoryPage';
+import { CustomerRecyclePeduliPage } from './CustomerRecyclePeduliPage';
 import { CustomerLoginPortal } from '../auth/CustomerLoginPortal';
 import { NotificationBell } from '../common/NotificationBell';
 import { BrandWordmark } from '../common/BrandWordmark';
@@ -40,9 +41,10 @@ export const CustomerApp: React.FC = () => {
     orders,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'beranda' | 'order' | 'history' | 'loyalty' | 'profile' | 'create_order'>('beranda');
+  const [activeTab, setActiveTab] = useState<'beranda' | 'order' | 'history' | 'loyalty' | 'profile' | 'create_order' | 'peduli'>('beranda');
   const [selectedPlanForOrder, setSelectedPlanForOrder] = useState<PlanType | undefined>(undefined);
   const [selectedVoucherForOrder, setSelectedVoucherForOrder] = useState<string | undefined>(undefined);
+  const [orderPrefillRecycle, setOrderPrefillRecycle] = useState<boolean>(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState<boolean>(false);
   const [openAddressModal, setOpenAddressModal] = useState<boolean>(false);
@@ -86,10 +88,11 @@ export const CustomerApp: React.FC = () => {
     }
   };
 
-  const handleStartCreateOrder = (planId?: PlanType, voucherCode?: string) => {
+  const handleStartCreateOrder = (planId?: PlanType, voucherCode?: string, prefillRecycle = false) => {
     requireAuth(() => {
       setSelectedPlanForOrder(planId);
       setSelectedVoucherForOrder(voucherCode);
+      setOrderPrefillRecycle(prefillRecycle);
       setActiveTab('create_order');
     });
   };
@@ -97,6 +100,7 @@ export const CustomerApp: React.FC = () => {
   const handleOrderSuccess = (orderId: string) => {
     setActiveCustomerOrderId(orderId);
     setSelectedVoucherForOrder(undefined);
+    setOrderPrefillRecycle(false);
     setActiveTab('order');
   };
 
@@ -336,21 +340,40 @@ export const CustomerApp: React.FC = () => {
             onGoToHistory={() => requireAuth(() => setActiveTab('history'))}
             onGoToLoyalty={() => requireAuth(() => setActiveTab('loyalty'))}
             onGoToProfile={() => requireAuth(() => setActiveTab('profile'))}
+            onGoToPeduli={() => setActiveTab('peduli')}
             onGoToAddress={() =>
-            requireAuth(() => {
-              setOpenAddressModal(true);
-              setActiveTab('profile');
-            })
-          }
-        />
-      )}
+              requireAuth(() => {
+                setOpenAddressModal(true);
+                setActiveTab('profile');
+              })
+            }
+          />
+        )}
+
+        {activeTab === 'peduli' && (
+          <CustomerRecyclePeduliPage
+            onBack={() => setActiveTab('beranda')}
+            onOrderWithRecycle={() => {
+              setOrderPrefillRecycle(true);
+              requireAuth(() => {
+                setSelectedPlanForOrder('express');
+                setActiveTab('create_order');
+              });
+            }}
+          />
+        )}
         
         {activeTab === 'create_order' && (
           <CustomerOrderPage
             onOrderSuccess={handleOrderSuccess}
-            onBackToLanding={() => setActiveTab('beranda')}
+            onBackToLanding={() => {
+              setOrderPrefillRecycle(false);
+              setActiveTab('beranda');
+            }}
             initialPlanId={selectedPlanForOrder}
             initialVoucherCode={selectedVoucherForOrder}
+            initialRecycleChecked={orderPrefillRecycle}
+            onGoToPeduli={() => setActiveTab('peduli')}
           />
         )}
         {activeTab === 'order' && (
@@ -366,7 +389,10 @@ export const CustomerApp: React.FC = () => {
           />
         )}
         {activeTab === 'loyalty' && (
-          <CustomerLoyaltyPage onOrderNowClick={(code) => handleStartCreateOrder(undefined, code)} />
+          <CustomerLoyaltyPage
+            onOrderNowClick={(code) => handleStartCreateOrder(undefined, code)}
+            onGoToPeduli={() => setActiveTab('peduli')}
+          />
         )}
         {activeTab === 'profile' && (
           <CustomerProfilePage
@@ -437,7 +463,7 @@ export const CustomerApp: React.FC = () => {
             }`}
           >
             <Award className="w-4 h-4" />
-            <span className="truncate">Poin & Cap</span>
+            <span className="truncate">Stempel</span>
           </button>
 
           <button

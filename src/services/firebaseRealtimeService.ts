@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   updateDoc,
@@ -29,6 +30,10 @@ import {
   StampHistoryItem,
   CustomerVoucher,
   AppNotification,
+  ArtisanItem,
+  RecycleWorkItem,
+  ImpactStats,
+  RecycleProgramSettings,
 } from '../types';
 import {
   INITIAL_ORDERS,
@@ -40,6 +45,10 @@ import {
   INITIAL_SYSTEM_ROLES,
   INITIAL_STAMP_HISTORY,
   INITIAL_CUSTOMER_VOUCHERS,
+  INITIAL_RECYCLE_PROGRAM_SETTINGS,
+  INITIAL_IMPACT_STATS,
+  INITIAL_ARTISANS,
+  INITIAL_RECYCLE_WORKS,
 } from '../data/initialData';
 
 // Track seeding status to avoid duplicate writes
@@ -147,6 +156,36 @@ export async function seedFirestoreCollectionsIfEmpty(): Promise<void> {
       }
     }
 
+    // 10. Seed recycleProgram settings if not present
+    const recycleSettingsRef = doc(db, 'settings', 'recycleProgram');
+    const recycleSettingsSnap = await getDoc(recycleSettingsRef);
+    if (!recycleSettingsSnap.exists()) {
+      await setDoc(recycleSettingsRef, sanitizeFirestoreData(INITIAL_RECYCLE_PROGRAM_SETTINGS));
+    }
+
+    // 11. Seed impactStats if not present
+    const impactStatsRef = doc(db, 'settings', 'impactStats');
+    const impactStatsSnap = await getDoc(impactStatsRef);
+    if (!impactStatsSnap.exists()) {
+      await setDoc(impactStatsRef, sanitizeFirestoreData(INITIAL_IMPACT_STATS));
+    }
+
+    // 12. Seed artisans if collection empty
+    const artisansSnap = await getDocs(collection(db, 'artisans'));
+    if (artisansSnap.empty) {
+      for (const a of INITIAL_ARTISANS) {
+        await setDoc(doc(db, 'artisans', a.id), sanitizeFirestoreData(a));
+      }
+    }
+
+    // 13. Seed recycleWorks if collection empty
+    const worksSnap = await getDocs(collection(db, 'recycleWorks'));
+    if (worksSnap.empty) {
+      for (const w of INITIAL_RECYCLE_WORKS) {
+        await setDoc(doc(db, 'recycleWorks', w.id), sanitizeFirestoreData(w));
+      }
+    }
+
     isSeeded = true;
   } catch (err) {
     console.warn('Seed firestore collections notice:', err);
@@ -231,7 +270,7 @@ export async function sendOrUpdateNotification(params: {
   orderNumber: string;
   title: string;
   body: string;
-  type?: 'payment_opened' | 'cash_received' | 'payment_verified' | 'status_changed';
+  type?: AppNotification['type'];
   isPaymentOpening?: boolean;
 }): Promise<void> {
   try {
@@ -609,3 +648,90 @@ export async function updateCustomerVoucherInFirestore(
   await ensureSilentAuth();
   await updateDoc(doc(db, 'customerVouchers', voucherId), sanitizeFirestoreData(partial));
 }
+
+// ================= LAUNDREA PEDULI / RECYCLE PROGRAM =================
+
+export function subscribeToRecycleProgramSettings(
+  onSuccess: (settings: RecycleProgramSettings) => void,
+  onError?: (err: Error) => void
+): () => void {
+  ensureSilentAuth().catch(() => {});
+  return onSnapshot(
+    doc(db, 'settings', 'recycleProgram'),
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        onSuccess({
+          programActive: data.programActive !== false,
+        });
+      } else {
+        // Safe default: true if missing
+        onSuccess({ programActive: true });
+      }
+    },
+    (err) => {
+      onSuccess({ programActive: true });
+      if (onError) onError(err);
+    }
+  );
+}
+
+export function subscribeToImpactStats(
+  onSuccess: (stats: ImpactStats | null) => void,
+  onError?: (err: Error) => void
+): () => void {
+  ensureSilentAuth().catch(() => {});
+  return onSnapshot(
+    doc(db, 'settings', 'impactStats'),
+    (snap) => {
+      if (snap.exists()) {
+        onSuccess(snap.data() as ImpactStats);
+      } else {
+        onSuccess(null);
+      }
+    },
+    (err) => {
+      onSuccess(null);
+      if (onError) onError(err);
+    }
+  );
+}
+
+export function subscribeToArtisans(
+  onSuccess: (artisans: ArtisanItem[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  ensureSilentAuth().catch(() => {});
+  return onSnapshot(
+    collection(db, 'artisans'),
+    (snap) => {
+      const list: ArtisanItem[] = [];
+      snap.forEach((d) => list.push({ id: d.id, ...(d.data() as any) }));
+      onSuccess(list);
+    },
+    (err) => {
+      onSuccess([]);
+      if (onError) onError(err);
+    }
+  );
+}
+
+export function subscribeToRecycleWorks(
+  onSuccess: (works: RecycleWorkItem[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  ensureSilentAuth().catch(() => {});
+  return onSnapshot(
+    collection(db, 'recycleWorks'),
+    (snap) => {
+      const list: RecycleWorkItem[] = [];
+      snap.forEach((d) => list.push({ id: d.id, ...(d.data() as any) }));
+      onSuccess(list);
+    },
+    (err) => {
+      onSuccess([]);
+      if (onError) onError(err);
+    }
+  );
+}
+

@@ -16,13 +16,15 @@ import {
   CheckCheck,
   Tag,
   Plus,
+  Leaf,
 } from 'lucide-react';
 
 interface CustomerLoyaltyPageProps {
   onOrderNowClick: (voucherCode?: string) => void;
+  onGoToPeduli?: () => void;
 }
 
-export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrderNowClick }) => {
+export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrderNowClick, onGoToPeduli }) => {
   const {
     stampsCount,
     stampHistory,
@@ -30,6 +32,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
     claimLoyaltyVoucher,
     customerPhone,
     customers,
+    orders,
   } = useApp();
 
   const [claimedModalVoucher, setClaimedModalVoucher] = useState<CustomerVoucher | null>(null);
@@ -68,6 +71,13 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
 
   const activeVouchers = customerVouchers.filter((v) => !v.isUsed);
   const usedVouchers = customerVouchers.filter((v) => v.isUsed);
+
+  const customerOrders = orders.filter((o) => !customerPhone || o.customerPhone === customerPhone);
+  const recycleOrders = customerOrders.filter((o) => o.recycle?.enabled);
+  const verifiedRecycleOrders = recycleOrders.filter(
+    (o) => o.recycle?.bonusGranted && o.recycle.status === 'verified'
+  );
+  const recycleStampCount = verifiedRecycleOrders.length;
 
   return (
     <div id="customer-loyalty-page" className="w-full space-y-3 sm:space-y-4">
@@ -149,20 +159,36 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             {Array.from({ length: 10 }).map((_, index) => {
               const stampNumber = index + 1;
               const isCollected = filledStamps >= stampNumber;
+              const numRecycleStampsInCard = Math.min(filledStamps, recycleStampCount);
+              const isRecycleStamp = isCollected && stampNumber > (filledStamps - numRecycleStampsInCard);
 
               return (
                 <div
                   key={stampNumber}
                   className={`aspect-square rounded-xl sm:rounded-2xl flex flex-col items-center justify-center border-2 transition-all p-1 ${
                     isCollected
-                      ? 'bg-[#ffecf2] border-[#cd6184] shadow-xs'
+                      ? isRecycleStamp
+                        ? 'bg-emerald-50 border-emerald-500 shadow-xs'
+                        : 'bg-[#ffecf2] border-[#cd6184] shadow-xs'
                       : 'bg-gray-50 border-dashed border-gray-300'
                   }`}
                 >
                   {isCollected ? (
-                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#97a273] text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
-                    </div>
+                    isRecycleStamp ? (
+                      <div
+                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs"
+                        title="Stempel Bonus Daur Ulang"
+                      >
+                        <Leaf className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                      </div>
+                    ) : (
+                      <div
+                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#97a273] text-white flex items-center justify-center font-bold text-xs shadow-xs"
+                        title="Stempel Cuci"
+                      >
+                        <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
+                      </div>
+                    )
                   ) : (
                     <span className="text-xs font-bold text-gray-400">
                       {stampNumber}
@@ -175,6 +201,32 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               );
             })}
           </div>
+
+          {/* Legend and Laundrea Peduli link */}
+          <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-[#254117]/80 gap-1.5 border-t border-gray-100">
+            <span className="font-semibold flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[#97a273]">
+                <Check className="w-3.5 h-3.5 stroke-[3]" /> Cuci
+              </span>
+              <span>·</span>
+              <span className="flex items-center gap-1 text-emerald-700">
+                <Leaf className="w-3.5 h-3.5 text-emerald-600" /> Daur ulang
+              </span>
+            </span>
+            {onGoToPeduli && (
+              <button
+                type="button"
+                onClick={onGoToPeduli}
+                className="text-xs font-bold text-[#254117] hover:underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+              >
+                <Leaf className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Stempel bonus dari daur ulang</span>
+              </button>
+            )}
+          </div>
+          <p className="text-[10px] text-[#254117]/60 italic">
+            *Bonus daur ulang maks. 1x per bulan.
+          </p>
         </div>
 
         {/* Voucher Claim CTA Card */}
@@ -518,11 +570,57 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             </h3>
           </div>
           <span className="text-xs text-[#254117]/60 font-medium">
-            {stampHistory.length} Aktivitas
+            {stampHistory.length + recycleOrders.length} Aktivitas
           </span>
         </div>
 
         <div className="divide-y divide-gray-100">
+          {recycleOrders.map((ro) => {
+            const rData = ro.recycle!;
+            const dateStr = ro.statusTimestamps?.delivered || ro.statusTimestamps?.booked || ro.pickupDate || '-';
+            const weightStr = `${rData.actualKg || rData.estimatedKg} kg`;
+
+            return (
+              <div key={`recycle-${ro.id}`} className="py-3 flex items-center justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <Leaf className="w-4 h-4 stroke-[2.5]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-bold text-[#254117] leading-snug">
+                      Daur Ulang Baju ({weightStr})
+                    </p>
+                    <p className="text-[10.5px] sm:text-[11px] text-[#254117]/60 flex items-center gap-1.5 sm:gap-2 mt-0.5">
+                      <span>{dateStr}</span>
+                      {ro.orderNumber && (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-emerald-700">{ro.orderNumber}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  {rData.status === 'verified' ? (
+                    <span className="text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 inline-block">
+                      +1 Stempel
+                    </span>
+                  ) : rData.status === 'pending_verification' ? (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 inline-block">
+                      Menunggu verifikasi
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-red-50 text-red-700 inline-block">
+                      Tidak memenuhi syarat: {rData.rejectReason || 'Ketentuan belum terpenuhi'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
           {stampHistory.map((item) => (
             <div key={item.id} className="py-3 flex items-center justify-between gap-2.5 sm:gap-3">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">

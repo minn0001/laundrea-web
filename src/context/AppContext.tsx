@@ -17,6 +17,11 @@ import {
   SystemRole,
   PermissionItem,
   AppNotification,
+  RecycleOrderData,
+  ArtisanItem,
+  RecycleWorkItem,
+  ImpactStats,
+  RecycleProgramSettings,
 } from '../types';
 import {
   INITIAL_PLANS,
@@ -30,6 +35,10 @@ import {
   INITIAL_SYSTEM_USERS,
   INITIAL_SYSTEM_ROLES,
   INITIAL_SYSTEM_PERMISSIONS,
+  INITIAL_RECYCLE_PROGRAM_SETTINGS,
+  INITIAL_IMPACT_STATS,
+  INITIAL_ARTISANS,
+  INITIAL_RECYCLE_WORKS,
 } from '../data/initialData';
 import { SERVICE_SLOTS } from '../data/serviceSlots';
 import {
@@ -72,6 +81,10 @@ import {
   sendOrUpdateNotification,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  subscribeToRecycleProgramSettings,
+  subscribeToImpactStats,
+  subscribeToArtisans,
+  subscribeToRecycleWorks,
 } from '../services/firebaseRealtimeService';
 
 interface AppContextType {
@@ -137,6 +150,11 @@ interface AppContextType {
   markAllNotificationsRead: () => void;
   newNotificationToast: AppNotification | null;
   dismissToast: () => void;
+  // Laundrea Peduli / Recycle Program
+  recycleSettings: RecycleProgramSettings;
+  impactStats: ImpactStats | null;
+  artisans: ArtisanItem[];
+  recycleWorks: RecycleWorkItem[];
   // Connection state
   isFirestoreLoading: boolean;
   firestoreError: string | null;
@@ -156,8 +174,10 @@ interface AppContextType {
     voucherDiscount?: number;
     recipientName?: string;
     contactPhone?: string;
+    recycle?: RecycleOrderData;
   }) => Order;
-  updateOrderWeight: (orderId: string, actualWeight: number) => void;
+  updateOrderWeight: (orderId: string, actualWeight: number, recycleWeight?: number) => void;
+  rejectOrderRecycle: (orderId: string, reason: string) => void;
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void;
   updateOrderPaymentStatus: (
     orderId: string,
@@ -229,6 +249,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [stampHistory, setStampHistory] = useState<StampHistoryItem[]>(INITIAL_STAMP_HISTORY);
   const [customerVouchers, setCustomerVouchers] = useState<CustomerVoucher[]>(INITIAL_CUSTOMER_VOUCHERS);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  // Laundrea Peduli / Recycle Program State
+  const [recycleSettings, setRecycleSettings] = useState<RecycleProgramSettings>(INITIAL_RECYCLE_PROGRAM_SETTINGS);
+  const [impactStats, setImpactStats] = useState<ImpactStats | null>(INITIAL_IMPACT_STATS);
+  const [artisans, setArtisans] = useState<ArtisanItem[]>(INITIAL_ARTISANS);
+  const [recycleWorks, setRecycleWorks] = useState<RecycleWorkItem[]>(INITIAL_RECYCLE_WORKS);
 
   const [isFirestoreLoading, setIsFirestoreLoading] = useState<boolean>(true);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
@@ -347,6 +373,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
+    // 8. Recycle program settings
+    unsubs.push(
+      subscribeToRecycleProgramSettings((data) => {
+        if (data) setRecycleSettings(data);
+      })
+    );
+
+    // 9. Impact stats
+    unsubs.push(
+      subscribeToImpactStats((data) => {
+        setImpactStats(data);
+      })
+    );
+
+    // 10. Artisans
+    unsubs.push(
+      subscribeToArtisans((data) => {
+        if (data) setArtisans(data);
+      })
+    );
+
+    // 11. Recycle works
+    unsubs.push(
+      subscribeToRecycleWorks((data) => {
+        if (data) setRecycleWorks(data);
+      })
+    );
+
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
@@ -391,8 +445,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [customerPhone]);
 
-  // Derived stamp balance
-  const stampsCount = stampHistory.reduce((sum, item) => sum + (item.pointsChange || 0), 0);
+  // Derived stamp balance including verified recycling bonus stamps (milestone counts wash + recycle bonus)
+  const verifiedRecycleBonusesCount = orders.filter((o) => {
+    if (customerPhone && o.customerPhone !== customerPhone) return false;
+    if (o.recycle?.status !== 'verified' || !o.recycle?.bonusGranted) return false;
+    const alreadyInHistory = stampHistory.some(
+      (sh) => sh.orderNumber === o.orderNumber && sh.type === 'earned' && sh.title.includes('Daur Ulang')
+    );
+    return !alreadyInHistory;
+  }).length;
+
+  const stampsCount = stampHistory.reduce((sum, item) => sum + (item.pointsChange || 0), 0) + verifiedRecycleBonusesCount;
 
   // Staff User & Live Permission Resolution
   const activeUsername = role === 'admin' ? adminUsername : courierUsername;
@@ -738,6 +801,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     voucherDiscount?: number;
     recipientName?: string;
     contactPhone?: string;
+    recycle?: RecycleOrderData;
   }): Order => {
     const selectedPlan = plans.find((p) => p.id === data.planId) || plans[0];
     const unitPrice = selectedPlan.price;
@@ -802,6 +866,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(activeCourier?.id ? { courierId: activeCourier.id } : {}),
       ...(activeCourier?.name ? { courierName: activeCourier.name } : {}),
       ...(data.notes?.trim() ? { notes: data.notes.trim() } : {}),
+      ...(data.recycle ? { recycle: data.recycle } : {}),
     };
 
     // Immediate optimistic local update so order is visible instantly
@@ -826,7 +891,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * Recalculates final amount (actual price minus voucher discount, min 0).
    * Creates or updates notification idempotently.
    */
-  const updateOrderWeight = (orderId: string, actualWeight: number) => {
+  const updateOrderWeight = (orderId: string, actualWeight: number, recycleWeight?: number) => {
     // 1) Weighing: ONLY the courier can weigh and enter the actual weight
     if (!hasPermission('orders_weigh')) {
       console.warn('Unauthorized: Wewenang timbang & verifikasi berat hanya dimiliki oleh Kurir.');
@@ -860,6 +925,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastUpdatedLabel: 'Ditimbang kurir',
     };
 
+    if (ord.recycle?.enabled && recycleWeight !== undefined) {
+      partialUpdate.recycle = {
+        ...ord.recycle,
+        actualKg: Math.max(0, Number(recycleWeight) || 0),
+      };
+    }
+
     updateOrderInFirestore(orderId, partialUpdate).catch(() => {});
 
     // Notification rule: create payment opened notification once, or update amount if weight edited before method chosen
@@ -873,6 +945,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isPaymentOpening: true,
       }).catch(() => {});
     }
+  };
+
+  const rejectOrderRecycle = (orderId: string, reason: string) => {
+    if (!hasPermission('orders_weigh')) {
+      alert('Akses ditolak: Hanya kurir yang memiliki wewenang menolak baju daur ulang.');
+      return;
+    }
+    const ord = orders.find((o) => o.id === orderId);
+    if (!ord || !ord.recycle) return;
+
+    const updatedRecycle: RecycleOrderData = {
+      ...ord.recycle,
+      status: 'rejected',
+      rejectReason: reason,
+      actualKg: 0,
+    };
+
+    updateOrderInFirestore(orderId, {
+      recycle: updatedRecycle,
+      lastUpdatedLabel: 'Baju daur ulang ditolak kurir',
+    }).catch(() => {});
   };
 
   const choosePaymentMethod = (orderId: string, method: PaymentMethod) => {
@@ -1236,10 +1329,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllNotificationsRead,
         newNotificationToast,
         dismissToast,
+        recycleSettings,
+        impactStats,
+        artisans,
+        recycleWorks,
         isFirestoreLoading,
         firestoreError,
         createOrder,
         updateOrderWeight,
+        rejectOrderRecycle,
         updateOrderStatus,
         updateOrderPaymentStatus,
         choosePaymentMethod,

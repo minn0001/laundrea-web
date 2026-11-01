@@ -75,6 +75,47 @@ export interface Order {
   voucherDiscount?: number;
   subtotalPrice?: number;
   stampGiven?: boolean;
+  recycle?: RecycleOrderData;
+}
+
+export type RecycleMode = 'clean' | 'wash_first';
+export type RecycleStatus = 'pending_verification' | 'verified' | 'rejected';
+
+export interface RecycleOrderData {
+  enabled: boolean;
+  mode: RecycleMode;
+  estimatedKg: number;
+  actualKg: number | null;
+  status: RecycleStatus;
+  bonusGranted: boolean;
+  rejectReason?: string;
+}
+
+export interface ArtisanItem {
+  id: string;
+  name: string;
+  photo?: string;
+  story: string;
+  location?: string;
+}
+
+export interface RecycleWorkItem {
+  id: string;
+  title: string;
+  imageUrl?: string;
+  photo?: string;
+  description?: string;
+  artisanName?: string;
+}
+
+export interface ImpactStats {
+  totalKg?: number;
+  participants?: number;
+  handovers?: number;
+}
+
+export interface RecycleProgramSettings {
+  programActive: boolean;
 }
 
 export interface AppNotification {

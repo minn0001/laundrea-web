@@ -20,6 +20,7 @@ import {
   ArrowUpRight,
   ShoppingBag,
   Plus,
+  Leaf,
 } from 'lucide-react';
 
 interface CustomerHistoryPageProps {
@@ -299,6 +300,23 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                   </div>
                 </div>
 
+                {order.recycle?.enabled && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200 leading-snug">
+                    <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>
+                      {order.recycle.actualKg === null
+                        ? 'Kurir akan menimbang baju daur ulang Anda.'
+                        : `Baju daur ulang diterima (${order.recycle.actualKg} kg) • ${
+                            order.recycle.status === 'verified'
+                              ? 'Stempel bonus ditambahkan'
+                              : order.recycle.status === 'pending_verification'
+                              ? 'Menunggu verifikasi'
+                              : `Tidak memenuhi syarat: ${order.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`
+                          }${order.recycle.mode === 'wash_first' ? ` (${order.recycle.actualKg || order.recycle.estimatedKg} kg diserahkan ke daur ulang)` : ''}`}
+                    </span>
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
                   {order.status !== 'delivered' ? (
@@ -470,6 +488,37 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                     </span>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Laundrea Peduli info if enabled */}
+            {selectedOrderForDetail.recycle?.enabled && (
+              <div className="p-3 bg-emerald-50/80 rounded-2xl border border-emerald-200 space-y-1 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                    <Leaf className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Laundrea Peduli (Daur Ulang)</span>
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    {selectedOrderForDetail.recycle.mode === 'clean' ? 'Baju Bersih & Kering' : 'Cuci Dulu Sesuai Tarif'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-900 mt-0.5">
+                  {selectedOrderForDetail.recycle.actualKg === null
+                    ? 'Kurir akan menimbang baju daur ulang Anda.'
+                    : `Baju daur ulang diterima (${selectedOrderForDetail.recycle.actualKg} kg) • ${
+                        selectedOrderForDetail.recycle.status === 'verified'
+                          ? 'Stempel bonus ditambahkan'
+                          : selectedOrderForDetail.recycle.status === 'pending_verification'
+                          ? 'Menunggu verifikasi'
+                          : `Tidak memenuhi syarat: ${selectedOrderForDetail.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`
+                      }`}
+                </p>
+                {selectedOrderForDetail.recycle.mode === 'wash_first' && (
+                  <p className="text-[10px] text-emerald-800 italic">
+                    ({selectedOrderForDetail.recycle.actualKg || selectedOrderForDetail.recycle.estimatedKg} kg diserahkan ke daur ulang)
+                  </p>
+                )}
               </div>
             )}
 

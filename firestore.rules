@@ -21,7 +21,13 @@ service cloud.firestore {
     // Orders collection
     match /orders/{orderId} {
       allow read: if true;
-      allow create, update: if isValidId(orderId);
+      allow create, update: if isValidId(orderId) &&
+        (!('recycle' in request.resource.data) ||
+         request.resource.data.recycle == null ||
+         (
+           request.resource.data.recycle.actualKg == null ||
+           (request.resource.data.recycle.actualKg is number && request.resource.data.recycle.actualKg >= 0)
+         ));
       allow delete: if false;
     }
 
@@ -86,6 +92,27 @@ service cloud.firestore {
     match /customerVouchers/{voucherId} {
       allow read: if true;
       allow create, update: if isValidId(voucherId);
+      allow delete: if false;
+    }
+
+    // System and program settings (e.g. recycleProgram, impactStats)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update: if isValidId(settingId);
+      allow delete: if false;
+    }
+
+    // Artisans collection for Laundrea Peduli
+    match /artisans/{artisanId} {
+      allow read: if true;
+      allow create, update: if isValidId(artisanId);
+      allow delete: if false;
+    }
+
+    // Recycle works showcase collection
+    match /recycleWorks/{workId} {
+      allow read: if true;
+      allow create, update: if isValidId(workId);
       allow delete: if false;
     }
   }

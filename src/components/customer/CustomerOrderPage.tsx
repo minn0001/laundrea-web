@@ -1,6 +1,6 @@
 import React, { useState, useId } from 'react';
 import { useApp } from '../../context/AppContext';
-import { PlanType, HandoverMethod, ReturnMethod, PaymentMethod, CustomerVoucher } from '../../types';
+import { PlanType, HandoverMethod, ReturnMethod, PaymentMethod, CustomerVoucher, RecycleMode } from '../../types';
 import {
   Check,
   Calendar,
@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Phone,
+  Leaf,
 } from 'lucide-react';
 import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
 import { StructuredAddressData } from '../../services/wilayahService';
@@ -34,6 +35,8 @@ interface CustomerOrderPageProps {
   onBackToLanding?: () => void;
   initialPlanId?: PlanType;
   initialVoucherCode?: string;
+  initialRecycleChecked?: boolean;
+  onGoToPeduli?: () => void;
 }
 
 export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
@@ -41,6 +44,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   onBackToLanding,
   initialPlanId,
   initialVoucherCode,
+  initialRecycleChecked,
+  onGoToPeduli,
 }) => {
   const {
     plans,
@@ -49,7 +54,24 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     customerName: loggedInName,
     customerAddress: loggedInAddress,
     customerVouchers,
+    recycleSettings,
+    orders,
   } = useApp();
+
+  // Laundrea Peduli recycle state
+  const [recycleEnabled, setRecycleEnabled] = useState<boolean>(Boolean(initialRecycleChecked));
+  const [recycleMode, setRecycleMode] = useState<RecycleMode>('clean');
+  const [recycleEstimatedKg, setRecycleEstimatedKg] = useState<number>(1);
+
+  // Check if monthly recycling bonus is already used
+  const now = new Date();
+  const currentMonthPrefix = now.toISOString().slice(0, 7);
+  const bonusUsedThisMonth = orders.some((o) => {
+    if (customerPhone && o.customerPhone !== customerPhone) return false;
+    if (!o.recycle || !o.recycle.bonusGranted || o.recycle.status !== 'verified') return false;
+    const dateStr = o.statusTimestamps?.delivered || o.statusTimestamps?.booked || o.pickupDate || '';
+    return dateStr.startsWith(currentMonthPrefix);
+  });
 
   // Step in checkout flow: 'select' (plan, quantity, handover, return, schedule) or 'confirm' (summary & payment)
   const [checkoutStep, setCheckoutStep] = useState<'select' | 'confirm'>('select');
@@ -231,6 +253,19 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
         notes,
         voucherCode: appliedVoucher?.code,
         voucherDiscount: discountAmount,
+        ...(recycleEnabled
+          ? {
+              recycle: {
+                enabled: true,
+                mode: recycleMode,
+                estimatedKg: Math.max(1, Number(recycleEstimatedKg) || 1),
+                actualKg: null,
+                status: 'pending_verification' as const,
+                bonusGranted: false,
+                rejectReason: '',
+              },
+            }
+          : {}),
       });
 
       setIsSubmitting(false);
@@ -1072,6 +1107,170 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
             </div>
           </div>
 
+          {/* Section 7: Laundrea Peduli (Daur Ulang Pakaian) */}
+          <div className="bg-[#f0fdf4] rounded-3xl p-5 sm:p-6 border border-[#254117]/20 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-[#254117] flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-[#254117] text-white text-xs flex items-center justify-center font-bold">
+                  <Leaf className="w-3.5 h-3.5" />
+                </span>
+                <span>Laundrea Peduli · Daur Ulang Pakaian</span>
+                <span className="text-xs font-normal text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full font-semibold">
+                  Gratis
+                </span>
+              </h2>
+              {onGoToPeduli && (
+                <button
+                  type="button"
+                  onClick={onGoToPeduli}
+                  className="text-xs font-bold text-[#254117] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  Pelajari programnya
+                </button>
+              )}
+            </div>
+
+            {recycleSettings && !recycleSettings.programActive ? (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium">
+                Program daur ulang sedang penuh, coba lagi nanti.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <label className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-emerald-200 cursor-pointer shadow-xs hover:border-[#254117]/40 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={recycleEnabled}
+                    onChange={(e) => setRecycleEnabled(e.target.checked)}
+                    className="mt-1 w-5 h-5 accent-[#254117] rounded cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-bold text-[#254117] flex items-center gap-1.5">
+                      <Leaf className="w-4 h-4 text-emerald-600" />
+                      Ada baju tidak terpakai yang mau didaur ulang?
+                    </span>
+                    <p className="text-xs text-[#254117]/70 mt-0.5">
+                      Baju Anda akan diolah menjadi karya bernilai tinggi oleh para perajin lokal binaan Laundrea.
+                    </p>
+                  </div>
+                </label>
+
+                {recycleEnabled && (
+                  <div className="p-4 sm:p-5 bg-white rounded-2xl border border-emerald-200 space-y-4 animate-in fade-in duration-200">
+                    {/* Mode selection */}
+                    <div className="space-y-2">
+                      <span className="text-xs font-bold text-[#254117] block">
+                        Pilihan Kondisi Baju Daur Ulang:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <label
+                          className={`p-3 rounded-xl border-2 flex items-start gap-2.5 cursor-pointer transition-all ${
+                            recycleMode === 'clean'
+                              ? 'border-[#254117] bg-[#f0fdf4]'
+                              : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="recycleMode"
+                            value="clean"
+                            checked={recycleMode === 'clean'}
+                            onChange={() => setRecycleMode('clean')}
+                            className="mt-0.5 accent-[#254117]"
+                          />
+                          <div>
+                            <span className="text-xs font-bold text-[#254117] block">
+                              Baju sudah bersih & kering
+                            </span>
+                            <span className="text-[11px] text-gray-500">
+                              Langsung diserahkan ke perajin mitra.
+                            </span>
+                          </div>
+                        </label>
+
+                        <label
+                          className={`p-3 rounded-xl border-2 flex items-start gap-2.5 cursor-pointer transition-all ${
+                            recycleMode === 'wash_first'
+                              ? 'border-[#254117] bg-[#f0fdf4]'
+                              : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="recycleMode"
+                            value="wash_first"
+                            checked={recycleMode === 'wash_first'}
+                            onChange={() => setRecycleMode('wash_first')}
+                            className="mt-0.5 accent-[#254117]"
+                          />
+                          <div>
+                            <span className="text-xs font-bold text-[#254117] block">
+                              Baju masih kotor, cuci dulu
+                            </span>
+                            <span className="text-[11px] text-amber-800 font-semibold block mt-0.5">
+                              Baju yang dicuci tetap dikenai tarif sesuai berat.
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Estimated weight input */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-[#254117]">
+                          Perkiraan berat pakaian daur ulang (min. 1 kg):
+                        </label>
+                        <span className="text-[11px] text-gray-500 font-medium">
+                          1 kg ≈ 4-5 potong baju
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min={1}
+                          step={0.5}
+                          value={recycleEstimatedKg}
+                          onChange={(e) => setRecycleEstimatedKg(Math.max(1, parseFloat(e.target.value) || 1))}
+                          className="w-24 px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-[#254117] focus:outline-none focus:border-[#254117]"
+                        />
+                        <span className="text-xs font-bold text-[#254117]">kg</span>
+                      </div>
+                    </div>
+
+                    {/* Requirements box */}
+                    <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl space-y-1.5 text-xs text-[#254117]">
+                      <span className="font-bold block text-emerald-900">Ketentuan pakaian daur ulang:</span>
+                      <ul className="list-disc list-inside space-y-0.5 text-[11px] text-[#254117]/85">
+                        <li>Kering, tidak basah atau lembap</li>
+                        <li>Tidak berjamur atau berbau tajam</li>
+                        <li>Bukan barang non-tekstil (tas kulit, sepatu kaku, dll.)</li>
+                        <li className="font-semibold text-emerald-900">Baju boleh rusak, robek, atau pudar warnanya</li>
+                      </ul>
+                    </div>
+
+                    {/* Tips and bonus information */}
+                    <div className="space-y-2 text-xs">
+                      <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-[#254117]/80 text-[11px]">
+                        💡 <strong>Tips:</strong> Pisahkan baju daur ulang di kantong tersendiri agar kurir mudah menimbang.
+                      </div>
+
+                      {bonusUsedThisMonth ? (
+                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium text-xs">
+                          Bonus stempel bulan ini sudah terpakai. Baju tetap kami terima.
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-emerald-100/60 border border-emerald-200 text-emerald-900 font-semibold text-xs flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
+                          <span>Dapat +1 stempel bonus setelah baju diverifikasi (maks. 1x per bulan).</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Mandated note */}
           <div className="bg-[#ffecf2] border border-[#cd6184]/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#254117]">
             <Info className="w-4 h-4 text-[#cd6184] shrink-0 mt-0.5" />
@@ -1228,6 +1427,30 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </p>
               </div>
             </div>
+
+            {recycleEnabled && (
+              <div className="bg-[#f0fdf4] border border-emerald-200 p-3.5 rounded-2xl flex items-start gap-3 text-xs text-[#254117]">
+                <Leaf className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-900">
+                      Laundrea Peduli (Daur Ulang Pakaian):
+                    </span>
+                    <span className="font-semibold text-emerald-800">
+                      Perkiraan {recycleEstimatedKg} kg
+                    </span>
+                  </div>
+                  <p className="text-[#254117]/80 text-[11px]">
+                    Mode: {recycleMode === 'clean' ? 'Baju Bersih & Kering (Langsung diserahkan)' : 'Baju Kotor (Cuci dulu sesuai tarif berat)'}
+                  </p>
+                  <p className="text-[#254117]/70 text-[11px]">
+                    {bonusUsedThisMonth
+                      ? 'Bonus stempel bulan ini sudah terpakai. Baju tetap kami terima.'
+                      : 'Dapat +1 stempel bonus setelah baju diverifikasi kurir/staff.'}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {notes && (
               <div className="text-xs text-[#254117]/80 bg-gray-50 p-3 rounded-xl border border-gray-100">

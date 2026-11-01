@@ -10,6 +10,10 @@ import {
   SystemUser,
   SystemRole,
   PermissionItem,
+  ArtisanItem,
+  RecycleWorkItem,
+  ImpactStats,
+  RecycleProgramSettings,
 } from '../types';
 
 export const INITIAL_PLANS: Plan[] = [
@@ -751,3 +755,69 @@ export const INITIAL_SYSTEM_USERS: SystemUser[] = [
     avatarBg: 'from-[#0284c7] to-[#38bdf8]',
   },
 ];
+
+export const INITIAL_RECYCLE_PROGRAM_SETTINGS: RecycleProgramSettings = {
+  programActive: true,
+};
+
+export const INITIAL_IMPACT_STATS: ImpactStats = {
+  totalKg: 148,
+  participants: 36,
+  handovers: 52,
+};
+
+export const INITIAL_ARTISANS: ArtisanItem[] = [
+  {
+    id: 'artisan-1',
+    name: 'Ibu Ratna Juwita',
+    location: 'Komunitas Perca Berdaya, Cipete',
+    photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
+    story: 'Memimpin kelompok ibu rumah tangga di Cipete untuk mendaur ulang kain kemeja dan katun tak terpakai menjadi tote bag belanja ramah lingkungan serta sarung bantal bermotif unik.',
+  },
+  {
+    id: 'artisan-2',
+    name: 'Pak Suryadi',
+    location: 'Bengkel Tenun & Rajut Maju, Manggarai',
+    photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
+    story: 'Pengrajin senior yang mengolah potongan kaos dan celana kain bekas menjadi keset anyam tebal berkualitas ekspor serta celemek dapur pelindung panas.',
+  },
+  {
+    id: 'artisan-3',
+    name: 'Mbak Anisa Putri',
+    location: 'Studio Kreasi Daur Serat, Tebet',
+    photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+    story: 'Desainer tekstil muda yang fokus pada upcycling pakaian denim dan linen menjadi beragam pouch serut multifungsi, dompet koin, dan aksesoris harian bernilai seni tinggi.',
+  },
+];
+
+export const INITIAL_RECYCLE_WORKS: RecycleWorkItem[] = [
+  {
+    id: 'work-1',
+    title: 'Tote Bag Perca Serat Katun',
+    artisanName: 'Ibu Ratna Juwita',
+    imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80',
+    description: 'Tas jinjing kuat dan modis dari kombinasi kain kemeja dan perca katun higienis.',
+  },
+  {
+    id: 'work-2',
+    title: 'Keset Anyam Tenun Berdaya',
+    artisanName: 'Pak Suryadi',
+    imageUrl: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=600&q=80',
+    description: 'Anyaman serat tebal penyerap air dari potongan kaos bersih siap pakai.',
+  },
+  {
+    id: 'work-3',
+    title: 'Sarung Bantal Sofa Perca Minimalis',
+    artisanName: 'Ibu Ratna Juwita',
+    imageUrl: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=600&q=80',
+    description: 'Dekorasi rumah estetik dengan pola geometris modern hasil daur ulang pakaian pastel.',
+  },
+  {
+    id: 'work-4',
+    title: 'Pouch Serut Multifungsi',
+    artisanName: 'Mbak Anisa Putri',
+    imageUrl: 'https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&w=600&q=80',
+    description: 'Wadah serbaguna untuk kosmetik dan kabel travel dari kain denim upcycled.',
+  },
+];
+

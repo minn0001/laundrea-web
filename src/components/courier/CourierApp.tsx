@@ -26,6 +26,7 @@ import {
   Lock,
   Pencil,
   Banknote,
+  Leaf,
 } from 'lucide-react';
 
 export const CourierApp: React.FC = () => {
@@ -38,6 +39,7 @@ export const CourierApp: React.FC = () => {
     orders,
     couriers,
     updateOrderWeight,
+    rejectOrderRecycle,
     updateOrderStatus,
     confirmCodCashReceived,
     hasPermission,
@@ -49,6 +51,11 @@ export const CourierApp: React.FC = () => {
 
   // Detail view state
   const [weightInput, setWeightInput] = useState<string>('');
+  const [recycleWeightInput, setRecycleWeightInput] = useState<string>('');
+  const [showRejectRecycleModal, setShowRejectRecycleModal] = useState<boolean>(false);
+  const [rejectReasonChoice, setRejectReasonChoice] = useState<string>('Basah / lembap');
+  const [rejectReasonCustom, setRejectReasonCustom] = useState<string>('');
+  const [recycleValidationError, setRecycleValidationError] = useState<string | null>(null);
   const [isEditingWeight, setIsEditingWeight] = useState<boolean>(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -158,6 +165,20 @@ export const CourierApp: React.FC = () => {
     const isLockedByCustomerMethod = Boolean(order.paymentMethod);
     setIsEditingWeight(!order.actualQuantity && !isLockedByCustomerMethod);
     setSuccessMessage(null);
+    setRecycleValidationError(null);
+    setShowRejectRecycleModal(false);
+    setRejectReasonChoice('Basah / lembap');
+    setRejectReasonCustom('');
+
+    if (order.recycle?.enabled) {
+      setRecycleWeightInput(
+        order.recycle.actualKg !== null && order.recycle.actualKg !== undefined
+          ? order.recycle.actualKg.toString()
+          : ''
+      );
+    } else {
+      setRecycleWeightInput('');
+    }
   };
 
   const calculatedNewPrice = (() => {
@@ -178,12 +199,53 @@ export const CourierApp: React.FC = () => {
     const num = parseFloat(weightInput);
     if (isNaN(num) || num <= 0) return;
 
+    setRecycleValidationError(null);
+
+    let recNum: number | undefined = undefined;
+    if (selectedOrder.recycle?.enabled && selectedOrder.recycle.status !== 'rejected') {
+      const parsedRec = parseFloat(recycleWeightInput);
+      recNum = isNaN(parsedRec) || parsedRec <= 0 ? 0 : parsedRec;
+
+      // Validation for wash_first: recycling clothes must be <= main weight
+      if (selectedOrder.recycle.mode === 'wash_first' && recNum > num) {
+        setRecycleValidationError(
+          'Berat baju daur ulang tidak boleh melebihi total berat cucian (karena baju daur ulang dicuci bersama cucian ini).'
+        );
+        return;
+      }
+
+      // Confirmation if 0 or empty
+      if (recNum === 0) {
+        const confirmed = window.confirm('Tidak ada baju daur ulang yang diambil?');
+        if (!confirmed) return;
+      }
+    }
+
     setIsUpdating(true);
     setTimeout(() => {
-      updateOrderWeight(selectedOrder.id, num);
+      updateOrderWeight(selectedOrder.id, num, recNum);
       setIsUpdating(false);
       setIsEditingWeight(false);
       setSuccessMessage('Berat berhasil disimpan & total tagihan dibuka untuk pembayaran pelanggan');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    }, 300);
+  };
+
+  const handleConfirmRejectRecycle = () => {
+    if (!selectedOrder) return;
+    const reason = rejectReasonChoice === 'Lainnya' ? rejectReasonCustom.trim() : rejectReasonChoice;
+    if (!reason) {
+      alert('Pilih atau tuliskan alasan penolakan.');
+      return;
+    }
+
+    setIsUpdating(true);
+    setTimeout(() => {
+      rejectOrderRecycle(selectedOrder.id, reason);
+      setIsUpdating(false);
+      setShowRejectRecycleModal(false);
+      setRecycleWeightInput('0');
+      setSuccessMessage('Baju daur ulang berhasil ditolak. Pesanan cucian berlanjut.');
       setTimeout(() => setSuccessMessage(null), 4000);
     }, 300);
   };
@@ -390,6 +452,146 @@ export const CourierApp: React.FC = () => {
               </div>
             </div>
 
+            {/* Laundrea Peduli (Recycling) Highlighted Block */}
+            {selectedOrder.recycle?.enabled && (
+              <div className="bg-emerald-50/90 p-4 sm:p-5 rounded-3xl border-2 border-emerald-300 space-y-3 shadow-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Leaf className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">
+                        Program Laundrea Peduli
+                      </span>
+                      <h3 className="text-sm font-bold text-[#254117]">
+                        {selectedOrder.recycle.mode === 'clean'
+                          ? 'Baju sudah bersih & kering'
+                          : 'Baju kotor, dicuci dulu'}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {selectedOrder.recycle.status === 'rejected' ? (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200 shrink-0">
+                      Daur Ulang Ditolak
+                    </span>
+                  ) : selectedOrder.recycle.actualKg !== null ? (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                      Diterima: {selectedOrder.recycle.actualKg} kg
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                      Perlu Ditimbang
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs text-emerald-950 space-y-1">
+                  <p className="font-semibold">
+                    Perkiraan: {selectedOrder.recycle.estimatedKg} kg
+                  </p>
+                  <p className="text-[11px] text-emerald-800 bg-white/80 p-2.5 rounded-xl border border-emerald-200">
+                    💡 <strong>Tips:</strong> Bawa kantong terpisah untuk baju daur ulang.
+                  </p>
+                </div>
+
+                {selectedOrder.recycle.status === 'rejected' ? (
+                  <div className="p-3 bg-red-50 rounded-2xl border border-red-200 text-xs text-red-900 space-y-1">
+                    <p className="font-bold">
+                      Penolakan: {selectedOrder.recycle.rejectReason || 'Tidak memenuhi syarat'}
+                    </p>
+                    <p className="text-[11px] font-semibold text-red-700">
+                      {selectedOrder.recycle.mode === 'clean'
+                        ? '👉 Kembalikan ke pelanggan (baju tidak diambil).'
+                        : '👉 Baju kotor tetap dicuci dan dikenakan tarif normal. Pesanan laundry berlanjut seperti biasa.'}
+                    </p>
+                  </div>
+                ) : (
+                  /* Courier rejection button (if weight not locked by chosen payment method) */
+                  !Boolean(selectedOrder.paymentMethod) && (
+                    <div className="pt-1 border-t border-emerald-200/70">
+                      {!showRejectRecycleModal ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowRejectRecycleModal(true)}
+                          className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Tolak baju daur ulang</span>
+                        </button>
+                      ) : (
+                        <div className="p-3.5 bg-white rounded-2xl border border-red-200 space-y-3 mt-1.5 animate-in fade-in">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-red-700">
+                              Pilih Alasan Penolakan Baju Daur Ulang:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setShowRejectRecycleModal(false)}
+                              className="text-gray-400 hover:text-gray-600 text-xs font-semibold cursor-pointer"
+                            >
+                              Tutup
+                            </button>
+                          </div>
+
+                          <div className="space-y-1.5 text-xs">
+                            {['Basah / lembap', 'Berjamur / berbau menyengat', 'Ada benda non-tekstil', 'Lainnya'].map((opt) => (
+                              <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="rejectReasonChoice"
+                                  value={opt}
+                                  checked={rejectReasonChoice === opt}
+                                  onChange={(e) => setRejectReasonChoice(e.target.value)}
+                                  className="accent-red-600"
+                                />
+                                <span className="font-medium text-[#254117]">{opt}</span>
+                              </label>
+                            ))}
+
+                            {rejectReasonChoice === 'Lainnya' && (
+                              <input
+                                type="text"
+                                value={rejectReasonCustom}
+                                onChange={(e) => setRejectReasonCustom(e.target.value)}
+                                placeholder="Tulis alasan penolakan spesifik..."
+                                className="w-full mt-1 px-3 py-2 border border-red-200 rounded-xl text-xs font-medium focus:outline-none focus:border-red-500"
+                                required
+                              />
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-gray-600">
+                            {selectedOrder.recycle.mode === 'clean'
+                              ? 'Kembalikan ke pelanggan. Pakaian daur ulang tidak dibawa ke gerai.'
+                              : 'Pakaian tetap dicuci dan dikenai tarif normal. Pesanan laundry tetap berjalan.'}
+                          </p>
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={handleConfirmRejectRecycle}
+                              disabled={isUpdating || (rejectReasonChoice === 'Lainnya' && !rejectReasonCustom.trim())}
+                              className="py-2 px-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
+                            >
+                              {isUpdating ? 'Memproses...' : 'Simpan Penolakan'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowRejectRecycleModal(false)}
+                              className="py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
             {/* Scale & Actual Weight Input (Only for Pickup tasks or verified display) */}
             {selectedOrder.status === 'pickup' ? (
               <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-xs space-y-3">
@@ -404,61 +606,127 @@ export const CourierApp: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-[11px] text-[#254117]/70">
-                  Letakkan cucian di timbangan kurir saat tiba di lokasi pelanggan. Masukkan berat riil untuk mengupdate total tagihan.
+                  {selectedOrder.recycle?.enabled && selectedOrder.recycle.mode === 'wash_first'
+                    ? 'Mode cuci dulu: Timbang total cucian (termasuk baju daur ulang) untuk menentukan tagihan.'
+                    : 'Letakkan cucian di timbangan kurir saat tiba di lokasi pelanggan. Masukkan berat riil untuk mengupdate total tagihan.'}
                 </p>
 
                 <form onSubmit={handleWeightSubmit} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0.5"
-                        max="30"
-                        value={weightInput}
-                        onChange={(e) => setWeightInput(e.target.value)}
-                        placeholder="Contoh: 4.8"
-                        disabled={!isEditingWeight || isUpdating}
-                        readOnly={!isEditingWeight}
-                        className={`w-full pl-4 pr-12 py-3 rounded-2xl border text-lg font-black transition-colors ${
-                          !isEditingWeight
-                            ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed select-none'
-                            : 'bg-white text-[#254117] border-gray-200 focus:outline-none focus:border-[#cd6184]'
-                        }`}
-                        required
-                      />
-                      <span className={`absolute right-4 top-3.5 text-sm font-bold ${!isEditingWeight ? 'text-gray-400' : 'text-[#254117]/60'}`}>
-                        {selectedOrder.unit}
-                      </span>
-                    </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#254117] mb-1">
+                      {selectedOrder.recycle?.enabled && selectedOrder.recycle.mode === 'clean'
+                        ? 'Berat Cucian Pelanggan (kg):'
+                        : selectedOrder.recycle?.enabled && selectedOrder.recycle.mode === 'wash_first'
+                        ? 'Total Berat Cucian Dikenai Tarif (kg, termasuk baju daur ulang):'
+                        : 'Berat Riil Cucian (kg):'}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.5"
+                          max="30"
+                          value={weightInput}
+                          onChange={(e) => setWeightInput(e.target.value)}
+                          placeholder="Contoh: 4.8"
+                          disabled={!isEditingWeight || isUpdating}
+                          readOnly={!isEditingWeight}
+                          className={`w-full pl-4 pr-12 py-3 rounded-2xl border text-lg font-black transition-colors ${
+                            !isEditingWeight
+                              ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed select-none'
+                              : 'bg-white text-[#254117] border-gray-200 focus:outline-none focus:border-[#cd6184]'
+                          }`}
+                          required
+                        />
+                        <span className={`absolute right-4 top-3.5 text-sm font-bold ${!isEditingWeight ? 'text-gray-400' : 'text-[#254117]/60'}`}>
+                          {selectedOrder.unit}
+                        </span>
+                      </div>
 
-                    {!isEditingWeight ? (
-                      selectedOrder.paymentMethod ? (
-                        <div className="py-2 px-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-400 font-bold text-[11px] flex items-center gap-1 select-none" title="Berat terkunci karena metode pembayaran telah dipilih pelanggan">
-                          <Lock className="w-3.5 h-3.5" />
-                          <span>Terkunci</span>
-                        </div>
+                      {!isEditingWeight ? (
+                        selectedOrder.paymentMethod ? (
+                          <div className="py-2 px-3 rounded-xl bg-gray-100 border border-gray-200 text-gray-400 font-bold text-[11px] flex items-center gap-1 select-none" title="Berat terkunci karena metode pembayaran telah dipilih pelanggan">
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>Terkunci</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingWeight(true)}
+                            className="py-3.5 px-5 rounded-2xl bg-white border-2 border-[#cd6184] text-[#cd6184] hover:bg-[#ffecf2] font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
+                            title="Edit berat riil"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                        )
                       ) : (
                         <button
-                          type="button"
-                          onClick={() => setIsEditingWeight(true)}
-                          className="py-3.5 px-5 rounded-2xl bg-white border-2 border-[#cd6184] text-[#cd6184] hover:bg-[#ffecf2] font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
-                          title="Edit berat riil"
+                          type="submit"
+                          disabled={isUpdating || !weightInput.trim() || parseFloat(weightInput) <= 0}
+                          className="py-3.5 px-5 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
-                          <span>Edit</span>
+                          {isUpdating ? 'Menyimpan...' : 'Simpan Berat'}
                         </button>
-                      )
-                    ) : (
-                      <button
-                        type="submit"
-                        disabled={isUpdating || !weightInput.trim() || parseFloat(weightInput) <= 0}
-                        className="py-3.5 px-5 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] text-white font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                      >
-                        {isUpdating ? 'Menyimpan...' : 'Simpan Berat'}
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
+
+                  {/* Extra Input: Berat Baju Daur Ulang (kg) when recycle.enabled */}
+                  {selectedOrder.recycle?.enabled && selectedOrder.recycle.status !== 'rejected' && (
+                    <div className="p-3 bg-emerald-50/70 rounded-2xl border border-emerald-200 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                          <Leaf className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Berat baju daur ulang (kg)</span>
+                        </label>
+                        <span className="text-[10px] font-semibold text-emerald-800">
+                          {selectedOrder.recycle.mode === 'clean'
+                            ? 'Terpisah (Gratis)'
+                            : 'Termasuk dalam cucian'}
+                        </span>
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="30"
+                          value={recycleWeightInput}
+                          onChange={(e) => {
+                            setRecycleWeightInput(e.target.value);
+                            setRecycleValidationError(null);
+                          }}
+                          placeholder="0"
+                          disabled={!isEditingWeight || isUpdating}
+                          readOnly={!isEditingWeight}
+                          className={`w-full pl-4 pr-12 py-2.5 rounded-xl border text-base font-bold transition-colors ${
+                            !isEditingWeight
+                              ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed select-none'
+                              : 'bg-white text-emerald-950 border-emerald-300 focus:outline-none focus:border-emerald-600'
+                          }`}
+                        />
+                        <span className={`absolute right-4 top-2.5 text-xs font-bold ${!isEditingWeight ? 'text-gray-400' : 'text-emerald-700'}`}>
+                          kg
+                        </span>
+                      </div>
+
+                      {recycleValidationError && (
+                        <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1 mt-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{recycleValidationError}</span>
+                        </p>
+                      )}
+
+                      <p className="text-[10.5px] text-emerald-800/80">
+                        {selectedOrder.recycle.mode === 'clean'
+                          ? '*Berat baju daur ulang tidak dikenai biaya cuci.'
+                          : '*Baju daur ulang dicuci bersama, berat ini tercakup dalam berat total cucian.'}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Real-time price calculation helper */}
                   {weightInput && parseFloat(weightInput) > 0 && (
@@ -480,17 +748,47 @@ export const CourierApp: React.FC = () => {
                       </span>
                     </div>
                   )}
+
+                  {selectedOrder.recycle?.enabled && selectedOrder.recycle.actualKg !== null && (
+                    <div className="p-2.5 bg-emerald-50 rounded-xl flex items-center justify-between text-xs font-semibold border border-emerald-200">
+                      <span className="text-emerald-900 flex items-center gap-1">
+                        <Leaf className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Baju Daur Ulang Riil:</span>
+                      </span>
+                      <span className="font-black text-emerald-900">
+                        {selectedOrder.recycle.status === 'rejected'
+                          ? 'Ditolak'
+                          : `${selectedOrder.recycle.actualKg} kg`}
+                      </span>
+                    </div>
+                  )}
                 </form>
               </div>
             ) : selectedOrder.actualQuantity !== undefined ? (
-              <div className="bg-white p-4 rounded-3xl border border-gray-200 shadow-xs flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-[#cd6184]" />
-                  <span className="font-bold text-[#254117]">Berat Riil Cucian:</span>
+              <div className="space-y-2">
+                <div className="bg-white p-4 rounded-3xl border border-gray-200 shadow-xs flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <Scale className="w-4 h-4 text-[#cd6184]" />
+                    <span className="font-bold text-[#254117]">Berat Riil Cucian:</span>
+                  </div>
+                  <span className="font-black text-sm text-[#254117]">
+                    {selectedOrder.actualQuantity} {selectedOrder.unit} (Rp {(selectedOrder.actualPrice || selectedOrder.estimatedPrice).toLocaleString('id-ID')})
+                  </span>
                 </div>
-                <span className="font-black text-sm text-[#254117]">
-                  {selectedOrder.actualQuantity} {selectedOrder.unit} (Rp {(selectedOrder.actualPrice || selectedOrder.estimatedPrice).toLocaleString('id-ID')})
-                </span>
+
+                {selectedOrder.recycle?.enabled && (
+                  <div className="bg-white p-4 rounded-3xl border border-emerald-200 shadow-xs flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Leaf className="w-4 h-4 text-emerald-600" />
+                      <span className="font-bold text-emerald-950">Baju Daur Ulang:</span>
+                    </div>
+                    <span className="font-black text-sm text-emerald-900">
+                      {selectedOrder.recycle.status === 'rejected'
+                        ? 'Ditolak'
+                        : `${selectedOrder.recycle.actualKg ?? 0} kg`}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -770,9 +1068,17 @@ export const CourierApp: React.FC = () => {
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <span className="text-[10px] font-bold text-[#cd6184] uppercase">
-                              {order.orderNumber}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-bold text-[#cd6184] uppercase">
+                                {order.orderNumber}
+                              </span>
+                              {order.recycle?.enabled && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                  <Leaf className="w-3 h-3 text-emerald-600" />
+                                  <span>Daur ulang</span>
+                                </span>
+                              )}
+                            </div>
                             <h3 className="text-sm font-bold text-[#254117]">{order.customerName}</h3>
                           </div>
                           <span
@@ -851,9 +1157,17 @@ export const CourierApp: React.FC = () => {
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <span className="text-[10px] font-bold text-[#cd6184]">
-                              {order.orderNumber}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-bold text-[#cd6184]">
+                                {order.orderNumber}
+                              </span>
+                              {order.recycle?.enabled && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                                  <Leaf className="w-3 h-3 text-emerald-600" />
+                                  <span>Daur ulang</span>
+                                </span>
+                              )}
+                            </div>
                             <h3 className="font-bold text-[#254117]">{order.customerName}</h3>
                           </div>
                           <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#97a273] text-white font-bold uppercase">

@@ -262,7 +262,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
                   <span className="text-[10px] text-[#254117]/70">Poin Loyalty Tersimpan</span>
                 </div>
                 <span className="font-black text-xs text-[#cd6184] bg-white px-2.5 py-1 rounded-xl shadow-xs">
-                  {stampsCount} Cap
+                  {stampsCount} Stempel
                 </span>
               </div>
 
