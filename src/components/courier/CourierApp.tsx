@@ -201,9 +201,16 @@ export const CourierApp: React.FC = () => {
     const qty = parseFloat(weightInput) > 0 ? parseFloat(weightInput) : (selectedOrder.actualQuantity || selectedOrder.estimatedQuantity);
     const gross = Math.round(selectedOrder.unitPrice * qty) + recycleWashPricePreview;
     const disc = selectedOrder.voucherCode && selectedOrder.voucherDiscount ? Math.min(selectedOrder.voucherDiscount, gross) : 0;
-    return Math.max(0, gross - disc);
+        return Math.max(0, gross - disc);
   })();
-  
+
+  const handleWeightSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOrder) return;
+    if (!hasPermission('orders_weigh')) {
+      alert('Akses ditolak: Hanya kurir yang memiliki hak akses timbang & verifikasi berat.');
+      return;
+    }
     const num = parseFloat(weightInput);
     if (isNaN(num) || num <= 0) return;
 
@@ -213,14 +220,6 @@ export const CourierApp: React.FC = () => {
     if (selectedOrder.recycle?.enabled && selectedOrder.recycle.status !== 'rejected') {
       const parsedRec = parseFloat(recycleWeightInput);
       recNum = isNaN(parsedRec) || parsedRec <= 0 ? 0 : parsedRec;
-
-      // Validation for wash_first: recycling clothes must be <= main weight
-      if (selectedOrder.recycle.mode === 'wash_first' && recNum > num) {
-        setRecycleValidationError(
-          'Berat baju daur ulang tidak boleh melebihi total berat cucian (karena baju daur ulang dicuci bersama cucian ini).'
-        );
-        return;
-      }
 
       // Confirmation if 0 or empty
       if (recNum === 0) {
