@@ -415,6 +415,33 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                 <span className="text-emerald-600 font-bold">GRATIS</span>
               </div>
 
+                            {Boolean(
+                selectedOrderForDetail.recycleWashPrice && selectedOrderForDetail.recycleWashPrice > 0
+              ) && (
+                <>
+                  <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold">
+                    <span className="text-[#254117]/70">Biaya Cuci {selectedOrderForDetail.planName}</span>
+                    <span className="text-[#254117]">
+                      Rp{' '}
+                      {Math.round(
+                        selectedOrderForDetail.unitPrice *
+                          (selectedOrderForDetail.actualQuantity || selectedOrderForDetail.estimatedQuantity)
+                      ).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold text-emerald-800">
+                    <span className="flex items-center gap-1">
+                      <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>
+                        Cuci baju daur ulang (Laundrea Peduli) · {selectedOrderForDetail.recycleWashKg} kg
+                        {selectedOrderForDetail.actualQuantity === undefined ? ' (estimasi)' : ''}
+                      </span>
+                    </span>
+                    <span>Rp {selectedOrderForDetail.recycleWashPrice?.toLocaleString('id-ID')}</span>
+                  </div>
+                </>
+              )}
+              
               {/* Voucher Discount Breakdown */}
               {Boolean(selectedOrderForDetail.voucherDiscount && selectedOrderForDetail.voucherDiscount > 0) && (
                 <>
