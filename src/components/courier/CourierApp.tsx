@@ -38,6 +38,7 @@ export const CourierApp: React.FC = () => {
     currentStaffUser,
     orders,
     couriers,
+    plans,
     updateOrderWeight,
     rejectOrderRecycle,
     updateOrderStatus,
@@ -181,21 +182,28 @@ export const CourierApp: React.FC = () => {
     }
   };
 
+    const recycleWashKgPreview = (() => {
+    const rc = selectedOrder?.recycle;
+    if (!rc?.enabled || rc.mode !== 'wash_first' || rc.status === 'rejected') return 0;
+    return Math.max(0, parseFloat(recycleWeightInput) || 0);
+  })();
+
+    const recycleWashRatePreview = selectedOrder
+      ? selectedOrder.unit === 'kg'
+        ? selectedOrder.unitPrice
+        : plans.find((p) => p.unit === 'kg')?.price ?? selectedOrder.unitPrice
+      : 0;
+  
+    const recycleWashPricePreview = Math.round(recycleWashRatePreview * recycleWashKgPreview);
+
   const calculatedNewPrice = (() => {
     if (!selectedOrder) return 0;
     const qty = parseFloat(weightInput) > 0 ? parseFloat(weightInput) : (selectedOrder.actualQuantity || selectedOrder.estimatedQuantity);
-    const gross = Math.round(selectedOrder.unitPrice * qty);
+    const gross = Math.round(selectedOrder.unitPrice * qty) + recycleWashPricePreview;
     const disc = selectedOrder.voucherCode && selectedOrder.voucherDiscount ? Math.min(selectedOrder.voucherDiscount, gross) : 0;
     return Math.max(0, gross - disc);
   })();
-
-  const handleWeightSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedOrder) return;
-    if (!hasPermission('orders_weigh')) {
-      alert('Akses ditolak: Hanya kurir yang memiliki hak akses timbang & verifikasi berat.');
-      return;
-    }
+  
     const num = parseFloat(weightInput);
     if (isNaN(num) || num <= 0) return;
 
@@ -607,7 +615,7 @@ export const CourierApp: React.FC = () => {
                 </div>
                 <p className="text-[11px] text-[#254117]/70">
                   {selectedOrder.recycle?.enabled && selectedOrder.recycle.mode === 'wash_first'
-                    ? 'Mode cuci dulu: Timbang total cucian (termasuk baju daur ulang) untuk menentukan tagihan.'
+                    ? 'Mode cuci dulu: timbang cucian pelanggan dan baju daur ulang secara terpisah. Keduanya dikenai tarif cuci.'
                     : 'Letakkan cucian di timbangan kurir saat tiba di lokasi pelanggan. Masukkan berat riil untuk mengupdate total tagihan.'}
                 </p>
 
@@ -617,7 +625,7 @@ export const CourierApp: React.FC = () => {
                       {selectedOrder.recycle?.enabled && selectedOrder.recycle.mode === 'clean'
                         ? 'Berat Cucian Pelanggan (kg):'
                         : selectedOrder.recycle?.enabled && selectedOrder.recycle.mode === 'wash_first'
-                        ? 'Total Berat Cucian Dikenai Tarif (kg, termasuk baju daur ulang):'
+                        ? 'Berat Cucian Pelanggan (kg, tidak termasuk baju daur ulang):'
                         : 'Berat Riil Cucian (kg):'}
                     </label>
                     <div className="flex items-center gap-2">
@@ -684,7 +692,7 @@ export const CourierApp: React.FC = () => {
                         <span className="text-[10px] font-semibold text-emerald-800">
                           {selectedOrder.recycle.mode === 'clean'
                             ? 'Terpisah (Gratis)'
-                            : 'Termasuk dalam cucian'}
+                            : 'Terpisah (dikenai tarif cuci)'}
                         </span>
                       </div>
 
@@ -723,20 +731,26 @@ export const CourierApp: React.FC = () => {
                       <p className="text-[10.5px] text-emerald-800/80">
                         {selectedOrder.recycle.mode === 'clean'
                           ? '*Berat baju daur ulang tidak dikenai biaya cuci.'
-                          : '*Baju daur ulang dicuci bersama, berat ini tercakup dalam berat total cucian.'}
+                          : '*Baju dicuci dan dikenai tarif per kg, ditambahkan ke tagihan sebagai "Cuci baju daur ulang".'}
                       </p>
                     </div>
                   )}
 
                   {/* Real-time price calculation helper */}
                   {weightInput && parseFloat(weightInput) > 0 && (
-                    <div className="p-3 bg-[#ffecf2] rounded-2xl flex items-center justify-between text-xs">
-                      <span className="text-[#254117]/75 font-medium">
-                        Perkiraan Total Akhir:
-                      </span>
-                      <span className="font-black text-[#97a273] text-sm">
-                        Rp {calculatedNewPrice.toLocaleString('id-ID')}
-                      </span>
+                    <div className="p-3 bg-[#ffecf2] rounded-2xl space-y-1 text-xs">
+                      {recycleWashPricePreview > 0 && (
+                        <div className="flex items-center justify-between text-emerald-800 font-semibold">
+                          <span>Cuci baju daur ulang ({recycleWashKgPreview} kg)</span>
+                          <span>Rp {recycleWashPricePreview.toLocaleString('id-ID')}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#254117]/75 font-medium">Perkiraan Total Akhir:</span>
+                        <span className="font-black text-[#97a273] text-sm">
+                          Rp {calculatedNewPrice.toLocaleString('id-ID')}
+                        </span>
+                      </div>
                     </div>
                   )}
 
