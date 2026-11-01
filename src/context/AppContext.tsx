@@ -178,6 +178,14 @@ interface AppContextType {
   }) => Order;
   updateOrderWeight: (orderId: string, actualWeight: number, recycleWeight?: number) => void;
   rejectOrderRecycle: (orderId: string, reason: string) => void;
+    verifyOrderRecycle: (
+    orderId: string,
+    finalKg: number
+  ) => { ok: boolean; bonusGranted: boolean; message: string; recycle?: RecycleOrderData };
+  rejectOrderRecycleByAdmin: (
+    orderId: string,
+    reason: string
+  ) => { ok: boolean; message: string; recycle?: RecycleOrderData };
   updateOrderStatus: (orderId: string, newStatus: OrderStatus) => void;
   updateOrderPaymentStatus: (
     orderId: string,
@@ -968,6 +976,127 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }).catch(() => {});
   };
 
+    const verifyOrderRecycle = (
+    orderId: string,
+    finalKg: number
+  ): { ok: boolean; bonusGranted: boolean; message: string; recycle?: RecycleOrderData } => {
+    if (!hasPermission('orders_status_update')) {
+      alert('Akses ditolak: Anda tidak memiliki izin memverifikasi baju daur ulang.');
+      return { ok: false, bonusGranted: false, message: 'Akses ditolak.' };
+    }
+    const ord = orders.find((o) => o.id === orderId);
+    if (!ord || !ord.recycle?.enabled) {
+      return { ok: false, bonusGranted: false, message: 'Order ini tidak memiliki daur ulang.' };
+    }
+    // Penjaga anti-ganda: hanya boleh diproses sekali
+    if (ord.recycle.status !== 'pending_verification') {
+      return { ok: false, bonusGranted: false, message: 'Daur ulang order ini sudah diproses.' };
+    }
+    const kg = Number(finalKg);
+    if (!Number.isFinite(kg) || kg <= 0) {
+      return { ok: false, bonusGranted: false, message: 'Isi berat final lebih dari 0 kg.' };
+    }
+
+    // Batas bonus: 1x per bulan kalender per pelanggan
+    const now = new Date();
+    const sameMonth = (iso?: string) => {
+      if (!iso) return false;
+      const d = new Date(iso);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    };
+    const phoneKey = normalizePhoneNumber(ord.customerPhone);
+    const bonusUsedThisMonth = orders.some(
+      (o) =>
+        o.id !== ord.id &&
+        normalizePhoneNumber(o.customerPhone) === phoneKey &&
+        o.recycle?.bonusGranted === true &&
+        sameMonth(o.recycle?.verifiedAt)
+    );
+
+    const grantBonus = kg >= 1 && !bonusUsedThisMonth;
+    const bonusNote = grantBonus
+      ? 'Stempel bonus ditambahkan.'
+      : kg < 1
+      ? 'Stempel bonus tidak diberikan karena berat di bawah 1 kg.'
+      : 'Stempel bonus bulan ini sudah terpakai.';
+
+    const updatedRecycle: RecycleOrderData = {
+      ...ord.recycle,
+      status: 'verified',
+      finalKg: kg,
+      verifiedAt: now.toISOString(),
+      bonusGranted: grantBonus,
+      rejectReason: '',
+    };
+
+    // Update lokal dulu supaya klik ganda tidak lolos, lalu simpan ke Firestore
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, recycle: updatedRecycle } : o)));
+    updateOrderInFirestore(orderId, {
+      recycle: updatedRecycle,
+      lastUpdatedLabel: 'Baju daur ulang diverifikasi',
+    }).catch(() => {});
+
+    sendOrUpdateNotification({
+      customerPhone: ord.customerPhone,
+      orderId: ord.id,
+      orderNumber: ord.orderNumber,
+      title: 'Daur Ulang Baju Diverifikasi',
+      body: `Terima kasih! Baju daur ulang ${kg} kg dari pesanan ${ord.orderNumber} sudah diterima. ${bonusNote}`,
+      type: 'recycle_verified' as any,
+    }).catch(() => {});
+
+    return {
+      ok: true,
+      bonusGranted: grantBonus,
+      message: `Terverifikasi. ${bonusNote}`,
+      recycle: updatedRecycle,
+    };
+  };
+
+  const rejectOrderRecycleByAdmin = (
+    orderId: string,
+    reason: string
+  ): { ok: boolean; message: string; recycle?: RecycleOrderData } => {
+    if (!hasPermission('orders_status_update')) {
+      alert('Akses ditolak: Anda tidak memiliki izin memverifikasi baju daur ulang.');
+      return { ok: false, message: 'Akses ditolak.' };
+    }
+    const ord = orders.find((o) => o.id === orderId);
+    if (!ord || !ord.recycle?.enabled) {
+      return { ok: false, message: 'Order ini tidak memiliki daur ulang.' };
+    }
+    if (ord.recycle.status !== 'pending_verification') {
+      return { ok: false, message: 'Daur ulang order ini sudah diproses.' };
+    }
+    if (!reason.trim()) {
+      return { ok: false, message: 'Alasan penolakan wajib diisi.' };
+    }
+
+    const updatedRecycle: RecycleOrderData = {
+      ...ord.recycle,
+      status: 'rejected',
+      rejectReason: reason.trim(),
+      bonusGranted: false,
+    };
+
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, recycle: updatedRecycle } : o)));
+    updateOrderInFirestore(orderId, {
+      recycle: updatedRecycle,
+      lastUpdatedLabel: 'Baju daur ulang ditolak admin',
+    }).catch(() => {});
+
+    sendOrUpdateNotification({
+      customerPhone: ord.customerPhone,
+      orderId: ord.id,
+      orderNumber: ord.orderNumber,
+      title: 'Baju Daur Ulang Tidak Memenuhi Syarat',
+      body: `Pesanan ${ord.orderNumber}: ${reason.trim()}.`,
+      type: 'recycle_rejected' as any,
+    }).catch(() => {});
+
+    return { ok: true, message: 'Baju daur ulang ditolak.', recycle: updatedRecycle };
+  };
+
   const choosePaymentMethod = (orderId: string, method: PaymentMethod) => {
     const ord = orders.find((o) => o.id === orderId);
     if (!ord) return;
@@ -1338,6 +1467,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createOrder,
         updateOrderWeight,
         rejectOrderRecycle,
+        verifyOrderRecycle,
+        rejectOrderRecycleByAdmin,
         updateOrderStatus,
         updateOrderPaymentStatus,
         choosePaymentMethod,
