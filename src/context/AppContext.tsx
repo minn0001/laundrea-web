@@ -85,6 +85,7 @@ import {
   subscribeToImpactStats,
   subscribeToArtisans,
   subscribeToRecycleWorks,
+  applyRecycleVerificationStats,
 } from '../services/firebaseRealtimeService';
 
 interface AppContextType {
@@ -1034,6 +1035,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateOrderInFirestore(orderId, {
       recycle: updatedRecycle,
       lastUpdatedLabel: 'Baju daur ulang diverifikasi',
+    }).catch(() => {});
+
+    // Update stok & angka dampak. Peserta baru = pelanggan ini belum pernah punya daur ulang terverifikasi.
+    const hadVerifiedBefore = orders.some(
+      (o) =>
+        o.id !== ord.id &&
+        normalizePhoneNumber(o.customerPhone) === phoneKey &&
+        o.recycle?.status === 'verified'
+    );
+    applyRecycleVerificationStats({
+      finalKg: kg,
+      isNewParticipant: !hadVerifiedBefore,
     }).catch(() => {});
 
     sendOrUpdateNotification({
