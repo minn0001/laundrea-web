@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Order, OrderStatus } from '../../types';
 import {
@@ -17,6 +17,7 @@ import {
   Check,
   AlertCircle,
   ChevronDown,
+  Leaf,
 } from 'lucide-react';
 
 interface AdminOrdersPageProps {
@@ -24,7 +25,7 @@ interface AdminOrdersPageProps {
 }
 
 export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelectedOrderId }) => {
-  const { orders, couriers, assignCourier, updateOrderStatus, updateOrderPaymentStatus, hasPermission } = useApp();
+  const { orders, couriers, assignCourier, updateOrderStatus, updateOrderPaymentStatus, hasPermission, verifyOrderRecycle, rejectOrderRecycleByAdmin } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -32,6 +33,57 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(() => {
     return orders.find((o) => o.id === initialSelectedOrderId) || null;
   });
+
+    const [recycleFinalKg, setRecycleFinalKg] = useState<string | null>(null);
+  const [isRejectingRecycle, setIsRejectingRecycle] = useState(false);
+  const [rejectChoice, setRejectChoice] = useState('');
+  const [rejectOther, setRejectOther] = useState('');
+  const [recycleMsg, setRecycleMsg] = useState<string | null>(null);
+
+  const RECYCLE_REJECT_REASONS = [
+    'Basah / lembap',
+    'Berjamur / berbau menyengat',
+    'Ada benda non-tekstil',
+    'Lainnya',
+  ];
+
+  // Reset form daur ulang saat pindah order
+  useEffect(() => {
+    setRecycleFinalKg(null);
+    setIsRejectingRecycle(false);
+    setRejectChoice('');
+    setRejectOther('');
+    setRecycleMsg(null);
+  }, [selectedOrder?.id]);
+
+  // Sinkronkan panel detail dengan data realtime (misal kurir baru selesai menimbang)
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const fresh = orders.find((o) => o.id === selectedOrder.id);
+    if (fresh && fresh !== selectedOrder) setSelectedOrder(fresh);
+  }, [orders]);
+
+  const handleVerifyRecycle = () => {
+    if (!selectedOrder?.recycle) return;
+    const raw = recycleFinalKg ?? String(selectedOrder.recycle.actualKg ?? '');
+    const kg = parseFloat(raw.replace(',', '.'));
+    const res = verifyOrderRecycle(selectedOrder.id, kg);
+    setRecycleMsg(res.message);
+    if (res.ok && res.recycle) {
+      setSelectedOrder({ ...selectedOrder, recycle: res.recycle });
+    }
+  };
+
+  const handleRejectRecycle = () => {
+    if (!selectedOrder) return;
+    const reason = rejectChoice === 'Lainnya' ? rejectOther.trim() : rejectChoice;
+    const res = rejectOrderRecycleByAdmin(selectedOrder.id, reason);
+    setRecycleMsg(res.message);
+    if (res.ok && res.recycle) {
+      setSelectedOrder({ ...selectedOrder, recycle: res.recycle });
+      setIsRejectingRecycle(false);
+    }
+  };
 
   // Requirement 6: Orders awaiting verification (Transfer and QRIS only; COD confirmed by courier directly)
   const awaitingVerificationOrders = orders.filter(
@@ -515,6 +567,169 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                 </span>
               </div>
             </div>
+
+                        {/* Daur Ulang (Laundrea Peduli) */}
+            {selectedOrder.recycle?.enabled && (() => {
+              const rc = selectedOrder.recycle!;
+              const canAct = hasPermission('orders_status_update');
+              const modeLabel =
+                rc.mode === 'wash_first' ? 'Baju kotor, dicuci dulu' : 'Baju sudah bersih & kering';
+              const inputValue = recycleFinalKg ?? String(rc.actualKg ?? '');
+
+              return (
+                <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                      <Leaf className="w-4 h-4 text-emerald-600" />
+                      Daur Ulang (Laundrea Peduli)
+                    </span>
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        rc.status === 'verified'
+                          ? 'bg-emerald-200 text-emerald-900'
+                          : rc.status === 'rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {rc.status === 'verified'
+                        ? 'Terverifikasi'
+                        : rc.status === 'rejected'
+                        ? 'Ditolak'
+                        : 'Menunggu Verifikasi'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-[11px] text-emerald-900/80">
+                    <div className="flex justify-between">
+                      <span>Jenis:</span>
+                      <span className="font-semibold">{modeLabel}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Perkiraan pelanggan:</span>
+                      <span className="font-semibold">{rc.estimatedKg} kg</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Timbangan kurir:</span>
+                      <span className="font-semibold">
+                        {rc.actualKg === null || rc.actualKg === undefined
+                          ? 'Belum ditimbang'
+                          : `${rc.actualKg} kg`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {rc.status === 'verified' && (
+                    <p className="text-[11px] font-semibold text-emerald-800 bg-white p-2 rounded-xl border border-emerald-200">
+                      Berat final {rc.finalKg ?? rc.actualKg} kg •{' '}
+                      {rc.bonusGranted ? 'Stempel bonus ditambahkan' : 'Tanpa stempel bonus'}
+                    </p>
+                  )}
+
+                  {rc.status === 'rejected' && (
+                    <p className="text-[11px] font-semibold text-red-700 bg-red-50 p-2 rounded-xl border border-red-200">
+                      Ditolak: {rc.rejectReason || 'Tidak memenuhi syarat'}
+                    </p>
+                  )}
+
+                  {rc.status === 'pending_verification' &&
+                    (rc.actualKg === null || rc.actualKg === undefined) && (
+                      <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                        Menunggu kurir menimbang baju daur ulang.
+                      </p>
+                    )}
+
+                  {rc.status === 'pending_verification' && rc.actualKg === 0 && (
+                    <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                      Kurir mencatat 0 kg (tidak ada baju daur ulang yang diambil).
+                    </p>
+                  )}
+
+                  {rc.status === 'pending_verification' && (rc.actualKg ?? 0) > 0 && (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-emerald-900 mb-1">
+                          Berat final setelah kering (kg)
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={inputValue}
+                          disabled={!canAct}
+                          onChange={(e) => setRecycleFinalKg(e.target.value)}
+                          className="w-full text-xs font-semibold p-2 rounded-xl border border-emerald-300 bg-white focus:outline-none focus:border-emerald-600 disabled:opacity-50"
+                        />
+                      </div>
+
+                      {!isRejectingRecycle ? (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={!canAct}
+                            onClick={handleVerifyRecycle}
+                            className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Verifikasi
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canAct}
+                            onClick={() => setIsRejectingRecycle(true)}
+                            className="flex-1 py-2 rounded-xl bg-white border border-red-300 text-red-700 font-bold text-xs hover:bg-red-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Tolak
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <select
+                            value={rejectChoice}
+                            onChange={(e) => setRejectChoice(e.target.value)}
+                            className="w-full text-xs font-medium p-2 rounded-xl border border-red-300 bg-white focus:outline-none"
+                          >
+                            <option value="">-- Pilih alasan penolakan --</option>
+                            {RECYCLE_REJECT_REASONS.map((r) => (
+                              <option key={r} value={r}>
+                                {r}
+                              </option>
+                            ))}
+                          </select>
+                          {rejectChoice === 'Lainnya' && (
+                            <input
+                              type="text"
+                              value={rejectOther}
+                              onChange={(e) => setRejectOther(e.target.value)}
+                              placeholder="Tulis alasan..."
+                              className="w-full text-xs p-2 rounded-xl border border-red-300 bg-white focus:outline-none"
+                            />
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleRejectRecycle}
+                              className="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs cursor-pointer"
+                            >
+                              Konfirmasi Tolak
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsRejectingRecycle(false)}
+                              className="flex-1 py-2 rounded-xl bg-gray-100 text-[#254117] font-bold text-xs cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {recycleMsg && (
+                    <p className="text-[11px] font-semibold text-emerald-900">{recycleMsg}</p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Prominent Verification Alert inside Drawer */}
             {selectedOrder.paymentStatus === 'awaiting_verification' && (
