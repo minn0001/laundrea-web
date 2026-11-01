@@ -42,6 +42,8 @@ export interface Order {
   actualQuantity?: number;
   estimatedPrice: number;
   actualPrice?: number;
+  recycleWashKg?: number;
+  recycleWashPrice?: number;
   unit: string;
   pickupDate: string;
   pickupTime: string;
