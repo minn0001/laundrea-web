@@ -11,6 +11,7 @@ import {
   where,
   orderBy,
   limit,
+  increment,
 } from 'firebase/firestore';
 import {
   db,
@@ -735,3 +736,35 @@ export function subscribeToRecycleWorks(
   );
 }
 
+/**
+ * Dipanggil sekali saat admin memverifikasi baju daur ulang.
+ * - Menambah stok baju yang tersimpan di gerai (settings/recycleStock.currentKg)
+ * - Menambah angka dampak (settings/impactStats.totalKg, dan participants bila pelanggan baru ikut)
+ * Memakai increment() supaya aman walau ada dua verifikasi bersamaan,
+ * dan dokumennya dibuat otomatis kalau belum ada.
+ */
+export async function applyRecycleVerificationStats(params: {
+  finalKg: number;
+  isNewParticipant: boolean;
+}): Promise<void> {
+  try {
+    await ensureSilentAuth();
+
+    await setDoc(
+      doc(db, 'settings', 'recycleStock'),
+      { currentKg: increment(params.finalKg) },
+      { merge: true }
+    );
+
+    await setDoc(
+      doc(db, 'settings', 'impactStats'),
+      {
+        totalKg: increment(params.finalKg),
+        ...(params.isNewParticipant ? { participants: increment(1) } : {}),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('applyRecycleVerificationStats notice:', err);
+  }
+}
