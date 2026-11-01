@@ -814,7 +814,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }): Order => {
     const selectedPlan = plans.find((p) => p.id === data.planId) || plans[0];
     const unitPrice = selectedPlan.price;
-    const subtotalPrice = unitPrice * data.estimatedQuantity;
+    // Baju daur ulang jalur "cuci dulu" dihitung sebagai biaya cuci terpisah (selalu tarif per kg)
+    const recycleWashKg =
+      data.recycle?.enabled && data.recycle.mode === 'wash_first'
+        ? Math.max(0, Number(data.recycle.estimatedKg) || 0)
+        : 0;
+    const washRate =
+      selectedPlan.unit === 'kg'
+        ? unitPrice
+        : plans.find((p) => p.unit === 'kg')?.price ?? unitPrice;
+    const recycleWashPrice = Math.round(washRate * recycleWashKg);
+    const subtotalPrice = unitPrice * data.estimatedQuantity + recycleWashPrice;
     const discount =
       data.voucherDiscount && data.voucherDiscount > 0
         ? Math.min(data.voucherDiscount, subtotalPrice)
@@ -875,6 +885,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(activeCourier?.id ? { courierId: activeCourier.id } : {}),
       ...(activeCourier?.name ? { courierName: activeCourier.name } : {}),
       ...(data.notes?.trim() ? { notes: data.notes.trim() } : {}),
+      ...(recycleWashPrice > 0 ? { recycleWashKg, recycleWashPrice } : {}),
       ...(data.recycle ? { recycle: data.recycle } : {}),
     };
 
@@ -910,7 +921,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const ord = orders.find((o) => o.id === orderId);
     if (!ord) return;
 
-    const grossPrice = Math.round(ord.unitPrice * actualWeight);
+    // Biaya cuci baju daur ulang (jalur "cuci dulu") dihitung dari berat timbangan kurir
+    const effectiveRecycleKg =
+      ord.recycle?.enabled && ord.recycle.mode === 'wash_first'
+        ? Math.max(
+            0,
+            Number(
+              recycleWeight !== undefined
+                ? recycleWeight
+                : ord.recycle.actualKg ?? ord.recycle.estimatedKg
+            ) || 0
+          )
+        : 0;
+    const recycleWashRate =
+      ord.unit === 'kg'
+        ? ord.unitPrice
+        : plans.find((p) => p.unit === 'kg')?.price ?? ord.unitPrice;
+    const recycleWashPrice = Math.round(recycleWashRate * effectiveRecycleKg);
+    const grossPrice = Math.round(ord.unitPrice * actualWeight) + recycleWashPrice;
     let recalculatedDiscount = 0;
     if (ord.voucherCode) {
       if (ord.voucherDiscount && ord.voucherDiscount > 0) {
@@ -932,6 +960,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       voucherDiscount: recalculatedDiscount,
       paymentStatus: nextPaymentStatus,
       lastUpdatedLabel: 'Ditimbang kurir',
+      recycleWashKg: effectiveRecycleKg,
+      recycleWashPrice,
     };
 
     if (ord.recycle?.enabled && recycleWeight !== undefined) {
