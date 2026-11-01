@@ -89,6 +89,8 @@ export interface RecycleOrderData {
   status: RecycleStatus;
   bonusGranted: boolean;
   rejectReason?: string;
+  finalKg?: number;
+  verifiedAt?: string;
 }
 
 export interface ArtisanItem {
