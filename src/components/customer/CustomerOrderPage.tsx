@@ -61,7 +61,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   // Laundrea Peduli recycle state
   const [recycleEnabled, setRecycleEnabled] = useState<boolean>(Boolean(initialRecycleChecked));
   const [recycleMode, setRecycleMode] = useState<RecycleMode>('clean');
-  const [recycleEstimatedKg, setRecycleEstimatedKg] = useState<number>(1);
+  const [recycleKgText, setRecycleKgText] = useState<string>('1');
 
   // Check if monthly recycling bonus is already used
   const now = new Date();
@@ -115,7 +115,22 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const selectedPlan = plans.find((p) => p.id === selectedPlanId) || plans[0];
   const isKg = selectedPlan.unit === 'kg';
   const minQty = selectedPlan.minOrder || 1;
-  const currentPrice = selectedPlan.price * estimatedQuantity;
+  // Berat baju daur ulang (dari teks, boleh dikosongkan saat mengetik)
+  const recycleKgNumber = (() => {
+    const n = parseFloat(recycleKgText.replace(',', '.'));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  })();
+  const isRecycleKgValid = !recycleEnabled || recycleKgNumber >= 1;
+
+  // Jalur "cuci dulu": baju daur ulang dikenai tarif cuci per kg (harus sama dengan AppContext)
+  const recycleWashKg = recycleEnabled && recycleMode === 'wash_first' ? recycleKgNumber : 0;
+  const washRate =
+    selectedPlan.unit === 'kg'
+      ? selectedPlan.price
+      : plans.find((p) => p.unit === 'kg')?.price ?? selectedPlan.price;
+  const recycleWashPrice = Math.round(washRate * recycleWashKg);
+
+  const currentPrice = selectedPlan.price * estimatedQuantity + recycleWashPrice;
   const isDropoff = handoverMethod === 'store_dropoff';
   // Validation rules: All fields required before proceeding EXCEPT voucher
   const isPlanValid = Boolean(selectedPlanId);
@@ -137,7 +152,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     isTimeValid &&
     isNameValid &&
     isPhoneValid &&
-    isAddressValid;
+    isAddressValid &&
+    isRecycleKgValid;
 
   // Voucher states & logic
   const activeCustomerVouchers = customerVouchers.filter((v) => !v.isUsed);
@@ -258,7 +274,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               recycle: {
                 enabled: true,
                 mode: recycleMode,
-                estimatedKg: Math.max(1, Number(recycleEstimatedKg) || 1),
+                estimatedKg: Math.max(1, recycleKgNumber),
                 actualKg: null,
                 status: 'pending_verification' as const,
                 bonusGranted: false,
@@ -494,6 +510,11 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 <p>
                   {estimatedQuantity} {selectedPlan.unit} × Rp {selectedPlan.price.toLocaleString('id-ID')}
                 </p>
+                {recycleWashPrice > 0 && (
+                  <p>
+                    + Cuci baju daur ulang {recycleWashKg} kg × Rp {washRate.toLocaleString('id-ID')}
+                  </p>
+                )}
                 <p className="text-[#97a273] font-bold">Sudah Termasuk Antar-Jemput Gratis</p>
               </div>
             </div>
@@ -918,6 +939,11 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       Silakan tentukan alamat lengkap untuk penjemputan/pengantaran.
                     </p>
                   )}
+                  {!isRecycleKgValid && (
+                    <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                      • Berat Daur Ulang (min. 1 kg)
+                    </span>
+                  )}
                 </div>
 
                 <div>
@@ -1081,6 +1107,11 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <span className="font-bold text-[#254117]">
                     {estimatedQuantity} {selectedPlan.unit} × Rp {selectedPlan.price.toLocaleString('id-ID')}
                   </span>
+                  {recycleWashPrice > 0 && (
+                    <span className="block text-[11px] font-semibold text-emerald-800">
+                      + Cuci baju daur ulang {recycleWashKg} kg × Rp {washRate.toLocaleString('id-ID')}
+                    </span>
+                  )}
                 </div>
                 <div className="text-right">
                   {appliedVoucher ? (
@@ -1226,15 +1257,30 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       </div>
                       <div className="flex items-center gap-3">
                         <input
-                          type="number"
-                          min={1}
-                          step={0.5}
-                          value={recycleEstimatedKg}
-                          onChange={(e) => setRecycleEstimatedKg(Math.max(1, parseFloat(e.target.value) || 1))}
+                          type="text"
+                          inputMode="decimal"
+                          value={recycleKgText}
+                          onChange={(e) => {
+                            // boleh kosong dan desimal, tidak dipaksa ke angka minimal saat mengetik
+                            if (/^\d*[.,]?\d*$/.test(e.target.value)) setRecycleKgText(e.target.value);
+                          }}
+                          onBlur={() => {
+                            const n = parseFloat(recycleKgText.replace(',', '.'));
+                            setRecycleKgText(!n || n < 1 ? '1' : String(n));
+                          }}
+                          placeholder="1"
                           className="w-24 px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold text-[#254117] focus:outline-none focus:border-[#254117]"
                         />
                         <span className="text-xs font-bold text-[#254117]">kg</span>
                       </div>
+                      {recycleKgText.trim() !== '' && recycleKgNumber < 1 && (
+                        <p className="text-[11px] text-red-500 font-medium">Minimal 1 kg.</p>
+                      )}
+                      {recycleMode === 'wash_first' && recycleKgNumber >= 1 && (
+                        <p className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                          Biaya cuci baju daur ulang: {recycleKgNumber} kg × Rp {washRate.toLocaleString('id-ID')} = Rp {recycleWashPrice.toLocaleString('id-ID')}
+                        </p>
+                      )}
                     </div>
 
                     {/* Requirements box */}
@@ -1401,6 +1447,11 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 <p className="text-[#254117]/80">
                   <span className="font-medium">Tarif Satuan:</span> Rp {selectedPlan.price.toLocaleString('id-ID')}/{selectedPlan.unit}
                 </p>
+                {recycleWashPrice > 0 && (
+                  <p className="text-[#254117]/80">
+                    <span className="font-medium">Cuci Baju Daur Ulang:</span> {recycleWashKg} kg × Rp {washRate.toLocaleString('id-ID')} = Rp {recycleWashPrice.toLocaleString('id-ID')}
+                  </p>
+                )}
                 <p className="text-[#254117]/80">
                   <span className="font-medium">Penyerahan:</span>{' '}
                   {handoverMethod === 'pickup_by_courier' ? 'Dijemput oleh kurir' : 'Antar ke gerai'}
@@ -1437,11 +1488,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       Laundrea Peduli (Daur Ulang Pakaian):
                     </span>
                     <span className="font-semibold text-emerald-800">
-                      Perkiraan {recycleEstimatedKg} kg
+                      Perkiraan {recycleKgNumber} kg 
                     </span>
                   </div>
                   <p className="text-[#254117]/80 text-[11px]">
-                    Mode: {recycleMode === 'clean' ? 'Baju Bersih & Kering (Langsung diserahkan)' : 'Baju Kotor (Cuci dulu sesuai tarif berat)'}
+                    Mode: {recycleMode === 'clean'
+                      ? 'Baju Bersih & Kering (Langsung diserahkan)'
+                      : `Baju Kotor (Cuci dulu): Rp ${recycleWashPrice.toLocaleString('id-ID')} masuk ke estimasi biaya`}
                   </p>
                   <p className="text-[#254117]/70 text-[11px]">
                     {bonusUsedThisMonth
