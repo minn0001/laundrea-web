@@ -6,6 +6,8 @@ import {
   setRecycleProgramActive,
   updateRecycleCapacity,
   recordRecycleHandover,
+  updateRecycleCapacity,
+  updateRecycleTarget,
 } from '../../services/firebaseRealtimeService';
 import type { RecycleHandover } from '../../services/firebaseRealtimeService';
 import { Leaf, AlertCircle, CheckCircle2, PackageCheck } from 'lucide-react';
@@ -15,7 +17,8 @@ export const AdminRecyclePage: React.FC = () => {
     useApp();
   const canManage = hasPermission('orders_status_update');
 
-  const [stock, setStock] = useState({ currentKg: 0, capacityKg: 0 });
+  const [stock, setStock] = useState({ currentKg: 0, capacityKg: 0, targetKg: 0 });
+  const [targetText, setTargetText] = useState('');
   const [handovers, setHandovers] = useState<RecycleHandover[]>([]);
   const [capacityText, setCapacityText] = useState('');
   const [artisanName, setArtisanName] = useState('');
@@ -38,6 +41,24 @@ export const AdminRecyclePage: React.FC = () => {
   useEffect(() => {
     setCapacityText(stock.capacityKg ? String(stock.capacityKg) : '');
   }, [stock.capacityKg]);
+
+    useEffect(() => {
+    setTargetText(stock.targetKg ? String(stock.targetKg) : '');
+  }, [stock.targetKg]);
+
+  const handleSaveTarget = async () => {
+    const n = parseFloat(targetText.replace(',', '.'));
+    if (!Number.isFinite(n) || n <= 0) {
+      setMsg({ ok: false, text: 'Isi target setor lebih dari 0 kg.' });
+      return;
+    }
+    await updateRecycleTarget(n);
+    setMsg({ ok: true, text: 'Target setor disimpan.' });
+  };
+
+  const targetPercent =
+    stock.targetKg > 0 ? Math.min(100, Math.round((stock.currentKg / stock.targetKg) * 100)) : 0;
+  const readyToHandover = stock.targetKg > 0 && stock.currentKg >= stock.targetKg;
 
   const programOn = recycleSettings.programActive;
   const isFull = stock.capacityKg > 0 && stock.currentKg >= stock.capacityKg;
@@ -144,6 +165,56 @@ export const AdminRecyclePage: React.FC = () => {
         ))}
       </div>
 
+           {/* Milestone siap setor */}
+      <div
+        className={`p-5 rounded-3xl border-2 space-y-3 ${
+          readyToHandover ? 'bg-emerald-50 border-emerald-400' : 'bg-white border-gray-200'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-[#254117]">Milestone Setor ke Pengrajin</h2>
+          {readyToHandover && (
+            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-600 text-white">
+              Siap disetor
+            </span>
+          )}
+        </div>
+        <div className="w-full h-3 rounded-full bg-gray-100 overflow-hidden">
+          <div
+            className={`h-full transition-all ${readyToHandover ? 'bg-emerald-600' : 'bg-emerald-400'}`}
+            style={{ width: `${targetPercent}%` }}
+          />
+        </div>
+        <p className="text-xs text-[#254117]/80">
+          {stock.targetKg > 0
+            ? readyToHandover
+              ? `${stock.currentKg} kg sudah melewati target ${stock.targetKg} kg. Saatnya hubungi pengrajin.`
+              : `${stock.currentKg} kg dari target ${stock.targetKg} kg (kurang ${Math.max(0, Math.round((stock.targetKg - stock.currentKg) * 100) / 100)} kg)`
+            : 'Isi target setor dulu, misalnya jumlah kilo yang biasanya diminta pengrajin.'}
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            inputMode="decimal"
+            value={targetText}
+            onChange={(e) => {
+              if (/^\d*[.,]?\d*$/.test(e.target.value)) setTargetText(e.target.value);
+            }}
+            placeholder="Target setor (kg)"
+            disabled={!canManage}
+            className="w-36 px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold"
+          />
+          <button
+            type="button"
+            onClick={handleSaveTarget}
+            disabled={!canManage}
+            className="px-3 py-2 rounded-xl bg-[#254117] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+          >
+            Simpan Target
+          </button>
+        </div>
+      </div>
+      
       {/* Stok + program */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-3xl border border-gray-200 space-y-3">
