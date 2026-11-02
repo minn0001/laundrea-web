@@ -34,7 +34,7 @@ const WorkCardImage: React.FC<{ src?: string; title: string }> = ({ src, title }
   }
 
   return (
-    <div className="aspect-4/3 bg-gray-100 overflow-hidden">
+    <div className="aspect-5/4 bg-gray-100 overflow-hidden">
       <img
         src={src}
         alt={title}
@@ -67,11 +67,11 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
   const faqs = [
     {
       q: 'Bajuku jadi apa?',
-      a: 'Pakaian tidak terpakai yang Anda serahkan disalurkan ke mitra pengrajin lokal untuk diolah (upcycled) menjadi aneka produk bernilai guna tinggi, seperti tas jinjing (tote bag), keset anyam serat tebal, sarung bantal sofa, hingga perca kreasi rumah tangga.',
+      a: 'Pakaian tidak terpakai yang Anda serahkan disalurkan ke mitra pengrajin lokal untuk diolah (upcycled) menjadi aneka produk bernilai guna, seperti tote bag patchwork, pouch serut, sarung bantal, dan keset dari kain perca.',
     },
     {
       q: 'Apakah kena biaya?',
-      a: 'Sama sekali tidak ada biaya tambahan! Program penyerahan pakaian daur ulang ini 100% gratis sebagai bagian dari komitmen keberlanjutan dan kepedulian lingkungan Laundrea.',
+      a: 'Menyerahkan baju yang sudah bersih dan kering tidak dikenakan biaya apa pun. Jika bajunya masih kotor dan perlu dicuci dulu, hanya biaya cucinya yang dikenakan sesuai tarif per kg.',
     },
     {
       q: 'Bolehkah baju rusak?',
@@ -311,10 +311,10 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
               return (
                 <div
                   key={work.id}
-                  className="rounded-2xl bg-gray-50 border border-gray-200/70 overflow-hidden shadow-2xs flex flex-col justify-between"
+                  className="rounded-2xl bg-gray-50 border border-gray-200/70 overflow-hidden shadow-2xs flex flex-col h-full"
                 >
                   <WorkCardImage src={imageSrc} title={work.title} />
-                  <div className="p-3 space-y-1">
+                  <div className="p-3 space-y-1 flex-1">
                     <h3 className="font-bold text-xs text-[#254117] leading-snug">{work.title}</h3>
                     {work.artisanName && (
                       <span className="text-[10px] font-semibold text-[#cd6184] block">
@@ -322,7 +322,7 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
                       </span>
                     )}
                     {work.description && (
-                      <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-2">
+                      <p className="text-[11px] text-gray-500 leading-relaxed">
                         {work.description}
                       </p>
                     )}
