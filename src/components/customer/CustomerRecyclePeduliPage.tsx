@@ -59,8 +59,8 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
       a: "Jika pakaian masih kotor, Anda cukup memilih opsi 'Baju masih kotor, cuci dulu' di formulir pemesanan. Pakaian akan dicuci bersih dan higienis terlebih dahulu sesuai tarif kiloan normal sebelum disalurkan ke pengrajin. Anda akan mendapatkan 1 stempel cuci + 1 stempel bonus daur ulang!",
     },
     {
-      q: 'Kenapa bonusnya hanya 1x per bulan?',
-      a: 'Apresiasi berupa +1 bonus stempel dibatasi maksimal 1 kali per bulan kalender per pelanggan agar manfaat stempel loyalti terdistribusi merata dan berkelanjutan bagi seluruh komunitas pelanggan. Jika Anda menyerahkan pakaian lebih dari sekali dalam bulan yang sama, pakaian tetap kami terima dengan senang hati.',
+      q: 'Berapa kali boleh menyerahkan baju?',
+      a: 'Boleh berkali-kali. Setiap penyerahan minimal 1 kg mendapat +1 stempel.',
     },
   ];
 
@@ -101,7 +101,7 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
         <p className="text-xs sm:text-sm text-white/80 leading-relaxed max-w-xl">
           Jangan biarkan pakaian lama menumpuk di lemari atau berakhir di tempat pembuangan sampah.
           Serahkan minimal 1 kg pakaian bekas saat memesan laundry, dan dapatkan bonus{' '}
-          <strong className="text-[#ffbd59]">+1 stempel loyalitas</strong> (maks. 1x per bulan).
+          <strong className="text-[#ffbd59]">+1 stempel loyalitas</strong> (min. 1 kg).
         </p>
 
         {!recycleSettings.programActive && (

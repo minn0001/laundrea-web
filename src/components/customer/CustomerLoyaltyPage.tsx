@@ -33,6 +33,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
     customerPhone,
     customers,
     orders,
+    earnsRecycleStamp,
   } = useApp();
 
   const [claimedModalVoucher, setClaimedModalVoucher] = useState<CustomerVoucher | null>(null);
@@ -74,9 +75,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
 
   const customerOrders = orders.filter((o) => !customerPhone || o.customerPhone === customerPhone);
   const recycleOrders = customerOrders.filter((o) => o.recycle?.enabled);
-  const verifiedRecycleOrders = recycleOrders.filter(
-    (o) => o.recycle?.bonusGranted && o.recycle.status === 'verified'
-  );
+  const verifiedRecycleOrders = recycleOrders.filter(earnsRecycleStamp);
   const recycleStampCount = verifiedRecycleOrders.length;
 
     // Semua stempel diurutkan menurut waktu, supaya posisi daun tidak pindah-pindah
@@ -242,9 +241,6 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
               </button>
             )}
           </div>
-          <p className="text-[10px] text-[#254117]/60 italic">
-            *Bonus daur ulang maks. 1x per bulan.
-          </p>
         </div>
 
         {/* Voucher Claim CTA Card */}

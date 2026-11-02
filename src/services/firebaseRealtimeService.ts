@@ -12,8 +12,6 @@ import {
   orderBy,
   limit,
   increment,
-  limit,
-  increment,
   runTransaction,
 } from 'firebase/firestore';
 import {
@@ -669,14 +667,15 @@ export function subscribeToRecycleProgramSettings(
         const data = snap.data();
         onSuccess({
           programActive: data.programActive !== false,
+          pausedReason: data.pausedReason || '',
         });
       } else {
         // Safe default: true if missing
-        onSuccess({ programActive: true });
+        onSuccess({ programActive: true, pausedReason: '' });
       }
     },
     (err) => {
-      onSuccess({ programActive: true });
+      onSuccess({ programActive: true, pausedReason: '' });
       if (onError) onError(err);
     }
   );
@@ -774,15 +773,16 @@ export async function applyRecycleVerificationStats(params: {
       { merge: true }
     );
 
-    // Stok penuh -> program otomatis dimatikan sampai admin mencatat penyerahan
+    // Stok mencapai target -> program otomatis dimatikan sampai admin mencatat penyerahan
     if (delta > 0) {
       const snap = await getDoc(doc(db, 'settings', 'recycleStock'));
       const d = snap.data() || {};
-      const cap = Number(d.capacityKg) || 0;
-      if (cap > 0 && (Number(d.currentKg) || 0) >= cap) {
+      const targetKg = Number(d.targetKg) || 0;
+      const currentKg = Number(d.currentKg) || 0;
+      if (targetKg > 0 && currentKg >= targetKg) {
         await setDoc(
           doc(db, 'settings', 'recycleProgram'),
-          { programActive: false },
+          { programActive: false, pausedReason: 'full' },
           { merge: true }
         );
       }
@@ -804,7 +804,7 @@ export interface RecycleHandover {
 }
 
 export function subscribeToRecycleStock(
-  onSuccess: (s: { currentKg: number; capacityKg: number; targetKg: number }) => void
+  onSuccess: (s: { currentKg: number; targetKg: number; capacityKg?: number }) => void
 ): () => void {
   ensureSilentAuth().catch(() => {});
   return onSnapshot(
@@ -813,11 +813,11 @@ export function subscribeToRecycleStock(
       const d = snap.exists() ? snap.data() : {};
       onSuccess({
         currentKg: Number(d.currentKg) || 0,
-        capacityKg: Number(d.capacityKg) || 0,
         targetKg: Number(d.targetKg) || 0,
+        capacityKg: Number(d.capacityKg) || 0,
       });
     },
-    () => onSuccess({ currentKg: 0, capacityKg: 0, targetKg: 0 })
+    () => onSuccess({ currentKg: 0, targetKg: 0, capacityKg: 0 })
   );
 }
 
@@ -844,7 +844,7 @@ export function subscribeToRecycleHandovers(
 
 export async function setRecycleProgramActive(active: boolean): Promise<void> {
   await ensureSilentAuth();
-  await setDoc(doc(db, 'settings', 'recycleProgram'), { programActive: active }, { merge: true });
+  await setDoc(doc(db, 'settings', 'recycleProgram'), { programActive: active, pausedReason: '' }, { merge: true });
 }
 
 export async function updateRecycleCapacity(capacityKg: number): Promise<void> {
@@ -863,13 +863,19 @@ export async function recordRecycleHandover(params: {
   await ensureSilentAuth();
   const stockRef = doc(db, 'settings', 'recycleStock');
   const statsRef = doc(db, 'settings', 'impactStats');
+  const programRef = doc(db, 'settings', 'recycleProgram');
   const handoverRef = doc(collection(db, 'recycleHandovers'));
   try {
     await runTransaction(db, async (tx) => {
       const stockSnap = await tx.get(stockRef);
-      const current = Number(stockSnap.exists() ? stockSnap.data().currentKg : 0) || 0;
+      const programSnap = await tx.get(programRef);
+      const stockData = stockSnap.exists() ? stockSnap.data() : {};
+      const current = Number(stockData.currentKg) || 0;
+      const targetKg = Number(stockData.targetKg) || 0;
       if (!(params.kg > 0)) throw new Error('Berat harus lebih dari 0 kg.');
       if (params.kg > current + 1e-9) throw new Error(`Stok yang tercatat hanya ${current} kg.`);
+
+      const newCurrentKg = Math.max(0, Math.round((current - params.kg) * 100) / 100);
 
       tx.set(
         handoverRef,
@@ -885,12 +891,21 @@ export async function recordRecycleHandover(params: {
       );
       tx.set(
         stockRef,
-        { currentKg: Math.round((current - params.kg) * 100) / 100 },
+        { currentKg: newCurrentKg },
         { merge: true }
       );
       tx.set(statsRef, { handovers: increment(1) }, { merge: true });
+
+      const programData = programSnap.exists() ? programSnap.data() : {};
+      if (programData.pausedReason === 'full' && (targetKg <= 0 || newCurrentKg < targetKg)) {
+        tx.set(
+          programRef,
+          { programActive: true, pausedReason: '' },
+          { merge: true }
+        );
+      }
     });
-    return { ok: true, message: 'Penyerahan ke pengrajin tercatat.' };
+    return { ok: true, message: 'Penyerahan ke pengrajin berhasil dicatat dan stok telah direset.' };
   } catch (err: any) {
     return { ok: false, message: err?.message || 'Gagal mencatat penyerahan.' };
   }

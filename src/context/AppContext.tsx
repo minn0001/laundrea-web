@@ -88,6 +88,12 @@ import {
   applyRecycleVerificationStats,
 } from '../services/firebaseRealtimeService';
 
+export const earnsRecycleStamp = (order?: { recycle?: RecycleOrderData | null } | null): boolean => {
+  if (!order?.recycle || order.recycle.status !== 'verified') return false;
+  const kg = order.recycle.finalKg ?? order.recycle.actualKg ?? 0;
+  return kg >= 1;
+};
+
 interface AppContextType {
   role: Role;
   setRole: (role: Role) => void;
@@ -145,6 +151,7 @@ interface AppContextType {
   addTestStamp: () => void;
   markVoucherAsUsed: (code: string, orderNumber: string) => void;
   redeemFreeWash: () => boolean;
+  earnsRecycleStamp: (order?: { recycle?: RecycleOrderData | null } | null) => boolean;
   // Notifications
   notifications: AppNotification[];
   markNotificationRead: (id: string) => void;
@@ -456,15 +463,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Derived stamp balance including verified recycling bonus stamps (milestone counts wash + recycle bonus)
   const verifiedRecycleBonusesCount = orders.filter((o) => {
-    if (customerPhone && o.customerPhone !== customerPhone) return false;
-    if (o.recycle?.status !== 'verified' || !o.recycle?.bonusGranted) return false;
-    const alreadyInHistory = stampHistory.some(
-      (sh) => sh.orderNumber === o.orderNumber && sh.type === 'earned' && sh.title.includes('Daur Ulang')
-    );
-    return !alreadyInHistory;
+    if (customerPhone && normalizePhoneNumber(o.customerPhone) !== normalizePhoneNumber(customerPhone)) return false;
+    return earnsRecycleStamp(o);
   }).length;
 
-  const stampsCount = stampHistory.reduce((sum, item) => sum + (item.pointsChange || 0), 0) + verifiedRecycleBonusesCount;
+  const stampsFromHistory = stampHistory
+    .filter((sh) => !(sh.title && sh.title.toLowerCase().includes('daur ulang')))
+    .reduce((sum, item) => sum + (item.pointsChange || 0), 0);
+
+  const stampsCount = stampsFromHistory + verifiedRecycleBonusesCount;
 
   // Staff User & Live Permission Resolution
   const activeUsername = role === 'admin' ? adminUsername : courierUsername;
@@ -916,28 +923,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const buildRecycleVerification = (ord: Order, kg: number, by: 'courier' | 'admin') => {
     const rc = ord.recycle!;
     const now = new Date();
-    const sameMonth = (iso?: string) => {
-      if (!iso) return false;
-      const d = new Date(iso);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    };
     const phoneKey = normalizePhoneNumber(ord.customerPhone);
     const others = orders.filter(
       (o) => o.id !== ord.id && normalizePhoneNumber(o.customerPhone) === phoneKey
     );
-    const bonusUsedThisMonth = others.some(
-      (o) => o.recycle?.bonusGranted === true && sameMonth(o.recycle?.verifiedAt)
-    );
-    const bonusGranted = kg >= 1 && !bonusUsedThisMonth;
+    const bonusGranted = kg >= 1;
     const wasVerified = rc.status === 'verified';
     const previousKg = wasVerified ? rc.finalKg ?? 0 : 0;
     const isNewParticipant = !wasVerified && !others.some((o) => o.recycle?.status === 'verified');
 
     const note = bonusGranted
       ? 'Stempel bonus ditambahkan 🌿'
-      : kg < 1
-      ? 'Beratnya di bawah 1 kg, jadi belum dapat stempel bonus. Bajumu tetap kami terima, terima kasih!'
-      : 'Bonus stempel daur ulang hanya 1x per bulan dan bulan ini sudah kamu dapatkan, jadi kali ini belum menambah stempel. Bajumu tetap kami terima, terima kasih!';
+      : 'Beratnya di bawah 1 kg, jadi belum dapat stempel bonus.';
 
     const recycle: RecycleOrderData = {
       ...rc,
@@ -1554,6 +1551,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addTestStamp,
         markVoucherAsUsed,
         redeemFreeWash,
+        earnsRecycleStamp,
         notifications,
         markNotificationRead,
         markAllNotificationsRead,

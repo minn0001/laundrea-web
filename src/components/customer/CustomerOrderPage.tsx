@@ -63,20 +63,6 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const [recycleMode, setRecycleMode] = useState<RecycleMode>('clean');
   const [recycleKgText, setRecycleKgText] = useState<string>('1');
 
-  // Kunci bulanan: Laundrea Peduli hanya 1x per bulan (pesanan yang masih menunggu juga dihitung)
-  const now = new Date();
-  const currentMonthPrefix = now.toISOString().slice(0, 7);
-  const bonusUsedThisMonth = orders.some((o) => {
-    if (customerPhone && o.customerPhone !== customerPhone) return false;
-    if (!o.recycle?.enabled) return false;
-    const holdsBonus =
-      o.recycle.status === 'pending_verification' ||
-      (o.recycle.status === 'verified' && o.recycle.bonusGranted);
-    if (!holdsBonus) return false;
-    const dateStr = o.recycle.verifiedAt || o.statusTimestamps?.booked || o.pickupDate || '';
-    return dateStr.startsWith(currentMonthPrefix);
-  });
-
   // Step in checkout flow: 'select' (plan, quantity, handover, return, schedule) or 'confirm' (summary & payment)
   const [checkoutStep, setCheckoutStep] = useState<'select' | 'confirm'>('select');
 
@@ -1304,16 +1290,10 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                         💡 <strong>Tips:</strong> Pisahkan baju daur ulang di kantong tersendiri agar kurir mudah menimbang.
                       </div>
 
-                      {bonusUsedThisMonth ? (
-                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium text-xs">
-                          Bonus stempel bulan ini sudah terpakai (maks. 1x per bulan). Bajumu tetap kami terima dan tetap dihitung sebagai kontribusimu. Terima kasih! 🌿
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-xl bg-emerald-100/60 border border-emerald-200 text-emerald-900 font-semibold text-xs flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
-                          <span>Dapat +1 stempel bonus setelah baju diverifikasi (maks. 1x per bulan).</span>
-                        </div>
-                      )}
+                      <div className="p-3 rounded-xl bg-emerald-100/60 border border-emerald-200 text-emerald-900 font-semibold text-xs flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span>Dapat +1 stempel setiap menyerahkan baju daur ulang (min. 1 kg).</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1501,9 +1481,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       : `Baju Kotor (Cuci dulu): Rp ${recycleWashPrice.toLocaleString('id-ID')} masuk ke estimasi biaya`}
                   </p>
                   <p className="text-[#254117]/70 text-[11px]">
-                    {bonusUsedThisMonth
-                      ? 'Bonus stempel bulan ini sudah terpakai (maks. 1x per bulan). Bajumu tetap kami terima dan tetap dihitung sebagai kontribusimu. Terima kasih! 🌿'
-                      : 'Dapat +1 stempel bonus setelah baju diverifikasi kurir/staff.'}
+                    Dapat +1 stempel bonus setelah baju diverifikasi (min. 1 kg).
                   </p>
                 </div>
               </div>

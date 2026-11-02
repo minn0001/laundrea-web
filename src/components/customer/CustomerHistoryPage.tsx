@@ -32,7 +32,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
   onTrackOrder,
   onNewOrderClick,
 }) => {
-  const { orders, setActiveCustomerOrderId, customerPhone } = useApp();
+  const { orders, setActiveCustomerOrderId, customerPhone, earnsRecycleStamp } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
@@ -308,7 +308,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                         ? 'Kurir akan menimbang baju daur ulang Anda.'
                         : `Baju daur ulang diterima (${order.recycle.actualKg} kg) • ${
                             order.recycle.status === 'verified'
-                              ? (order.recycle.bonusGranted ? 'Stempel bonus ditambahkan' : 'Diterima, tanpa stempel bonus')
+                              ? (earnsRecycleStamp(order) ? 'Stempel bonus ditambahkan' : 'Diterima, berat di bawah 1 kg sehingga belum dapat stempel')
                               : order.recycle.status === 'pending_verification'
                               ? 'Menunggu verifikasi'
                               : `Tidak memenuhi syarat: ${order.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`
@@ -535,7 +535,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                     ? 'Kurir akan menimbang baju daur ulang Anda.'
                     : `Baju daur ulang diterima (${selectedOrderForDetail.recycle.actualKg} kg) • ${
                         selectedOrderForDetail.recycle.status === 'verified'
-                          ? (selectedOrderForDetail.recycle.bonusGranted ? 'Stempel bonus ditambahkan' : 'Diterima, tanpa stempel bonus')
+                          ? (earnsRecycleStamp(selectedOrderForDetail) ? 'Stempel bonus ditambahkan' : 'Diterima, berat di bawah 1 kg sehingga belum dapat stempel')
                           : selectedOrderForDetail.recycle.status === 'pending_verification'
                           ? 'Menunggu verifikasi'
                           : `Tidak memenuhi syarat: ${selectedOrderForDetail.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`

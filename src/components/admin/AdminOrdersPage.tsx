@@ -90,21 +90,30 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
     (o) => o.paymentStatus === 'awaiting_verification' && o.paymentMethod !== 'cod'
   );
 
-  // Filter orders
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch =
-      order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerPhone.includes(searchQuery) ||
-      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase());
+  const orderCreatedMs = (o: Order) => {
+    const n = Number(String(o.id).replace(/\D/g, ''));
+    if (n > 1e12) return n;
+    const t = Date.parse((o.statusTimestamps?.booked || '').slice(0, 10));
+    return Number.isFinite(t) ? t : 0;
+  };
 
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'awaiting_verification' && order.paymentStatus === 'awaiting_verification') ||
-      order.status === statusFilter ||
-      (statusFilter === 'pickup' && order.status === 'picked_up');
+  // Filter orders sorted newest first
+  const filteredOrders = orders
+    .filter((order) => {
+      const matchesSearch =
+        order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.customerPhone.includes(searchQuery) ||
+        order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesSearch && matchesStatus;
-  });
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'awaiting_verification' && order.paymentStatus === 'awaiting_verification') ||
+        order.status === statusFilter ||
+        (statusFilter === 'pickup' && order.status === 'picked_up');
+
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => orderCreatedMs(b) - orderCreatedMs(a));
 
   const handleAssignCourier = (orderId: string, courierId: string) => {
     assignCourier(orderId, courierId);

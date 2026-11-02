@@ -121,6 +121,7 @@ export interface ImpactStats {
 
 export interface RecycleProgramSettings {
   programActive: boolean;
+  pausedReason?: 'full' | '' | string;
 }
 
 export interface AppNotification {

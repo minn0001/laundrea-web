@@ -78,17 +78,6 @@ export const AdminCustomersPage: React.FC = () => {
 
     return { totalOrders, lastOrderDate };
   };
-      // Find latest pickupDate or timestamp
-      const sorted = [...matchedOrders].sort((a, b) => {
-        const da = a.pickupDate || a.statusTimestamps?.booked || '';
-        const db = b.pickupDate || b.statusTimestamps?.booked || '';
-        return db.localeCompare(da);
-      });
-      lastOrderDate = sorted[0].pickupDate || sorted[0].statusTimestamps?.booked?.split(' ')[0] || '-';
-    }
-
-    return { totalOrders, lastOrderDate };
-  };
 
   // Helper to format registration date
   const formatRegistrationDate = (isoStr?: string) => {
