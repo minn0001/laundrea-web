@@ -356,15 +356,15 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-emerald-900">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-              <span>(1) Kering, tidak basah atau lembap</span>
+              <span> Kering, tidak basah atau lembap</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-              <span>(2) Bebas jamur atau bau menyengat</span>
+              <span> Bebas jamur atau bau menyengat</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-              <span>(3) Tanpa barang non-tekstil (sepatu, tas kulit, dll.)</span>
+              <span> Tanpa barang non-tekstil (sepatu, tas kulit, dll.)</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
