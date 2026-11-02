@@ -641,9 +641,6 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                     </span>
                   )}
                 </div>
-              </div>
-            );
-          })}
 
           {filteredStampHistory.map((item) => (
             <div key={item.id} className="py-3 flex items-center justify-between gap-2.5 sm:gap-3">
