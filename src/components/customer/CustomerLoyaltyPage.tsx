@@ -26,16 +26,6 @@ interface CustomerLoyaltyPageProps {
 }
 
 export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrderNowClick, onGoToPeduli }) => {
-  const {
-    stampsCount,
-    stampHistory,
-    customerVouchers,
-    claimLoyaltyVoucher,
-    customerPhone,
-    customers,
-    orders,
-    earnsRecycleStamp,
-  } = useApp();
 
   const [claimedModalVoucher, setClaimedModalVoucher] = useState<CustomerVoucher | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -95,7 +85,9 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
       .map((s) => ({ type: 'wash' as const, time: stampTime(s) })),
     ...verifiedRecycleOrders.map((o) => ({
       type: 'recycle' as const,
-      time: Date.parse(o.recycle?.verifiedAt || '') || 0,
+      time:
+        Date.parse(o.recycle?.verifiedAt || '') ||
+        stampTime({ id: o.id, date: o.pickupDate }),
     })),
   ].sort((a, b) => a.time - b.time);
   const startIdx = Math.max(0, stampEvents.length - balance);
@@ -641,6 +633,9 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
                     </span>
                   )}
                 </div>
+              </div>
+            );
+          })}
 
           {filteredStampHistory.map((item) => (
             <div key={item.id} className="py-3 flex items-center justify-between gap-2.5 sm:gap-3">
