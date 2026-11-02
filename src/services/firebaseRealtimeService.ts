@@ -804,17 +804,26 @@ export interface RecycleHandover {
 }
 
 export function subscribeToRecycleStock(
-  onSuccess: (s: { currentKg: number; capacityKg: number }) => void
+  onSuccess: (s: { currentKg: number; capacityKg: number; targetKg: number }) => void
 ): () => void {
   ensureSilentAuth().catch(() => {});
   return onSnapshot(
     doc(db, 'settings', 'recycleStock'),
     (snap) => {
       const d = snap.exists() ? snap.data() : {};
-      onSuccess({ currentKg: Number(d.currentKg) || 0, capacityKg: Number(d.capacityKg) || 0 });
+      onSuccess({
+        currentKg: Number(d.currentKg) || 0,
+        capacityKg: Number(d.capacityKg) || 0,
+        targetKg: Number(d.targetKg) || 0,
+      });
     },
-    () => onSuccess({ currentKg: 0, capacityKg: 0 })
+    () => onSuccess({ currentKg: 0, capacityKg: 0, targetKg: 0 })
   );
+}
+
+export async function updateRecycleTarget(targetKg: number): Promise<void> {
+  await ensureSilentAuth();
+  await setDoc(doc(db, 'settings', 'recycleStock'), { targetKg }, { merge: true });
 }
 
 export function subscribeToRecycleHandovers(
