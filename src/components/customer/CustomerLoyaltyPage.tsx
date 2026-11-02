@@ -26,6 +26,15 @@ interface CustomerLoyaltyPageProps {
 }
 
 export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrderNowClick, onGoToPeduli }) => {
+  const {
+    stampsCount,
+    stampHistory,
+    customerVouchers,
+    claimLoyaltyVoucher,
+    customerPhone,
+    customers,
+    orders,
+  } = useApp();
 
   const [claimedModalVoucher, setClaimedModalVoucher] = useState<CustomerVoucher | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
