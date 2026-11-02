@@ -79,6 +79,25 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
   );
   const recycleStampCount = verifiedRecycleOrders.length;
 
+    // Semua stempel diurutkan menurut waktu, supaya posisi daun tidak pindah-pindah
+  const stampTime = (item: { id: string; date?: string }) => {
+    const n = Number(String(item.id).replace(/\D/g, ''));
+    if (n > 1e12) return n;
+    const t = Date.parse(item.date || '');
+    return Number.isFinite(t) ? t : 0;
+  };
+  const stampEvents: { type: 'wash' | 'recycle'; time: number }[] = [
+    ...stampHistory
+      .filter((s) => s.type === 'earned')
+      .map((s) => ({ type: 'wash' as const, time: stampTime(s) })),
+    ...verifiedRecycleOrders.map((o) => ({
+      type: 'recycle' as const,
+      time: Date.parse(o.recycle?.verifiedAt || '') || 0,
+    })),
+  ].sort((a, b) => a.time - b.time);
+  const startIdx = Math.max(0, stampEvents.length - balance);
+  const cardStampTypes = stampEvents.slice(startIdx, startIdx + 10).map((e) => e.type);
+
   return (
     <div id="customer-loyalty-page" className="w-full space-y-3 sm:space-y-4">
       {/* Header */}
@@ -159,8 +178,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             {Array.from({ length: 10 }).map((_, index) => {
               const stampNumber = index + 1;
               const isCollected = filledStamps >= stampNumber;
-              const numRecycleStampsInCard = Math.min(filledStamps, recycleStampCount);
-              const isRecycleStamp = isCollected && stampNumber > (filledStamps - numRecycleStampsInCard);
+              const isRecycleStamp = isCollected && cardStampTypes[index] === 'recycle';
 
               return (
                 <div
@@ -604,9 +622,15 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
 
                 <div className="shrink-0 text-right">
                   {rData.status === 'verified' ? (
-                    <span className="text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 inline-block">
-                      +1 Stempel
-                    </span>
+                    rData.bonusGranted ? (
+                      <span className="text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 inline-block">
+                        +1 Stempel
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 inline-block">
+                        Diterima · tanpa stempel bonus
+                      </span>
+                    )
                   ) : rData.status === 'pending_verification' ? (
                     <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 inline-block">
                       Menunggu verifikasi
