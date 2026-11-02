@@ -308,7 +308,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                         ? 'Kurir akan menimbang baju daur ulang Anda.'
                         : `Baju daur ulang diterima (${order.recycle.actualKg} kg) • ${
                             order.recycle.status === 'verified'
-                              ? 'Stempel bonus ditambahkan'
+                              ? (order.recycle.bonusGranted ? 'Stempel bonus ditambahkan' : 'Diterima, tanpa stempel bonus')
                               : order.recycle.status === 'pending_verification'
                               ? 'Menunggu verifikasi'
                               : `Tidak memenuhi syarat: ${order.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`
@@ -535,7 +535,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                     ? 'Kurir akan menimbang baju daur ulang Anda.'
                     : `Baju daur ulang diterima (${selectedOrderForDetail.recycle.actualKg} kg) • ${
                         selectedOrderForDetail.recycle.status === 'verified'
-                          ? 'Stempel bonus ditambahkan'
+                          ? (selectedOrderForDetail.recycle.bonusGranted ? 'Stempel bonus ditambahkan' : 'Diterima, tanpa stempel bonus')
                           : selectedOrderForDetail.recycle.status === 'pending_verification'
                           ? 'Menunggu verifikasi'
                           : `Tidak memenuhi syarat: ${selectedOrderForDetail.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`
