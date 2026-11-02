@@ -188,9 +188,58 @@ export async function seedFirestoreCollectionsIfEmpty(): Promise<void> {
       }
     }
 
+    // 14. One-time sync for Laundrea Peduli content if outdated
+    await syncPeduliContentIfOutdated();
+
     isSeeded = true;
   } catch (err) {
     console.warn('Seed firestore collections notice:', err);
+  }
+}
+
+export const CURRENT_PEDULI_CONTENT_VERSION = 2;
+
+/**
+ * One-time content sync for Laundrea Peduli partner artisans and showcase works.
+ * Replaces old data with new fixed-ID items if settings/contentVersion.peduli is not yet >= 2.
+ */
+export async function syncPeduliContentIfOutdated(): Promise<void> {
+  try {
+    await ensureSilentAuth();
+    const versionRef = doc(db, 'settings', 'contentVersion');
+    const versionSnap = await getDoc(versionRef);
+    if (versionSnap.exists()) {
+      const data = versionSnap.data();
+      if (typeof data?.peduli === 'number' && data.peduli >= CURRENT_PEDULI_CONTENT_VERSION) {
+        return; // Up to date, keep admin modifications intact
+      }
+    }
+
+    // Delete ALL existing documents in artisans collection
+    const artisansSnap = await getDocs(collection(db, 'artisans'));
+    for (const d of artisansSnap.docs) {
+      await deleteDoc(d.ref);
+    }
+
+    // Delete ALL existing documents in recycleWorks collection
+    const worksSnap = await getDocs(collection(db, 'recycleWorks'));
+    for (const d of worksSnap.docs) {
+      await deleteDoc(d.ref);
+    }
+
+    // Write the new documents from INITIAL_ARTISANS and INITIAL_RECYCLE_WORKS using fixed IDs
+    for (const a of INITIAL_ARTISANS) {
+      await setDoc(doc(db, 'artisans', a.id), sanitizeFirestoreData(a));
+    }
+
+    for (const w of INITIAL_RECYCLE_WORKS) {
+      await setDoc(doc(db, 'recycleWorks', w.id), sanitizeFirestoreData(w));
+    }
+
+    // Update settings/contentVersion only after writes succeeded
+    await setDoc(versionRef, { peduli: CURRENT_PEDULI_CONTENT_VERSION }, { merge: true });
+  } catch (err) {
+    console.warn('syncPeduliContentIfOutdated notice:', err);
   }
 }
 
@@ -712,6 +761,12 @@ export function subscribeToArtisans(
     (snap) => {
       const list: ArtisanItem[] = [];
       snap.forEach((d) => list.push({ id: d.id, ...(d.data() as any) }));
+      list.sort((a, b) => {
+        const orderA = a.order ?? 999;
+        const orderB = b.order ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.id.localeCompare(b.id);
+      });
       onSuccess(list);
     },
     (err) => {
@@ -731,6 +786,12 @@ export function subscribeToRecycleWorks(
     (snap) => {
       const list: RecycleWorkItem[] = [];
       snap.forEach((d) => list.push({ id: d.id, ...(d.data() as any) }));
+      list.sort((a, b) => {
+        const orderA = a.order ?? 999;
+        const orderB = b.order ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.id.localeCompare(b.id);
+      });
       onSuccess(list);
     },
     (err) => {

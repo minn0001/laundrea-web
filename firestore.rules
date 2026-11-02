@@ -110,15 +110,13 @@ service cloud.firestore {
     // Artisans collection for Laundrea Peduli
     match /artisans/{artisanId} {
       allow read: if true;
-      allow create, update: if isValidId(artisanId);
-      allow delete: if false;
+      allow create, update, delete: if isValidId(artisanId);
     }
 
     // Recycle works showcase collection
     match /recycleWorks/{workId} {
       allow read: if true;
-      allow create, update: if isValidId(workId);
-      allow delete: if false;
+      allow create, update, delete: if isValidId(workId);
     }
   }
 }

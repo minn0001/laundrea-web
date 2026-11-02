@@ -768,59 +768,65 @@ export const INITIAL_IMPACT_STATS: ImpactStats = {
 
 export const INITIAL_ARTISANS: ArtisanItem[] = [
   {
-    id: 'artisan-1',
+    id: 'a1-up2k-gading-mas-barat',
     name: 'UP2K Gading Mas Barat',
     location: 'Komunitas Pengrajin Perca, Kelapa Gading.',
     photo: '',
     story:
       'Kelompok usaha warga Kelapa Gading yang memberdayakan ibu-ibu rumah tangga. Mereka mengolah kain perca sisa menjadi aneka tas jinjing (tote bag) dan kantung serut yang fungsional dan ramah lingkungan.',
+    order: 1,
   },
   {
-    id: 'artisan-2',
+    id: 'a2-rini-dian-prasetyani',
     name: 'Rini Dian Prasetyani',
     location: 'Pengrajin Perca & Tekstil, Cipayung (Depok/Jakarta)',
     photo: '',
     story:
       'Pengrajin perca berpengalaman sejak 2010 yang aktif mengajarkan teknik jahit patchwork. Karyanya fokus pada estetika geometris, seperti sarung bantal dan keset unik dari limbah kain.',
+    order: 2,
   },
 ];
 
 export const INITIAL_RECYCLE_WORKS: RecycleWorkItem[] = [
   {
-    id: 'work-1',
+    id: 'w1-tote-bag-patchwork',
     title: 'Tote Bag Patchwork Perca',
     artisanName: 'UP2K Gading Mas Barat',
     imageUrl: '',
     photo: '',
     description:
       'Tas jinjing kokoh dari kain perca bermotif kotak. Praktis untuk belanja harian sekaligus mengurangi limbah tekstil.',
+    order: 1,
   },
   {
-    id: 'work-2',
+    id: 'w2-pouch-serut',
     title: 'Pouch Serut Multifungsi',
     artisanName: 'UP2K Gading Mas Barat',
     imageUrl: '',
     photo: '',
     description:
       'Kantong serut unik dari sisa kain perca. Cocok untuk menyimpan kosmetik, aksesori, atau perlengkapan kecil lainnya.',
+    order: 2,
   },
   {
-    id: 'work-3',
+    id: 'w3-sarung-bantal',
     title: 'Sarung Bantal Patchwork Klasik',
     artisanName: 'Ibu Rini Dian Prasetyani',
     imageUrl: '',
     photo: '',
     description:
       'Sarung bantal estetik dari olahan kain perca. Memberikan sentuhan warna hangat dan daur ulang pada dekorasi ruangan.',
+    order: 3,
   },
   {
-    id: 'work-4',
+    id: 'w4-keset-geometris',
     title: 'Keset Geometris Perca Batik',
     artisanName: 'Ibu Rini Dian Prasetyani',
     imageUrl: '',
     photo: '',
     description:
       'Keset/alas meja dengan pola melingkar rapi. Hasil kreasi jahit tingkat lanjut dari limbah kain perca aneka warna.',
+    order: 4,
   },
 ];
 

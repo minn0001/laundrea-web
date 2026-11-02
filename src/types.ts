@@ -102,6 +102,7 @@ export interface ArtisanItem {
   photo?: string;
   story: string;
   location?: string;
+  order?: number;
 }
 
 export interface RecycleWorkItem {
@@ -111,6 +112,7 @@ export interface RecycleWorkItem {
   photo?: string;
   description?: string;
   artisanName?: string;
+  order?: number;
 }
 
 export interface ImpactStats {
