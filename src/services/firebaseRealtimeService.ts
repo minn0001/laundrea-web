@@ -12,6 +12,9 @@ import {
   orderBy,
   limit,
   increment,
+  limit,
+  increment,
+  runTransaction,
 } from 'firebase/firestore';
 import {
   db,
@@ -208,11 +211,13 @@ export function subscribeToOrders(
         list.push({ id: d.id, ...(d.data() as any) });
       });
       // Sort orders descending by booked timestamp / creation
-      list.sort((a, b) => {
-        const timeA = a.statusTimestamps?.booked || a.id;
-        const timeB = b.statusTimestamps?.booked || b.id;
-        return timeB.localeCompare(timeA);
-      });
+        const createdMs = (o: Order) => {
+        const n = Number(String(o.id).replace(/\D/g, ''));
+        if (n > 1e12) return n; // id format ord-<timestamp>
+        const t = Date.parse((o.statusTimestamps?.booked || '').slice(0, 10));
+        return Number.isFinite(t) ? t : 0;
+      };
+      list.sort((a, b) => createdMs(b) - createdMs(a));
       onSuccess(list);
     },
     (err) => {
@@ -744,27 +749,140 @@ export function subscribeToRecycleWorks(
  * dan dokumennya dibuat otomatis kalau belum ada.
  */
 export async function applyRecycleVerificationStats(params: {
-  finalKg: number;
+  deltaKg: number;
   isNewParticipant: boolean;
 }): Promise<void> {
   try {
     await ensureSilentAuth();
+    const delta = Math.round(params.deltaKg * 100) / 100;
+    if (delta === 0 && !params.isNewParticipant) return;
 
-    await setDoc(
-      doc(db, 'settings', 'recycleStock'),
-      { currentKg: increment(params.finalKg) },
-      { merge: true }
-    );
+    if (delta !== 0) {
+      await setDoc(
+        doc(db, 'settings', 'recycleStock'),
+        { currentKg: increment(delta) },
+        { merge: true }
+      );
+    }
 
     await setDoc(
       doc(db, 'settings', 'impactStats'),
       {
-        totalKg: increment(params.finalKg),
+        ...(delta !== 0 ? { totalKg: increment(delta) } : {}),
         ...(params.isNewParticipant ? { participants: increment(1) } : {}),
       },
       { merge: true }
     );
+
+    // Stok penuh -> program otomatis dimatikan sampai admin mencatat penyerahan
+    if (delta > 0) {
+      const snap = await getDoc(doc(db, 'settings', 'recycleStock'));
+      const d = snap.data() || {};
+      const cap = Number(d.capacityKg) || 0;
+      if (cap > 0 && (Number(d.currentKg) || 0) >= cap) {
+        await setDoc(
+          doc(db, 'settings', 'recycleProgram'),
+          { programActive: false },
+          { merge: true }
+        );
+      }
+    }
   } catch (err) {
     console.warn('applyRecycleVerificationStats notice:', err);
+  }
+}
+
+export interface RecycleHandover {
+  id: string;
+  date: string;
+  artisanName: string;
+  kg: number;
+  note?: string;
+  photoUrl?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export function subscribeToRecycleStock(
+  onSuccess: (s: { currentKg: number; capacityKg: number }) => void
+): () => void {
+  ensureSilentAuth().catch(() => {});
+  return onSnapshot(
+    doc(db, 'settings', 'recycleStock'),
+    (snap) => {
+      const d = snap.exists() ? snap.data() : {};
+      onSuccess({ currentKg: Number(d.currentKg) || 0, capacityKg: Number(d.capacityKg) || 0 });
+    },
+    () => onSuccess({ currentKg: 0, capacityKg: 0 })
+  );
+}
+
+export function subscribeToRecycleHandovers(
+  onSuccess: (list: RecycleHandover[]) => void
+): () => void {
+  ensureSilentAuth().catch(() => {});
+  return onSnapshot(
+    collection(db, 'recycleHandovers'),
+    (snap) => {
+      const list: RecycleHandover[] = [];
+      snap.forEach((d) => list.push({ id: d.id, ...(d.data() as any) }));
+      list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      onSuccess(list);
+    },
+    () => onSuccess([])
+  );
+}
+
+export async function setRecycleProgramActive(active: boolean): Promise<void> {
+  await ensureSilentAuth();
+  await setDoc(doc(db, 'settings', 'recycleProgram'), { programActive: active }, { merge: true });
+}
+
+export async function updateRecycleCapacity(capacityKg: number): Promise<void> {
+  await ensureSilentAuth();
+  await setDoc(doc(db, 'settings', 'recycleStock'), { capacityKg }, { merge: true });
+}
+
+export async function recordRecycleHandover(params: {
+  artisanName: string;
+  kg: number;
+  date: string;
+  note?: string;
+  photoUrl?: string;
+  createdBy?: string;
+}): Promise<{ ok: boolean; message: string }> {
+  await ensureSilentAuth();
+  const stockRef = doc(db, 'settings', 'recycleStock');
+  const statsRef = doc(db, 'settings', 'impactStats');
+  const handoverRef = doc(collection(db, 'recycleHandovers'));
+  try {
+    await runTransaction(db, async (tx) => {
+      const stockSnap = await tx.get(stockRef);
+      const current = Number(stockSnap.exists() ? stockSnap.data().currentKg : 0) || 0;
+      if (!(params.kg > 0)) throw new Error('Berat harus lebih dari 0 kg.');
+      if (params.kg > current + 1e-9) throw new Error(`Stok yang tercatat hanya ${current} kg.`);
+
+      tx.set(
+        handoverRef,
+        sanitizeFirestoreData({
+          date: params.date,
+          artisanName: params.artisanName,
+          kg: params.kg,
+          note: params.note || '',
+          photoUrl: params.photoUrl || '',
+          createdBy: params.createdBy || '',
+          createdAt: new Date().toISOString(),
+        })
+      );
+      tx.set(
+        stockRef,
+        { currentKg: Math.round((current - params.kg) * 100) / 100 },
+        { merge: true }
+      );
+      tx.set(statsRef, { handovers: increment(1) }, { merge: true });
+    });
+    return { ok: true, message: 'Penyerahan ke pengrajin tercatat.' };
+  } catch (err: any) {
+    return { ok: false, message: err?.message || 'Gagal mencatat penyerahan.' };
   }
 }
