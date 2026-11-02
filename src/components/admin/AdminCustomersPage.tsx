@@ -42,16 +42,25 @@ export const AdminCustomersPage: React.FC = () => {
   }, []);
 
   // Filter by search box (name or phone)
-  const filteredCustomers = firestoreCustomers.filter((c) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    const nameMatch = c.name.toLowerCase().includes(q);
-    const rawPhoneMatch = c.phone.toLowerCase().includes(q);
-    const normPhoneMatch = normalizePhoneNumber(c.phone).includes(normalizePhoneNumber(q));
-    return nameMatch || rawPhoneMatch || normPhoneMatch;
-  });
+     const filteredCustomers = firestoreCustomers
+    .filter((c) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      const nameMatch = c.name.toLowerCase().includes(q);
+      const rawPhoneMatch = c.phone.toLowerCase().includes(q);
+      const normPhoneMatch = normalizePhoneNumber(c.phone).includes(normalizePhoneNumber(q));
+      return nameMatch || rawPhoneMatch || normPhoneMatch;
+    })
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
-  // Compute order statistics per customer from existing orders data matched by normalized phone
+    // Waktu pembuatan order: dari id "ord-<timestamp>", cadangan dari tanggal booking
+  const orderCreatedMs = (o: (typeof orders)[number]) => {
+    const n = Number(String(o.id).replace(/\D/g, ''));
+    if (n > 1e12) return n;
+    const t = Date.parse((o.statusTimestamps?.booked || '').slice(0, 10));
+    return Number.isFinite(t) ? t : 0;
+  };
+
   const getCustomerOrderStats = (phone: string) => {
     const normPhone = normalizePhoneNumber(phone);
     const matchedOrders = orders.filter(
@@ -62,6 +71,13 @@ export const AdminCustomersPage: React.FC = () => {
 
     let lastOrderDate = '-';
     if (matchedOrders.length > 0) {
+      const latest = [...matchedOrders].sort((a, b) => orderCreatedMs(b) - orderCreatedMs(a))[0];
+      const bookedDate = latest.statusTimestamps?.booked?.split(' ')[0];
+      lastOrderDate = bookedDate || latest.pickupDate || '-';
+    }
+
+    return { totalOrders, lastOrderDate };
+  };
       // Find latest pickupDate or timestamp
       const sorted = [...matchedOrders].sort((a, b) => {
         const da = a.pickupDate || a.statusTimestamps?.booked || '';
