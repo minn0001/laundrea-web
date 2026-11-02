@@ -911,6 +911,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * Recalculates final amount (actual price minus voucher discount, min 0).
    * Creates or updates notification idempotently.
    */
+
+    // Menyusun hasil verifikasi baju daur ulang (dipakai kurir saat menimbang & admin untuk antar sendiri)
+  const buildRecycleVerification = (ord: Order, kg: number, by: 'courier' | 'admin') => {
+    const rc = ord.recycle!;
+    const now = new Date();
+    const sameMonth = (iso?: string) => {
+      if (!iso) return false;
+      const d = new Date(iso);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    };
+    const phoneKey = normalizePhoneNumber(ord.customerPhone);
+    const others = orders.filter(
+      (o) => o.id !== ord.id && normalizePhoneNumber(o.customerPhone) === phoneKey
+    );
+    const bonusUsedThisMonth = others.some(
+      (o) => o.recycle?.bonusGranted === true && sameMonth(o.recycle?.verifiedAt)
+    );
+    const bonusGranted = kg >= 1 && !bonusUsedThisMonth;
+    const wasVerified = rc.status === 'verified';
+    const previousKg = wasVerified ? rc.finalKg ?? 0 : 0;
+    const isNewParticipant = !wasVerified && !others.some((o) => o.recycle?.status === 'verified');
+
+    const note = bonusGranted
+      ? 'Stempel bonus ditambahkan 🌿'
+      : kg < 1
+      ? 'Beratnya di bawah 1 kg, jadi belum dapat stempel bonus. Bajumu tetap kami terima, terima kasih!'
+      : 'Bonus stempel daur ulang hanya 1x per bulan dan bulan ini sudah kamu dapatkan, jadi kali ini belum menambah stempel. Bajumu tetap kami terima, terima kasih!';
+
+    const recycle: RecycleOrderData = {
+      ...rc,
+      status: 'verified',
+      actualKg: kg,
+      finalKg: kg,
+      verifiedAt: wasVerified && rc.verifiedAt ? rc.verifiedAt : now.toISOString(),
+      verifiedBy: wasVerified && rc.verifiedBy ? rc.verifiedBy : by,
+      bonusGranted,
+      rejectReason: '',
+    };
+    return { recycle, deltaKg: kg - previousKg, isNewParticipant, bonusGranted, note, wasVerified };
+  };
+  
   const updateOrderWeight = (orderId: string, actualWeight: number, recycleWeight?: number) => {
     // 1) Weighing: ONLY the courier can weigh and enter the actual weight
     if (!hasPermission('orders_weigh')) {
@@ -964,14 +1005,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       recycleWashPrice,
     };
 
-    if (ord.recycle?.enabled && recycleWeight !== undefined) {
-      partialUpdate.recycle = {
-        ...ord.recycle,
-        actualKg: Math.max(0, Number(recycleWeight) || 0),
-      };
+        // Baju daur ulang: kurir yang menimbang = kurir yang memverifikasi
+    let recycleResult: ReturnType<typeof buildRecycleVerification> | null = null;
+    if (ord.recycle?.enabled && ord.recycle.status !== 'rejected' && recycleWeight !== undefined) {
+      const kg = Math.max(0, Number(recycleWeight) || 0);
+      if (kg > 0) {
+        recycleResult = buildRecycleVerification(ord, kg, 'courier');
+        partialUpdate.recycle = recycleResult.recycle;
+      } else {
+        if (ord.recycle.status === 'verified' && (ord.recycle.finalKg ?? 0) > 0) {
+          applyRecycleVerificationStats({
+            deltaKg: -(ord.recycle.finalKg ?? 0),
+            isNewParticipant: false,
+          }).catch(() => {});
+        }
+        partialUpdate.recycle = {
+          ...ord.recycle,
+          actualKg: 0,
+          status: 'rejected',
+          bonusGranted: false,
+          rejectReason: 'Tidak ada baju daur ulang yang diambil',
+        };
+      }
     }
 
     updateOrderInFirestore(orderId, partialUpdate).catch(() => {});
+
+    if (recycleResult) {
+      if (recycleResult.deltaKg !== 0 || recycleResult.isNewParticipant) {
+        applyRecycleVerificationStats({
+          deltaKg: recycleResult.deltaKg,
+          isNewParticipant: recycleResult.isNewParticipant,
+        }).catch(() => {});
+      }
+      // Notifikasi hanya saat pertama kali diterima (bukan saat kurir mengedit berat)
+      if (!recycleResult.wasVerified) {
+        sendOrUpdateNotification({
+          customerPhone: ord.customerPhone,
+          orderId: ord.id,
+          orderNumber: ord.orderNumber,
+          title: 'Baju Daur Ulang Diterima',
+          body: `Terima kasih! Baju daur ulang ${recycleResult.recycle.finalKg} kg dari pesanan ${ord.orderNumber} sudah diterima. ${recycleResult.note}`,
+          type: 'recycle_verified' as any,
+        }).catch(() => {});
+      }
+    }
 
     // Notification rule: create payment opened notification once, or update amount if weight edited before method chosen
     if (shouldOpenPayment) {
@@ -994,11 +1072,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const ord = orders.find((o) => o.id === orderId);
     if (!ord || !ord.recycle) return;
 
+        // Kalau sebelumnya sudah terverifikasi, tarik kembali stok & angka dampaknya
+    if (ord.recycle.status === 'verified' && (ord.recycle.finalKg ?? 0) > 0) {
+      applyRecycleVerificationStats({
+        deltaKg: -(ord.recycle.finalKg ?? 0),
+        isNewParticipant: false,
+      }).catch(() => {});
+    }
+
     const updatedRecycle: RecycleOrderData = {
       ...ord.recycle,
       status: 'rejected',
       rejectReason: reason,
       actualKg: 0,
+      bonusGranted: false,
     };
 
     updateOrderInFirestore(orderId, {
@@ -1019,80 +1106,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!ord || !ord.recycle?.enabled) {
       return { ok: false, bonusGranted: false, message: 'Order ini tidak memiliki daur ulang.' };
     }
-    // Penjaga anti-ganda: hanya boleh diproses sekali
     if (ord.recycle.status !== 'pending_verification') {
       return { ok: false, bonusGranted: false, message: 'Daur ulang order ini sudah diproses.' };
     }
+    // Pesanan jemput kurir diverifikasi kurir saat menimbang. Admin hanya untuk antar sendiri
+    // (atau data lama yang sudah ditimbang kurir tapi masih menunggu).
+    const isDropoff = ord.handoverMethod === 'store_dropoff';
+    if (!isDropoff && !((ord.recycle.actualKg ?? 0) > 0)) {
+      return {
+        ok: false,
+        bonusGranted: false,
+        message: 'Pesanan jemput kurir diverifikasi oleh kurir saat menimbang.',
+      };
+    }
     const kg = Number(finalKg);
     if (!Number.isFinite(kg) || kg <= 0) {
-      return { ok: false, bonusGranted: false, message: 'Isi berat final lebih dari 0 kg.' };
+      return { ok: false, bonusGranted: false, message: 'Isi berat lebih dari 0 kg.' };
     }
 
-    // Batas bonus: 1x per bulan kalender per pelanggan
-    const now = new Date();
-    const sameMonth = (iso?: string) => {
-      if (!iso) return false;
-      const d = new Date(iso);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    };
-    const phoneKey = normalizePhoneNumber(ord.customerPhone);
-    const bonusUsedThisMonth = orders.some(
-      (o) =>
-        o.id !== ord.id &&
-        normalizePhoneNumber(o.customerPhone) === phoneKey &&
-        o.recycle?.bonusGranted === true &&
-        sameMonth(o.recycle?.verifiedAt)
-    );
+    const built = buildRecycleVerification(ord, kg, 'admin');
 
-    const grantBonus = kg >= 1 && !bonusUsedThisMonth;
-    const bonusNote = grantBonus
-      ? 'Stempel bonus ditambahkan.'
-      : kg < 1
-      ? 'Stempel bonus tidak diberikan karena berat di bawah 1 kg.'
-      : 'Stempel bonus bulan ini sudah terpakai.';
-
-    const updatedRecycle: RecycleOrderData = {
-      ...ord.recycle,
-      status: 'verified',
-      finalKg: kg,
-      verifiedAt: now.toISOString(),
-      bonusGranted: grantBonus,
-      rejectReason: '',
-    };
-
-    // Update lokal dulu supaya klik ganda tidak lolos, lalu simpan ke Firestore
-    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, recycle: updatedRecycle } : o)));
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, recycle: built.recycle } : o)));
     updateOrderInFirestore(orderId, {
-      recycle: updatedRecycle,
+      recycle: built.recycle,
       lastUpdatedLabel: 'Baju daur ulang diverifikasi',
     }).catch(() => {});
 
-    // Update stok & angka dampak. Peserta baru = pelanggan ini belum pernah punya daur ulang terverifikasi.
-    const hadVerifiedBefore = orders.some(
-      (o) =>
-        o.id !== ord.id &&
-        normalizePhoneNumber(o.customerPhone) === phoneKey &&
-        o.recycle?.status === 'verified'
-    );
     applyRecycleVerificationStats({
-      finalKg: kg,
-      isNewParticipant: !hadVerifiedBefore,
+      deltaKg: built.deltaKg,
+      isNewParticipant: built.isNewParticipant,
     }).catch(() => {});
 
     sendOrUpdateNotification({
       customerPhone: ord.customerPhone,
       orderId: ord.id,
       orderNumber: ord.orderNumber,
-      title: 'Daur Ulang Baju Diverifikasi',
-      body: `Terima kasih! Baju daur ulang ${kg} kg dari pesanan ${ord.orderNumber} sudah diterima. ${bonusNote}`,
+      title: 'Baju Daur Ulang Diterima',
+      body: `Terima kasih! Baju daur ulang ${kg} kg dari pesanan ${ord.orderNumber} sudah diterima. ${built.note}`,
       type: 'recycle_verified' as any,
     }).catch(() => {});
 
     return {
       ok: true,
-      bonusGranted: grantBonus,
-      message: `Terverifikasi. ${bonusNote}`,
-      recycle: updatedRecycle,
+      bonusGranted: built.bonusGranted,
+      message: built.bonusGranted ? 'Terverifikasi. Stempel bonus ditambahkan.' : `Terverifikasi. ${built.note}`,
+      recycle: built.recycle,
     };
   };
 
