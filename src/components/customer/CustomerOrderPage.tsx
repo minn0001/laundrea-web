@@ -77,10 +77,6 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     return dateStr.startsWith(currentMonthPrefix);
   });
 
-  useEffect(() => {
-    if (bonusUsedThisMonth) setRecycleEnabled(false);
-  }, [bonusUsedThisMonth]);
-
   // Step in checkout flow: 'select' (plan, quantity, handover, return, schedule) or 'confirm' (summary & payment)
   const [checkoutStep, setCheckoutStep] = useState<'select' | 'confirm'>('select');
 
@@ -1175,17 +1171,12 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                <label
-                  className={`flex items-start gap-3 p-4 bg-white rounded-2xl border border-emerald-200 shadow-xs transition-colors ${
-                    bonusUsedThisMonth ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#254117]/40'
-                  }`}
-                >
+                <label className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-emerald-200 cursor-pointer shadow-xs hover:border-[#254117]/40 transition-colors">
                   <input
                     type="checkbox"
                     checked={recycleEnabled}
-                    disabled={bonusUsedThisMonth}
                     onChange={(e) => setRecycleEnabled(e.target.checked)}
-                    className="mt-1 w-5 h-5 accent-[#254117] rounded cursor-pointer disabled:cursor-not-allowed"
+                    className="mt-1 w-5 h-5 accent-[#254117] rounded cursor-pointer"
                   />
                   <div className="flex-1">
                     <span className="text-sm font-bold text-[#254117] flex items-center gap-1.5">
@@ -1197,12 +1188,6 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     </p>
                   </div>
                 </label>
-
-               {bonusUsedThisMonth && (
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium text-xs">
-                    Kamu sudah memakai Laundrea Peduli bulan ini (maks. 1x per bulan). Bisa dipakai lagi bulan depan. Terima kasih sudah peduli! 🌿
-                  </div>
-                )}
 
                 {recycleEnabled && (
                   <div className="p-4 sm:p-5 bg-white rounded-2xl border border-emerald-200 space-y-4 animate-in fade-in duration-200">
@@ -1321,7 +1306,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
 
                       {bonusUsedThisMonth ? (
                         <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium text-xs">
-                          Bonus stempel bulan ini sudah terpakai. Baju tetap kami terima.
+                          Bonus stempel bulan ini sudah terpakai (maks. 1x per bulan). Bajumu tetap kami terima dan tetap dihitung sebagai kontribusimu. Terima kasih! 🌿
                         </div>
                       ) : (
                         <div className="p-3 rounded-xl bg-emerald-100/60 border border-emerald-200 text-emerald-900 font-semibold text-xs flex items-center gap-2">
@@ -1517,7 +1502,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   </p>
                   <p className="text-[#254117]/70 text-[11px]">
                     {bonusUsedThisMonth
-                      ? 'Bonus stempel bulan ini sudah terpakai. Baju tetap kami terima.'
+                      ? 'Bonus stempel bulan ini sudah terpakai (maks. 1x per bulan). Bajumu tetap kami terima dan tetap dihitung sebagai kontribusimu. Terima kasih! 🌿'
                       : 'Dapat +1 stempel bonus setelah baju diverifikasi kurir/staff.'}
                   </p>
                 </div>
