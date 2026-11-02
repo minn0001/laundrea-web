@@ -22,6 +22,29 @@ interface CustomerRecyclePeduliPageProps {
   onOrderWithRecycle: () => void;
 }
 
+const WorkCardImage: React.FC<{ src?: string; title: string }> = ({ src, title }) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (!src || src.trim() === '' || hasError) {
+    return (
+      <div className="aspect-4/3 bg-gradient-to-br from-[#f0fdf4] to-[#d1fae5] flex items-center justify-center">
+        <Leaf className="w-8 h-8 text-emerald-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="aspect-4/3 bg-gray-100 overflow-hidden">
+      <img
+        src={src}
+        alt={title}
+        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+        onError={() => setHasError(true)}
+      />
+    </div>
+  );
+};
+
 export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps> = ({
   onBack,
   onOrderWithRecycle,
@@ -232,29 +255,21 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            {artisans.map((artisan) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {artisans.map((artisan, index) => (
               <div
                 key={artisan.id}
                 className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-3 flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    {artisan.photo ? (
-                      <img
-                        src={artisan.photo}
-                        alt={artisan.name}
-                        className="w-12 h-12 rounded-2xl object-cover border border-gray-200 shrink-0"
-                        onError={(e) => {
-                          // Fallback to placeholder avatar
-                          (e.currentTarget as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0">
-                        {artisan.name.slice(0, 2)}
-                      </div>
-                    )}
+                    <div
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                        index % 2 === 0 ? 'bg-[#254117]' : 'bg-[#cd6184]'
+                      }`}
+                    >
+                      <Leaf className="w-6 h-6 text-white" />
+                    </div>
                     <div>
                       <h3 className="font-bold text-xs sm:text-sm text-[#254117]">
                         {artisan.name}
@@ -298,18 +313,7 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
                   key={work.id}
                   className="rounded-2xl bg-gray-50 border border-gray-200/70 overflow-hidden shadow-2xs flex flex-col justify-between"
                 >
-                  {imageSrc && (
-                    <div className="aspect-4/3 bg-gray-100 overflow-hidden">
-                      <img
-                        src={imageSrc}
-                        alt={work.title}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
+                  <WorkCardImage src={imageSrc} title={work.title} />
                   <div className="p-3 space-y-1">
                     <h3 className="font-bold text-xs text-[#254117] leading-snug">{work.title}</h3>
                     {work.artisanName && (

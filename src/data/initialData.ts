@@ -769,55 +769,58 @@ export const INITIAL_IMPACT_STATS: ImpactStats = {
 export const INITIAL_ARTISANS: ArtisanItem[] = [
   {
     id: 'artisan-1',
-    name: 'Ibu Ratna Juwita',
-    location: 'Komunitas Perca Berdaya, Cipete',
-    photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
-    story: 'Memimpin kelompok ibu rumah tangga di Cipete untuk mendaur ulang kain kemeja dan katun tak terpakai menjadi tote bag belanja ramah lingkungan serta sarung bantal bermotif unik.',
+    name: 'UP2K Gading Mas Barat',
+    location: 'Komunitas Pengrajin Perca, Kelapa Gading.',
+    photo: '',
+    story:
+      'Kelompok usaha warga Kelapa Gading yang memberdayakan ibu-ibu rumah tangga. Mereka mengolah kain perca sisa menjadi aneka tas jinjing (tote bag) dan kantung serut yang fungsional dan ramah lingkungan.',
   },
   {
     id: 'artisan-2',
-    name: 'Pak Suryadi',
-    location: 'Bengkel Tenun & Rajut Maju, Manggarai',
-    photo: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
-    story: 'Pengrajin senior yang mengolah potongan kaos dan celana kain bekas menjadi keset anyam tebal berkualitas ekspor serta celemek dapur pelindung panas.',
-  },
-  {
-    id: 'artisan-3',
-    name: 'Mbak Anisa Putri',
-    location: 'Studio Kreasi Daur Serat, Tebet',
-    photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-    story: 'Desainer tekstil muda yang fokus pada upcycling pakaian denim dan linen menjadi beragam pouch serut multifungsi, dompet koin, dan aksesoris harian bernilai seni tinggi.',
+    name: 'Rini Dian Prasetyani',
+    location: 'Pengrajin Perca & Tekstil, Cipayung (Depok/Jakarta)',
+    photo: '',
+    story:
+      'Pengrajin perca berpengalaman sejak 2010 yang aktif mengajarkan teknik jahit patchwork. Karyanya fokus pada estetika geometris, seperti sarung bantal dan keset unik dari limbah kain.',
   },
 ];
 
 export const INITIAL_RECYCLE_WORKS: RecycleWorkItem[] = [
   {
     id: 'work-1',
-    title: 'Tote Bag Perca Serat Katun',
-    artisanName: 'Ibu Ratna Juwita',
-    imageUrl: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=600&q=80',
-    description: 'Tas jinjing kuat dan modis dari kombinasi kain kemeja dan perca katun higienis.',
+    title: 'Tote Bag Patchwork Perca',
+    artisanName: 'UP2K Gading Mas Barat',
+    imageUrl: '',
+    photo: '',
+    description:
+      'Tas jinjing kokoh dari kain perca bermotif kotak. Praktis untuk belanja harian sekaligus mengurangi limbah tekstil.',
   },
   {
     id: 'work-2',
-    title: 'Keset Anyam Tenun Berdaya',
-    artisanName: 'Pak Suryadi',
-    imageUrl: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=600&q=80',
-    description: 'Anyaman serat tebal penyerap air dari potongan kaos bersih siap pakai.',
+    title: 'Pouch Serut Multifungsi',
+    artisanName: 'UP2K Gading Mas Barat',
+    imageUrl: '',
+    photo: '',
+    description:
+      'Kantong serut unik dari sisa kain perca. Cocok untuk menyimpan kosmetik, aksesori, atau perlengkapan kecil lainnya.',
   },
   {
     id: 'work-3',
-    title: 'Sarung Bantal Sofa Perca Minimalis',
-    artisanName: 'Ibu Ratna Juwita',
-    imageUrl: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?auto=format&fit=crop&w=600&q=80',
-    description: 'Dekorasi rumah estetik dengan pola geometris modern hasil daur ulang pakaian pastel.',
+    title: 'Sarung Bantal Patchwork Klasik',
+    artisanName: 'Ibu Rini Dian Prasetyani',
+    imageUrl: '',
+    photo: '',
+    description:
+      'Sarung bantal estetik dari olahan kain perca. Memberikan sentuhan warna hangat dan daur ulang pada dekorasi ruangan.',
   },
   {
     id: 'work-4',
-    title: 'Pouch Serut Multifungsi',
-    artisanName: 'Mbak Anisa Putri',
-    imageUrl: 'https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&w=600&q=80',
-    description: 'Wadah serbaguna untuk kosmetik dan kabel travel dari kain denim upcycled.',
+    title: 'Keset Geometris Perca Batik',
+    artisanName: 'Ibu Rini Dian Prasetyani',
+    imageUrl: '',
+    photo: '',
+    description:
+      'Keset/alas meja dengan pola melingkar rapi. Hasil kreasi jahit tingkat lanjut dari limbah kain perca aneka warna.',
   },
 ];
 
