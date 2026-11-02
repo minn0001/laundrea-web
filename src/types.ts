@@ -93,6 +93,7 @@ export interface RecycleOrderData {
   rejectReason?: string;
   finalKg?: number;
   verifiedAt?: string;
+  verifiedBy?: 'courier' | 'admin';
 }
 
 export interface ArtisanItem {
