@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   X,
+  Leaf,
 } from 'lucide-react';
 
 export type AdminView =
@@ -18,6 +19,7 @@ export type AdminView =
   | 'orders'
   | 'couriers'
   | 'customers'
+  | 'recycle'
   | 'pricing'
   | 'financials'
   | 'settings';
@@ -67,6 +69,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'customers',
       label: 'Data Pelanggan',
       icon: Users,
+      isAllowed: hasPermission('orders_view'),
+    },
+    {
+      id: 'recycle',
+      label: 'Daur Ulang',
+      icon: Leaf,
       isAllowed: hasPermission('orders_view'),
     },
     {
