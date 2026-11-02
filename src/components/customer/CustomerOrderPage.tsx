@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PlanType, HandoverMethod, ReturnMethod, PaymentMethod, CustomerVoucher, RecycleMode } from '../../types';
 import {
@@ -63,15 +63,23 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
   const [recycleMode, setRecycleMode] = useState<RecycleMode>('clean');
   const [recycleKgText, setRecycleKgText] = useState<string>('1');
 
-  // Check if monthly recycling bonus is already used
+  // Kunci bulanan: Laundrea Peduli hanya 1x per bulan (pesanan yang masih menunggu juga dihitung)
   const now = new Date();
   const currentMonthPrefix = now.toISOString().slice(0, 7);
   const bonusUsedThisMonth = orders.some((o) => {
     if (customerPhone && o.customerPhone !== customerPhone) return false;
-    if (!o.recycle || !o.recycle.bonusGranted || o.recycle.status !== 'verified') return false;
-    const dateStr = o.statusTimestamps?.delivered || o.statusTimestamps?.booked || o.pickupDate || '';
+    if (!o.recycle?.enabled) return false;
+    const holdsBonus =
+      o.recycle.status === 'pending_verification' ||
+      (o.recycle.status === 'verified' && o.recycle.bonusGranted);
+    if (!holdsBonus) return false;
+    const dateStr = o.recycle.verifiedAt || o.statusTimestamps?.booked || o.pickupDate || '';
     return dateStr.startsWith(currentMonthPrefix);
   });
+
+  useEffect(() => {
+    if (bonusUsedThisMonth) setRecycleEnabled(false);
+  }, [bonusUsedThisMonth]);
 
   // Step in checkout flow: 'select' (plan, quantity, handover, return, schedule) or 'confirm' (summary & payment)
   const [checkoutStep, setCheckoutStep] = useState<'select' | 'confirm'>('select');
@@ -1167,12 +1175,17 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                <label className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-emerald-200 cursor-pointer shadow-xs hover:border-[#254117]/40 transition-colors">
+                <label
+                  className={`flex items-start gap-3 p-4 bg-white rounded-2xl border border-emerald-200 shadow-xs transition-colors ${
+                    bonusUsedThisMonth ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-[#254117]/40'
+                  }`}
+                >
                   <input
                     type="checkbox"
                     checked={recycleEnabled}
+                    disabled={bonusUsedThisMonth}
                     onChange={(e) => setRecycleEnabled(e.target.checked)}
-                    className="mt-1 w-5 h-5 accent-[#254117] rounded cursor-pointer"
+                    className="mt-1 w-5 h-5 accent-[#254117] rounded cursor-pointer disabled:cursor-not-allowed"
                   />
                   <div className="flex-1">
                     <span className="text-sm font-bold text-[#254117] flex items-center gap-1.5">
@@ -1184,6 +1197,12 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     </p>
                   </div>
                 </label>
+
+               {bonusUsedThisMonth && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 font-medium text-xs">
+                    Kamu sudah memakai Laundrea Peduli bulan ini (maks. 1x per bulan). Bisa dipakai lagi bulan depan. Terima kasih sudah peduli! 🌿
+                  </div>
+                )}
 
                 {recycleEnabled && (
                   <div className="p-4 sm:p-5 bg-white rounded-2xl border border-emerald-200 space-y-4 animate-in fade-in duration-200">
