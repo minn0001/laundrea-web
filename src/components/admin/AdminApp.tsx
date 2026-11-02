@@ -9,6 +9,7 @@ import { AdminCustomersPage } from './AdminCustomersPage';
 import { AdminPricingPromoPage } from './AdminPricingPromoPage';
 import { AdminFinancialReportsPage } from './AdminFinancialReportsPage';
 import { AdminSystemSettingsPage } from './AdminSystemSettingsPage';
+import { AdminRecyclePage } from './AdminRecyclePage';
 import { Menu, X } from 'lucide-react';
 import { BrandWordmark } from '../common/BrandWordmark';
 
@@ -42,6 +43,8 @@ export const AdminApp: React.FC = () => {
           hasPermission('expense_manage') ||
           hasPermission('financial_export')
         );
+      case 'recycle':
+        return hasPermission('orders_view');
       case 'settings':
         return (
           hasPermission('system_users_manage') ||
@@ -130,6 +133,8 @@ export const AdminApp: React.FC = () => {
         {activeView === 'financials' && <AdminFinancialReportsPage />}
 
         {activeView === 'settings' && <AdminSystemSettingsPage />}
+
+        {activeView === 'recycle' && <AdminRecyclePage />}
       </main>
     </div>
   );
