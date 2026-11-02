@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Order, OrderStatus, PlanType } from '../../types';
+import { earnsRecycleStamp } from '../../utils/recycle';
 import {
   Clock,
   Package,
@@ -112,8 +113,8 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
       case 'picked_up':
         return {
           label: 'Telah Dijemput',
-          bg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-          icon: <Package className="w-3.5 h-3.5 text-indigo-600" />,
+          bg: 'bg-[#254117]/10 text-[#254117] border-[#254117]/25',
+          icon: <Package className="w-3.5 h-3.5 text-[#254117]" />,
         };
       case 'pickup':
       default:
@@ -503,9 +504,9 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
 
             {/* Courier Info if assigned */}
             {selectedOrderForDetail.courierName && (
-              <div className="p-3 bg-blue-50/60 rounded-2xl border border-blue-100 flex items-center justify-between text-xs">
+              <div className="p-3 bg-[#254117]/5 rounded-2xl border border-[#254117]/15 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
+                  <div className="w-8 h-8 rounded-xl bg-[#254117] text-white flex items-center justify-center font-bold">
                     <Truck className="w-4 h-4" />
                   </div>
                   <div>

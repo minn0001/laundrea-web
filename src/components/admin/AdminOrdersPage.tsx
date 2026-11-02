@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Order, OrderStatus } from '../../types';
+import { earnsRecycleStamp } from '../../utils/recycle';
 import {
   Search,
   Filter,
@@ -634,7 +635,7 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                   {rc.status === 'verified' && (
                     <p className="text-[11px] font-semibold text-emerald-800 bg-white p-2 rounded-xl border border-emerald-200">
                     Diverifikasi {rc.verifiedBy === 'admin' ? 'admin' : 'kurir'} • Berat final {rc.finalKg ?? rc.actualKg} kg •{' '}
-                      {rc.bonusGranted ? 'Stempel bonus ditambahkan' : 'Tanpa stempel bonus'}
+                      {earnsRecycleStamp(selectedOrder) ? 'Stempel bonus ditambahkan' : 'Di bawah 1 kg, tanpa stempel'}
                     </p>
                   )}
 

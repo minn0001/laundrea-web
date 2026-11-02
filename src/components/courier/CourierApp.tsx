@@ -407,7 +407,7 @@ export const CourierApp: React.FC = () => {
                       : selectedOrder.status === 'pickup'
                       ? 'bg-amber-500 text-white'
                       : selectedOrder.status === 'picked_up'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-[#254117] text-white'
                       : 'bg-gray-600 text-white'
                   }`}
                 >
@@ -854,7 +854,7 @@ export const CourierApp: React.FC = () => {
                     Tindakan Kurir (Antar & Jemput Saja)
                   </span>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ffecf2] text-[#cd6184] border border-[#cd6184]/30">
                   Akses Kurir
                 </span>
               </div>
@@ -920,12 +920,12 @@ export const CourierApp: React.FC = () => {
 
               {/* Action 1b: Picked up, in transit to store */}
               {selectedOrder.status === 'picked_up' && (
-                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200 text-xs text-blue-900 space-y-2">
-                  <div className="flex items-center gap-1.5 font-bold text-blue-800">
-                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                <div className="p-4 bg-[#254117]/5 rounded-2xl border border-[#254117]/20 text-xs text-[#254117] space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-[#254117]">
+                    <CheckCircle2 className="w-4 h-4 text-[#254117]" />
                     <span>Cucian Berhasil Dijemput</span>
                   </div>
-                  <p className="text-[11px] text-blue-800 leading-relaxed">
+                  <p className="text-[11px] text-[#254117]/85 leading-relaxed">
                     Cucian telah diambil dari pelanggan ({selectedOrder.statusTimestamps.picked_up || 'Hari ini'}).
                     Segera serahkan pakaian ke staf gerai. <strong>Admin Gerai yang berwenang mengubah status ke tahap Pencucian</strong>.
                   </p>
@@ -1101,7 +1101,7 @@ export const CourierApp: React.FC = () => {
                                 : order.status === 'pickup'
                                 ? 'bg-amber-100 text-amber-800'
                                 : order.status === 'picked_up'
-                                ? 'bg-blue-100 text-blue-800'
+                                ? 'bg-[#254117]/10 text-[#254117]'
                                 : 'bg-gray-100 text-gray-700'
                             }`}
                           >

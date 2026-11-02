@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomerVoucher } from '../../types';
+import { earnsRecycleStamp } from '../../utils/recycle';
 import {
   Award,
   Sparkles,
@@ -85,8 +86,11 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
     const t = Date.parse(item.date || '');
     return Number.isFinite(t) ? t : 0;
   };
+  const filteredStampHistory = stampHistory.filter(
+    (s) => !(s.title && s.title.toLowerCase().includes('daur ulang'))
+  );
   const stampEvents: { type: 'wash' | 'recycle'; time: number }[] = [
-    ...stampHistory
+    ...filteredStampHistory
       .filter((s) => s.type === 'earned')
       .map((s) => ({ type: 'wash' as const, time: stampTime(s) })),
     ...verifiedRecycleOrders.map((o) => ({
@@ -584,7 +588,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             </h3>
           </div>
           <span className="text-xs text-[#254117]/60 font-medium">
-            {stampHistory.length + recycleOrders.length} Aktivitas
+            {filteredStampHistory.length + recycleOrders.length} Aktivitas
           </span>
         </div>
 
@@ -618,13 +622,13 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
 
                 <div className="shrink-0 text-right">
                   {rData.status === 'verified' ? (
-                    rData.bonusGranted ? (
+                    earnsRecycleStamp(ro) ? (
                       <span className="text-[11px] sm:text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 inline-block">
                         +1 Stempel
                       </span>
                     ) : (
                       <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 inline-block">
-                        Diterima · tanpa stempel bonus
+                        Diterima · di bawah 1 kg, belum dapat stempel
                       </span>
                     )
                   ) : rData.status === 'pending_verification' ? (
@@ -641,7 +645,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
             );
           })}
 
-          {stampHistory.map((item) => (
+          {filteredStampHistory.map((item) => (
             <div key={item.id} className="py-3 flex items-center justify-between gap-2.5 sm:gap-3">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div

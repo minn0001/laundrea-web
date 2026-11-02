@@ -88,11 +88,8 @@ import {
   applyRecycleVerificationStats,
 } from '../services/firebaseRealtimeService';
 
-export const earnsRecycleStamp = (order?: { recycle?: RecycleOrderData | null } | null): boolean => {
-  if (!order?.recycle || order.recycle.status !== 'verified') return false;
-  const kg = order.recycle.finalKg ?? order.recycle.actualKg ?? 0;
-  return kg >= 1;
-};
+import { earnsRecycleStamp } from '../utils/recycle';
+export { earnsRecycleStamp };
 
 interface AppContextType {
   role: Role;
