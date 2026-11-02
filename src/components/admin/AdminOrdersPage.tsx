@@ -65,7 +65,7 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
 
   const handleVerifyRecycle = () => {
     if (!selectedOrder?.recycle) return;
-    const raw = recycleFinalKg ?? String(selectedOrder.recycle.actualKg ?? '');
+    const raw = recycleFinalKg ?? String(selectedOrder.recycle.actualKg ?? selectedOrder.recycle.estimatedKg ?? '');
     const kg = parseFloat(raw.replace(',', '.'));
     const res = verifyOrderRecycle(selectedOrder.id, kg);
     setRecycleMsg(res.message);
@@ -568,13 +568,16 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
               </div>
             </div>
 
-                        {/* Daur Ulang (Laundrea Peduli) */}
+            {/* Daur Ulang (Laundrea Peduli) */}
             {selectedOrder.recycle?.enabled && (() => {
               const rc = selectedOrder.recycle!;
               const canAct = hasPermission('orders_status_update');
+              const isDropoff = selectedOrder.handoverMethod === 'store_dropoff';
+              const canVerify =
+                rc.status === 'pending_verification' && (isDropoff || (rc.actualKg ?? 0) > 0);
               const modeLabel =
                 rc.mode === 'wash_first' ? 'Baju kotor, dicuci dulu' : 'Baju sudah bersih & kering';
-              const inputValue = recycleFinalKg ?? String(rc.actualKg ?? '');
+              const inputValue = recycleFinalKg ?? String(rc.actualKg ?? rc.estimatedKg ?? '');
 
               return (
                 <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl space-y-2.5 text-xs">
@@ -621,7 +624,7 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
 
                   {rc.status === 'verified' && (
                     <p className="text-[11px] font-semibold text-emerald-800 bg-white p-2 rounded-xl border border-emerald-200">
-                      Berat final {rc.finalKg ?? rc.actualKg} kg •{' '}
+                    Diverifikasi {rc.verifiedBy === 'admin' ? 'admin' : 'kurir'} • Berat final {rc.finalKg ?? rc.actualKg} kg •{' '}
                       {rc.bonusGranted ? 'Stempel bonus ditambahkan' : 'Tanpa stempel bonus'}
                     </p>
                   )}
@@ -632,20 +635,19 @@ export const AdminOrdersPage: React.FC<AdminOrdersPageProps> = ({ initialSelecte
                     </p>
                   )}
 
-                  {rc.status === 'pending_verification' &&
-                    (rc.actualKg === null || rc.actualKg === undefined) && (
-                      <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
-                        Menunggu kurir menimbang baju daur ulang.
-                      </p>
-                    )}
-
-                  {rc.status === 'pending_verification' && rc.actualKg === 0 && (
+                  {rc.status === 'pending_verification' && !isDropoff && !canVerify && (
                     <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
-                      Kurir mencatat 0 kg (tidak ada baju daur ulang yang diambil).
+                      Diverifikasi oleh kurir saat penjemputan. Menunggu kurir menimbang baju daur ulang.
                     </p>
                   )}
 
-                  {rc.status === 'pending_verification' && (rc.actualKg ?? 0) > 0 && (
+                  {canVerify && isDropoff && (
+                    <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                      Pesanan antar sendiri: timbang baju di gerai, lalu verifikasi di sini.
+                    </p>
+                  )}
+
+                  {canVerify && (
                     <div className="space-y-2">
                       <div>
                         <label className="block text-[11px] font-bold text-emerald-900 mb-1">
