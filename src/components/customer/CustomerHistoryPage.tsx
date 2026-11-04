@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { Order, OrderStatus, PlanType } from '../../types';
 import { earnsRecycleStamp } from '../../utils/recycle';
 import { useTr } from '../../i18n/useTr';
+import { useLang } from '../../i18n/LanguageContext';
+import { PLAN_LOCALIZATIONS } from '../../i18n/translations';
 import {
   Clock,
   Package,
@@ -10,17 +12,10 @@ import {
   Truck,
   RotateCw,
   Search,
-  ChevronRight,
   ReceiptText,
   MapPin,
   Calendar,
   X,
-  CreditCard,
-  Banknote,
-  Sparkles,
-  Phone,
-  ArrowUpRight,
-  ShoppingBag,
   Plus,
   Leaf,
 } from 'lucide-react';
@@ -34,14 +29,43 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
   onTrackOrder,
   onNewOrderClick,
 }) => {
-  const { orders, setActiveCustomerOrderId, customerPhone, earnsRecycleStamp } = useApp();
-  const tr = useTr();    
+  // earnsRecycleStamp diimpor dari utils (bukan dari useApp)
+  const { orders, setActiveCustomerOrderId, customerPhone } = useApp();
+  const tr = useTr();
+  const { lang } = useLang();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
 
-  // Filter orders strictly by logged-in customer phone, sorted newest first
+  // Nama paket mengikuti bahasa
+  const planLabel = (o: Order) =>
+    lang === 'en' && PLAN_LOCALIZATIONS[o.planId as PlanType]
+      ? PLAN_LOCALIZATIONS[o.planId as PlanType].nameEn
+      : o.planName;
+
+  // Teks status daur ulang (dipakai di kartu dan nota)
+  const recycleStatusText = (o: Order) => {
+    const r = o.recycle!;
+    if (r.actualKg === null) {
+      return tr('Kurir akan menimbang baju daur ulang Anda.', 'The courier will weigh your recycling clothes.');
+    }
+    const status =
+      r.status === 'verified'
+        ? earnsRecycleStamp(o)
+          ? tr('Stempel bonus ditambahkan', 'Bonus stamp added')
+          : tr(
+              'Diterima, berat di bawah 1 kg sehingga belum dapat stempel',
+              'Accepted, but under 1 kg so no stamp yet'
+            )
+        : r.status === 'pending_verification'
+        ? tr('Menunggu verifikasi', 'Awaiting verification')
+        : `${tr('Tidak memenuhi syarat', 'Not eligible')}: ${
+            r.rejectReason || tr('Ketentuan belum terpenuhi', 'Requirements not met')
+          }`;
+    return `${tr('Baju daur ulang diterima', 'Recycling clothes received')} (${r.actualKg} kg) • ${status}`;
+  };
+
   const displayOrders = orders
     .filter((o) => {
       if (!customerPhone) return false;
@@ -53,27 +77,22 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
       return cleanOrderPhone === normCust;
     })
     .sort((a, b) => {
-      // Sort newest first by id timestamp or booked date
       const timeA = a.id.replace(/\D/g, '') || (a.statusTimestamps?.booked || '');
       const timeB = b.id.replace(/\D/g, '') || (b.statusTimestamps?.booked || '');
       return timeB.localeCompare(timeA);
     });
 
-  // Filter by status and search
   const filteredOrders = displayOrders.filter((order) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerAddress.toLowerCase().includes(searchQuery.toLowerCase());
+      order.orderNumber.toLowerCase().includes(q) ||
+      order.planName.toLowerCase().includes(q) ||
+      planLabel(order).toLowerCase().includes(q) ||
+      order.customerAddress.toLowerCase().includes(q);
 
     if (!matchesSearch) return false;
-
-    if (statusFilter === 'active') {
-      return order.status !== 'delivered';
-    }
-    if (statusFilter === 'completed') {
-      return order.status === 'delivered';
-    }
+    if (statusFilter === 'active') return order.status !== 'delivered';
+    if (statusFilter === 'completed') return order.status === 'delivered';
     return true;
   });
 
@@ -84,44 +103,44 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
     switch (status) {
       case 'delivered':
         return {
-          label: 'Selesai',
+          label: tr('Selesai', 'Completed'),
           bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
           icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />,
         };
       case 'ready':
         return {
-          label: 'Siap Diantar',
+          label: tr('Siap Diantar', 'Ready for Delivery'),
           bg: 'bg-[#ffecf2] text-[#cd6184] border-[#cd6184]/30',
           icon: <Truck className="w-3.5 h-3.5 text-[#cd6184]" />,
         };
       case 'ironing':
         return {
-          label: 'Disetrika',
+          label: tr('Disetrika', 'Ironing'),
           bg: 'bg-purple-50 text-purple-700 border-purple-200',
           icon: <RotateCw className="w-3.5 h-3.5 text-purple-600" />,
         };
       case 'drying':
         return {
-          label: 'Dikeringkan',
+          label: tr('Dikeringkan', 'Drying'),
           bg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
           icon: <RotateCw className="w-3.5 h-3.5 text-cyan-600" />,
         };
       case 'washing':
         return {
-          label: 'Sedang Dicuci',
+          label: tr('Sedang Dicuci', 'Washing'),
           bg: 'bg-blue-50 text-blue-700 border-blue-200',
           icon: <RotateCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />,
         };
       case 'picked_up':
         return {
-          label: 'Telah Dijemput',
+          label: tr('Telah Dijemput', 'Picked Up'),
           bg: 'bg-[#254117]/10 text-[#254117] border-[#254117]/25',
           icon: <Package className="w-3.5 h-3.5 text-[#254117]" />,
         };
       case 'pickup':
       default:
         return {
-          label: 'Menunggu Jemput',
+          label: tr('Menunggu Jemput', 'Awaiting Pickup'),
           bg: 'bg-amber-50 text-amber-800 border-amber-200',
           icon: <Clock className="w-3.5 h-3.5 text-amber-600" />,
         };
@@ -133,14 +152,21 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
     onTrackOrder(order.id);
   };
 
+  const filterBtn = (active: boolean, activeColor: string) =>
+    `flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+      active ? `bg-white ${activeColor} shadow-xs` : 'text-[#254117]/60 hover:text-[#254117]'
+    }`;
+
   return (
     <div className="w-full space-y-4 text-[#254117] animate-in fade-in duration-200">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-[#254117] tracking-tight">Riwayat Pesanan</h1>
+          <h1 className="text-2xl font-black text-[#254117] tracking-tight">
+            {tr('Riwayat Pesanan', 'Order History')}
+          </h1>
           <p className="text-xs text-[#254117]/60 mt-0.5 font-medium">
-            Catatan dan status seluruh cucian Anda
+            {tr('Catatan dan status seluruh cucian Anda', 'Records and status of all your laundry')}
           </p>
         </div>
         <button
@@ -150,37 +176,37 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
           className="px-3.5 py-2 rounded-xl bg-[#cd6184] text-white text-xs font-bold shadow-xs hover:bg-[#b85373] transition-all flex items-center gap-1.5 cursor-pointer active:scale-[0.99]"
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Pesan Baru</span>
+          <span>{tr('Pesan Baru', 'New Order')}</span>
         </button>
       </div>
 
-      {/* Summary KPI Cards */}
+      {/* KPI */}
       <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-lg">
         <div className="p-3 rounded-2xl bg-[#ffecf2]/50 border border-[#cd6184]/20 text-center">
           <span className="text-[10px] font-bold text-[#cd6184] uppercase block">Total</span>
           <span className="text-lg sm:text-xl font-black text-[#254117]">{displayOrders.length}</span>
-          <span className="text-[9px] text-[#254117]/60 block">Pesanan</span>
+          <span className="text-[9px] text-[#254117]/60 block">{tr('Pesanan', 'Orders')}</span>
         </div>
         <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/60 text-center">
-          <span className="text-[10px] font-bold text-amber-700 uppercase block">Proses</span>
+          <span className="text-[10px] font-bold text-amber-700 uppercase block">{tr('Proses', 'Active')}</span>
           <span className="text-lg sm:text-xl font-black text-amber-900">{activeCount}</span>
-          <span className="text-[9px] text-amber-800/70 block">Sedang jalan</span>
+          <span className="text-[9px] text-amber-800/70 block">{tr('Sedang jalan', 'In progress')}</span>
         </div>
         <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 text-center">
-          <span className="text-[10px] font-bold text-emerald-700 uppercase block">Selesai</span>
+          <span className="text-[10px] font-bold text-emerald-700 uppercase block">{tr('Selesai', 'Done')}</span>
           <span className="text-lg sm:text-xl font-black text-emerald-900">{completedCount}</span>
-          <span className="text-[9px] text-emerald-800/70 block">Terkirim</span>
+          <span className="text-[9px] text-emerald-800/70 block">{tr('Terkirim', 'Delivered')}</span>
         </div>
       </div>
 
-      {/* Search Input */}
+      {/* Search */}
       <div className="relative max-w-md">
         <Search className="w-4 h-4 text-[#254117]/40 absolute left-3 top-1/2 -translate-y-1/2" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Cari nomor pesanan atau layanan..."
+          placeholder={tr('Cari nomor pesanan atau layanan...', 'Search order number or service...')}
           className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-[#254117] focus:outline-hidden focus:border-[#cd6184] placeholder:text-[#254117]/40 shadow-xs"
         />
         {searchQuery && (
@@ -194,44 +220,20 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
         )}
       </div>
 
-      {/* Filter Tabs */}
+      {/* Filter */}
       <div className="flex gap-1.5 p-1 bg-gray-100 rounded-xl max-w-md">
-        <button
-          type="button"
-          onClick={() => setStatusFilter('all')}
-          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            statusFilter === 'all'
-              ? 'bg-white text-[#254117] shadow-xs'
-              : 'text-[#254117]/60 hover:text-[#254117]'
-          }`}
-        >
-          Semua ({displayOrders.length})
+        <button type="button" onClick={() => setStatusFilter('all')} className={filterBtn(statusFilter === 'all', 'text-[#254117]')}>
+          {tr('Semua', 'All')} ({displayOrders.length})
         </button>
-        <button
-          type="button"
-          onClick={() => setStatusFilter('active')}
-          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            statusFilter === 'active'
-              ? 'bg-white text-amber-800 shadow-xs'
-              : 'text-[#254117]/60 hover:text-[#254117]'
-          }`}
-        >
-          Proses ({activeCount})
+        <button type="button" onClick={() => setStatusFilter('active')} className={filterBtn(statusFilter === 'active', 'text-amber-800')}>
+          {tr('Proses', 'Active')} ({activeCount})
         </button>
-        <button
-          type="button"
-          onClick={() => setStatusFilter('completed')}
-          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            statusFilter === 'completed'
-              ? 'bg-white text-emerald-800 shadow-xs'
-              : 'text-[#254117]/60 hover:text-[#254117]'
-          }`}
-        >
-          Selesai ({completedCount})
+        <button type="button" onClick={() => setStatusFilter('completed')} className={filterBtn(statusFilter === 'completed', 'text-emerald-800')}>
+          {tr('Selesai', 'Completed')} ({completedCount})
         </button>
       </div>
 
-      {/* Orders List */}
+      {/* List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {filteredOrders.length === 0 ? (
           <div className="col-span-full p-8 text-center bg-white rounded-2xl border border-dashed border-gray-200 space-y-3">
@@ -239,11 +241,11 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
               <Package className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#254117]">Tidak Ada Pesanan Ditemukan</h3>
+              <h3 className="text-sm font-bold text-[#254117]">{tr('Tidak Ada Pesanan Ditemukan', 'No Orders Found')}</h3>
               <p className="text-xs text-[#254117]/60 mt-1">
                 {searchQuery
-                  ? 'Coba ganti kata kunci pencarian Anda.'
-                  : 'Anda belum memiliki pesanan pada kategori ini.'}
+                  ? tr('Coba ganti kata kunci pencarian Anda.', 'Try changing your search keyword.')
+                  : tr('Anda belum memiliki pesanan pada kategori ini.', "You don't have any orders in this category yet.")}
               </p>
             </div>
             <button
@@ -251,7 +253,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
               onClick={() => onNewOrderClick()}
               className="py-2 px-4 rounded-xl text-xs font-bold text-white bg-[#cd6184] hover:bg-[#b85373] shadow-xs transition-all cursor-pointer"
             >
-              Mulai Pesan Sekarang
+              {tr('Mulai Pesan Sekarang', 'Start Ordering Now')}
             </button>
           </div>
         ) : (
@@ -265,41 +267,28 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                 key={order.id}
                 className="p-4 rounded-2xl bg-white border border-gray-200/80 shadow-xs hover:border-[#cd6184]/40 transition-all space-y-3"
               >
-                {/* Order Top Bar: Number, Date, Status */}
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-[#254117] tracking-tight">
-                        #{order.orderNumber}
-                      </span>
-                      <span className="text-[10px] text-[#254117]/50 font-medium">
-                        {order.pickupDate}
-                      </span>
+                      <span className="text-xs font-black text-[#254117] tracking-tight">#{order.orderNumber}</span>
+                      <span className="text-[10px] text-[#254117]/50 font-medium">{order.pickupDate}</span>
                     </div>
-                    <h3 className="text-sm font-bold text-[#254117] mt-0.5">{order.planName}</h3>
+                    <h3 className="text-sm font-bold text-[#254117] mt-0.5">{planLabel(order)}</h3>
                   </div>
-
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${badge.bg}`}
-                  >
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${badge.bg}`}>
                     {badge.icon}
                     <span>{badge.label}</span>
                   </span>
                 </div>
 
-                {/* Details snippet */}
                 <div className="grid grid-cols-2 gap-2 p-2.5 bg-gray-50 rounded-xl text-xs">
                   <div>
-                    <span className="text-[10px] text-[#254117]/60 block font-medium">Jumlah</span>
-                    <span className="font-black text-[#254117]">
-                      {finalQty} {order.unit}
-                    </span>
+                    <span className="text-[10px] text-[#254117]/60 block font-medium">{tr('Jumlah', 'Quantity')}</span>
+                    <span className="font-black text-[#254117]">{finalQty} {order.unit}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-[#254117]/60 block font-medium">Total Biaya</span>
-                    <span className="font-black text-[#cd6184]">
-                      Rp {finalPrice.toLocaleString('id-ID')}
-                    </span>
+                    <span className="text-[10px] text-[#254117]/60 block font-medium">{tr('Total Biaya', 'Total Cost')}</span>
+                    <span className="font-black text-[#cd6184]">Rp {finalPrice.toLocaleString('id-ID')}</span>
                   </div>
                 </div>
 
@@ -307,20 +296,14 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                   <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200 leading-snug">
                     <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span>
-                      {order.recycle.actualKg === null
-                        ? 'Kurir akan menimbang baju daur ulang Anda.'
-                        : `Baju daur ulang diterima (${order.recycle.actualKg} kg) • ${
-                            order.recycle.status === 'verified'
-                              ? (earnsRecycleStamp(order) ? 'Stempel bonus ditambahkan' : 'Diterima, berat di bawah 1 kg sehingga belum dapat stempel')
-                              : order.recycle.status === 'pending_verification'
-                              ? 'Menunggu verifikasi'
-                              : `Tidak memenuhi syarat: ${order.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`
-                          }${order.recycle.mode === 'wash_first' ? ` (${order.recycle.actualKg || order.recycle.estimatedKg} kg diserahkan ke daur ulang)` : ''}`}
+                      {recycleStatusText(order)}
+                      {order.recycle.actualKg !== null && order.recycle.mode === 'wash_first'
+                        ? ` (${order.recycle.actualKg || order.recycle.estimatedKg} kg ${tr('diserahkan ke daur ulang', 'handed over for recycling')})`
+                        : ''}
                     </span>
                   </div>
                 )}
 
-                {/* Action Buttons */}
                 <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
                   {order.status !== 'delivered' ? (
                     <button
@@ -329,7 +312,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                       className="flex-1 py-2 px-3 rounded-xl bg-[#254117] hover:bg-[#1e3412] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                     >
                       <Truck className="w-3.5 h-3.5 text-[#ffbd59]" />
-                      <span>Lacak Pesanan</span>
+                      <span>{tr('Lacak Pesanan', 'Track Order')}</span>
                     </button>
                   ) : (
                     <button
@@ -338,7 +321,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                       className="flex-1 py-2 px-3 rounded-xl bg-[#ffecf2] hover:bg-[#ffecf2]/80 text-[#cd6184] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <RotateCw className="w-3.5 h-3.5" />
-                      <span>Pesan Ulang</span>
+                      <span>{tr('Pesan Ulang', 'Reorder')}</span>
                     </button>
                   )}
 
@@ -348,7 +331,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                     className="py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#254117] text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <ReceiptText className="w-3.5 h-3.5 text-[#254117]/70" />
-                    <span>Nota</span>
+                    <span>{tr('Nota', 'Receipt')}</span>
                   </button>
                 </div>
               </div>
@@ -357,19 +340,16 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
         )}
       </div>
 
-      {/* MODAL: Detail Nota Pesanan */}
+      {/* MODAL: Nota */}
       {selectedOrderForDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <ReceiptText className="w-5 h-5 text-[#cd6184]" />
                 <div>
-                  <h3 className="text-base font-black text-[#254117]">Nota & Rincian Pesanan</h3>
-                  <span className="text-[10px] text-[#254117]/60 font-semibold">
-                    #{selectedOrderForDetail.orderNumber}
-                  </span>
+                  <h3 className="text-base font-black text-[#254117]">{tr('Nota & Rincian Pesanan', 'Receipt & Order Details')}</h3>
+                  <span className="text-[10px] text-[#254117]/60 font-semibold">#{selectedOrderForDetail.orderNumber}</span>
                 </div>
               </div>
               <button
@@ -381,49 +361,38 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
               </button>
             </div>
 
-            {/* Status Pill */}
             <div className="p-3 bg-gray-50 rounded-2xl flex items-center justify-between">
-              <span className="text-xs text-[#254117]/70 font-semibold">Status Pengerjaan</span>
-              <span
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold border ${
-                  getStatusBadge(selectedOrderForDetail.status).bg
-                }`}
-              >
+              <span className="text-xs text-[#254117]/70 font-semibold">{tr('Status Pengerjaan', 'Processing Status')}</span>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold border ${getStatusBadge(selectedOrderForDetail.status).bg}`}>
                 {getStatusBadge(selectedOrderForDetail.status).icon}
                 <span>{getStatusBadge(selectedOrderForDetail.status).label}</span>
               </span>
             </div>
 
-            {/* Service & Items */}
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold">
-                <span className="text-[#254117]/70">Layanan Dipilih</span>
-                <span className="text-[#254117] font-bold">{selectedOrderForDetail.planName}</span>
+                <span className="text-[#254117]/70">{tr('Layanan Dipilih', 'Selected Service')}</span>
+                <span className="text-[#254117] font-bold">{planLabel(selectedOrderForDetail)}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold">
-                <span className="text-[#254117]/70">Jumlah / Berat</span>
+                <span className="text-[#254117]/70">{tr('Jumlah / Berat', 'Quantity / Weight')}</span>
                 <span className="text-[#254117] font-bold">
-                  {selectedOrderForDetail.actualQuantity || selectedOrderForDetail.estimatedQuantity}{' '}
-                  {selectedOrderForDetail.unit}
+                  {selectedOrderForDetail.actualQuantity || selectedOrderForDetail.estimatedQuantity} {selectedOrderForDetail.unit}
                 </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold">
-                <span className="text-[#254117]/70">Tarif per {selectedOrderForDetail.unit}</span>
-                <span className="text-[#254117]">
-                  Rp {selectedOrderForDetail.unitPrice.toLocaleString('id-ID')}
-                </span>
+                <span className="text-[#254117]/70">{tr('Tarif per', 'Rate per')} {selectedOrderForDetail.unit}</span>
+                <span className="text-[#254117]">Rp {selectedOrderForDetail.unitPrice.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold">
-                <span className="text-[#254117]/70">Ongkir Antar-Jemput</span>
-                <span className="text-emerald-600 font-bold">GRATIS</span>
+                <span className="text-[#254117]/70">{tr('Ongkir Antar-Jemput', 'Pickup & Delivery Fee')}</span>
+                <span className="text-emerald-600 font-bold">{tr('GRATIS', 'FREE')}</span>
               </div>
 
-                            {Boolean(
-                selectedOrderForDetail.recycleWashPrice && selectedOrderForDetail.recycleWashPrice > 0
-              ) && (
+              {Boolean(selectedOrderForDetail.recycleWashPrice && selectedOrderForDetail.recycleWashPrice > 0) && (
                 <>
                   <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold">
-                    <span className="text-[#254117]/70">Biaya Cuci {selectedOrderForDetail.planName}</span>
+                    <span className="text-[#254117]/70">{tr('Biaya Cuci', 'Washing Fee')} {planLabel(selectedOrderForDetail)}</span>
                     <span className="text-[#254117]">
                       Rp{' '}
                       {Math.round(
@@ -436,16 +405,15 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                     <span className="flex items-center gap-1">
                       <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>
-                        Cuci baju daur ulang (Laundrea Peduli) · {selectedOrderForDetail.recycleWashKg} kg
-                        {selectedOrderForDetail.actualQuantity === undefined ? ' (estimasi)' : ''}
+                        {tr('Cuci baju daur ulang (Laundrea Peduli)', 'Recycling clothes wash (Laundrea Peduli)')} · {selectedOrderForDetail.recycleWashKg} kg
+                        {selectedOrderForDetail.actualQuantity === undefined ? ` (${tr('estimasi', 'estimate')})` : ''}
                       </span>
                     </span>
                     <span>Rp {selectedOrderForDetail.recycleWashPrice?.toLocaleString('id-ID')}</span>
                   </div>
                 </>
               )}
-              
-              {/* Voucher Discount Breakdown */}
+
               {Boolean(selectedOrderForDetail.voucherDiscount && selectedOrderForDetail.voucherDiscount > 0) && (
                 <>
                   <div className="flex justify-between py-1.5 border-b border-gray-100 font-semibold text-[#254117]/80">
@@ -461,42 +429,33 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-gray-100 font-bold text-[#cd6184]">
                     <span>
-                      Diskon Voucher ({selectedOrderForDetail.voucherCode || selectedOrderForDetail.voucherTitle || 'VOUCHER'})
+                      {tr('Diskon Voucher', 'Voucher Discount')} ({selectedOrderForDetail.voucherCode || selectedOrderForDetail.voucherTitle || 'VOUCHER'})
                     </span>
-                    <span>
-                      - Rp {selectedOrderForDetail.voucherDiscount?.toLocaleString('id-ID')}
-                    </span>
+                    <span>- Rp {selectedOrderForDetail.voucherDiscount?.toLocaleString('id-ID')}</span>
                   </div>
                 </>
               )}
 
               <div className="flex justify-between py-2 border-b-2 border-gray-200 text-sm">
-                <span className="font-bold text-[#254117]">Total Pembayaran</span>
+                <span className="font-bold text-[#254117]">{tr('Total Pembayaran', 'Total Payment')}</span>
                 <span className="font-black text-[#cd6184]">
-                  Rp{' '}
-                  {(
-                    selectedOrderForDetail.actualPrice || selectedOrderForDetail.estimatedPrice
-                  ).toLocaleString('id-ID')}
+                  Rp {(selectedOrderForDetail.actualPrice || selectedOrderForDetail.estimatedPrice).toLocaleString('id-ID')}
                 </span>
               </div>
             </div>
 
-            {/* Delivery Info */}
             <div className="p-3 bg-gray-50 rounded-2xl space-y-2 text-xs">
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-[#97a273] shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold text-[#254117] block">Alamat Pengantaran</span>
-                  <span className="text-[11px] text-[#254117]/70">
-                    {selectedOrderForDetail.customerAddress}
-                  </span>
+                  <span className="font-bold text-[#254117] block">{tr('Alamat Pengantaran', 'Delivery Address')}</span>
+                  <span className="text-[11px] text-[#254117]/70">{selectedOrderForDetail.customerAddress}</span>
                 </div>
               </div>
-
               <div className="flex items-center gap-2 pt-1 border-t border-gray-200/60">
                 <Calendar className="w-4 h-4 text-[#cd6184] shrink-0" />
                 <div>
-                  <span className="font-bold text-[#254117] block">Waktu Penjemputan</span>
+                  <span className="font-bold text-[#254117] block">{tr('Waktu Penjemputan', 'Pickup Time')}</span>
                   <span className="text-[11px] text-[#254117]/70">
                     {selectedOrderForDetail.pickupDate} ({selectedOrderForDetail.pickupTime})
                   </span>
@@ -504,7 +463,6 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
               </div>
             </div>
 
-            {/* Courier Info if assigned */}
             {selectedOrderForDetail.courierName && (
               <div className="p-3 bg-[#254117]/5 rounded-2xl border border-[#254117]/15 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -512,47 +470,36 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                     <Truck className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="font-bold text-[#254117] block">Kurir Penjemput</span>
-                    <span className="text-[11px] text-[#254117]/70">
-                      {selectedOrderForDetail.courierName}
-                    </span>
+                    <span className="font-bold text-[#254117] block">{tr('Kurir Penjemput', 'Pickup Courier')}</span>
+                    <span className="text-[11px] text-[#254117]/70">{selectedOrderForDetail.courierName}</span>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Laundrea Peduli info if enabled */}
             {selectedOrderForDetail.recycle?.enabled && (
               <div className="p-3 bg-emerald-50/80 rounded-2xl border border-emerald-200 space-y-1 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-emerald-950 flex items-center gap-1.5">
                     <Leaf className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Laundrea Peduli (Daur Ulang)</span>
+                    <span>{tr('Laundrea Peduli (Daur Ulang)', 'Laundrea Peduli (Recycling)')}</span>
                   </span>
                   <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    {selectedOrderForDetail.recycle.mode === 'clean' ? 'Baju Bersih & Kering' : 'Cuci Dulu Sesuai Tarif'}
+                    {selectedOrderForDetail.recycle.mode === 'clean'
+                      ? tr('Baju Bersih & Kering', 'Clean & Dry Clothes')
+                      : tr('Cuci Dulu Sesuai Tarif', 'Wash First at Standard Rate')}
                   </span>
                 </div>
-                <p className="text-[11px] text-emerald-900 mt-0.5">
-                  {selectedOrderForDetail.recycle.actualKg === null
-                    ? 'Kurir akan menimbang baju daur ulang Anda.'
-                    : `Baju daur ulang diterima (${selectedOrderForDetail.recycle.actualKg} kg) • ${
-                        selectedOrderForDetail.recycle.status === 'verified'
-                          ? (earnsRecycleStamp(selectedOrderForDetail) ? 'Stempel bonus ditambahkan' : 'Diterima, berat di bawah 1 kg sehingga belum dapat stempel')
-                          : selectedOrderForDetail.recycle.status === 'pending_verification'
-                          ? 'Menunggu verifikasi'
-                          : `Tidak memenuhi syarat: ${selectedOrderForDetail.recycle.rejectReason || 'Ketentuan belum terpenuhi'}`
-                      }`}
-                </p>
+                <p className="text-[11px] text-emerald-900 mt-0.5">{recycleStatusText(selectedOrderForDetail)}</p>
                 {selectedOrderForDetail.recycle.mode === 'wash_first' && (
                   <p className="text-[10px] text-emerald-800 italic">
-                    ({selectedOrderForDetail.recycle.actualKg || selectedOrderForDetail.recycle.estimatedKg} kg diserahkan ke daur ulang)
+                    ({selectedOrderForDetail.recycle.actualKg || selectedOrderForDetail.recycle.estimatedKg} kg{' '}
+                    {tr('diserahkan ke daur ulang', 'handed over for recycling')})
                   </p>
                 )}
               </div>
             )}
 
-            {/* Modal Actions */}
             <div className="space-y-2 pt-2">
               {selectedOrderForDetail.status !== 'delivered' && (
                 <button
@@ -564,16 +511,15 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#254117] hover:bg-[#1e3412] shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Truck className="w-4 h-4 text-[#ffbd59]" />
-                  <span>Buka Pelacakan Langsung</span>
+                  <span>{tr('Buka Pelacakan Langsung', 'Open Live Tracking')}</span>
                 </button>
               )}
-
               <button
                 type="button"
                 onClick={() => setSelectedOrderForDetail(null)}
                 className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-[#254117] bg-gray-100 hover:bg-gray-200 transition-all cursor-pointer"
               >
-                Tutup Nota
+                {tr('Tutup Nota', 'Close Receipt')}
               </button>
             </div>
           </div>
