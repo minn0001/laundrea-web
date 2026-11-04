@@ -13,6 +13,7 @@ import { NotificationBell } from '../common/NotificationBell';
 import { BrandWordmark } from '../common/BrandWordmark';
 import { LanguageSetting } from './LanguageSetting';
 import { useLang } from '../../i18n/LanguageContext';
+import { localizeNotification } from '../../i18n/notificationTranslate';
 import {
   Home,
   Package,
@@ -169,12 +170,15 @@ export const CustomerApp: React.FC = () => {
                   dismissToast(toast.id);
                 }}
               >
-                <p className="text-xs font-bold leading-tight">
-                  {lang === 'en' ? toast.titleEn || toast.title : toast.title}
-                </p>
-                <p className="text-[11px] text-white/80 line-clamp-2 mt-0.5">
-                  {lang === 'en' ? toast.bodyEn || toast.body : toast.body}
-                </p>
+                {(() => {
+                  const loc = localizeNotification(toast as any, lang);
+                  return (
+                    <>
+                      <p className="text-xs font-bold leading-tight">{loc.title}</p>
+                      <p className="text-[11px] text-white/80 line-clamp-2 mt-0.5">{loc.body}</p>
+                    </>
+                  );
+                })()}
               </div>
               <button
                 type="button"
