@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useTr } from '../../i18n/useTr';
 import { useLang } from '../../i18n/LanguageContext';
+import { dbTextEn } from '../../i18n/dbTextFallback';
 import {
   ArrowLeft,
   Leaf,
@@ -54,8 +55,11 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
   const { lang } = useLang();
 
   // Pakai teks Inggris dari database kalau ada, kalau tidak pakai teks Indonesia
-  const pick = (idText?: string, enText?: string) =>
-    lang === 'en' && enText && enText.trim() !== '' ? enText : idText;
+const pick = (idText?: string, enText?: string) => {
+  if (lang !== 'en') return idText;
+  if (enText && enText.trim() !== '') return enText;
+  return dbTextEn(idText) || idText;
+};
 
   const hasValidStats = Boolean(
     impactStats &&
