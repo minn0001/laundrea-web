@@ -41,11 +41,11 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   onNavigateStaff,
 }) => {
   const { verifyCustomer } = useApp();
-  const { t, lang } = useLang();
+  const { t, lang, setLang } = useLang();
 
   // Step state: 'options' | 'phone_input' | 'otp' | 'register' | 'success'
   const [step, setStep] = useState<'options' | 'phone_input' | 'otp' | 'register' | 'success'>('options');
-  const [waPhone, setWaPhone] = useState('081234567890');
+  const [waPhone, setWaPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [simulatedCode, setSimulatedCode] = useState('782910');
   const [isWaLoading, setIsWaLoading] = useState(false);
@@ -57,6 +57,18 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   const [regAddress, setRegAddress] = useState('');
   const [regStructured, setRegStructured] = useState<StructuredAddressData | undefined>(undefined);
   const [isAddressValid, setIsAddressValid] = useState(false);
+
+  // Reset all fields when login portal opens
+  useEffect(() => {
+    setWaPhone('');
+    setOtpCode('');
+    setRegName('');
+    setRegAddress('');
+    setRegStructured(undefined);
+    setIsAddressValid(false);
+    setAuthError(null);
+    setStep('options');
+  }, []);
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
@@ -103,8 +115,8 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   const handleSendPhoneOtp = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
-    if (!waPhone || waPhone.length < 8) {
-      setAuthError('Nomor telepon minimal 8 digit.');
+    if (!waPhone || waPhone.trim().length < 8) {
+      setAuthError(lang === 'en' ? 'Phone number must be at least 8 digits.' : 'Nomor telepon minimal 8 digit.');
       return;
     }
 
@@ -223,18 +235,47 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-100/90 backdrop-blur-xs overflow-y-auto">
       {/* Centered White Card (rounded corners, soft shadow, light gray background, no logo) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-lg border border-gray-100 relative my-auto animate-in fade-in zoom-in-95 duration-150">
-        {/* Small "×" at the card's top-right that closes the login and returns to Beranda */}
-        {onClose && (
-          <button
-            type="button"
-            id="btn-close-login"
-            onClick={onClose}
-            aria-label="Tutup"
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        {/* Header bar: Language selector pills aligned to the left of the close "X" button */}
+        <div className="flex items-center justify-end gap-2.5 mb-3 -mt-1">
+          {/* Two pill buttons side by side: "Bahasa Indonesia" and "English" */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setLang('id')}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                lang === 'id'
+                  ? 'bg-[#254117] text-white shadow-2xs'
+                  : 'border border-[#254117]/30 bg-white text-[#254117] hover:bg-gray-50'
+              }`}
+            >
+              Bahasa Indonesia
+            </button>
+            <button
+              type="button"
+              onClick={() => setLang('en')}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                lang === 'en'
+                  ? 'bg-[#254117] text-white shadow-2xs'
+                  : 'border border-[#254117]/30 bg-white text-[#254117] hover:bg-gray-50'
+              }`}
+            >
+              English
+            </button>
+          </div>
+
+          {/* Small "×" at the card's top-right that closes the login and returns to Beranda */}
+          {onClose && (
+            <button
+              type="button"
+              id="btn-close-login"
+              onClick={onClose}
+              aria-label={lang === 'en' ? 'Close' : 'Tutup'}
+              className="text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
         {/* ================= STEP 1: OPTIONS (Main Login Card) ================= */}
         {step === 'options' && (
@@ -340,7 +381,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
             <form onSubmit={handleSendPhoneOtp} className="space-y-4 pt-1">
               <div>
                 <label className="block text-xs font-semibold text-[#254117] mb-1">
-                  {t('auth.phone_label')}
+                  {lang === 'en' ? 'WhatsApp / Mobile Number' : 'Nomor WhatsApp / HP'}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
@@ -351,7 +392,11 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                     type="tel"
                     value={waPhone}
                     onChange={(e) => setWaPhone(e.target.value)}
-                    placeholder={t('auth.phone_placeholder')}
+                    placeholder={
+                      lang === 'en'
+                        ? 'Enter your WhatsApp / mobile number, e.g. 08123456789'
+                        : 'Masukkan nomor WhatsApp / HP Anda, contoh: 08123456789'
+                    }
                     required
                     className="w-full pl-10 pr-4 py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
                   />
@@ -362,7 +407,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
               <button
                 id="btn-customer-send-otp"
                 type="submit"
-                disabled={isWaLoading}
+                disabled={isWaLoading || !waPhone.trim()}
                 className="w-full py-3.5 px-5 rounded-full bg-[#254117] hover:bg-[#1c3311] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isWaLoading ? (
@@ -371,7 +416,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                     <span>{lang === 'en' ? 'Sending OTP...' : 'Mengirim OTP...'}</span>
                   </span>
                 ) : (
-                  <span>{t('auth.btn_send_otp')}</span>
+                  <span>{lang === 'en' ? 'Send OTP Code' : 'Kirim Kode OTP'}</span>
                 )}
               </button>
 
