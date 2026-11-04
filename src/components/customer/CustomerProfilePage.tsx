@@ -156,6 +156,19 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
         </button>
       </div>
 
+      {/* Language Settings */}
+        <button
+          type="button"
+          id="btn-language"
+          onClick={() => setActiveModal('language')}
+          className="w-full flex items-center gap-4 py-3.5 text-left hover:text-[#cd6184] transition-colors cursor-pointer group"
+        >
+          <Phone className="w-5 h-5 text-[#254117]/80 stroke-[2] group-hover:text-[#cd6184] transition-colors shrink-0" />
+          <span className="text-sm font-bold text-[#254117] group-hover:text-[#cd6184] transition-colors">
+            Bahasa
+          </span>
+        </button>
+
       {/* Pembatas Garis Halus */}
       <hr className="border-t border-gray-100" />
 
