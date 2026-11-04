@@ -11,7 +11,7 @@ import { CustomerRecyclePeduliPage } from './CustomerRecyclePeduliPage';
 import { CustomerLoginPortal } from '../auth/CustomerLoginPortal';
 import { NotificationBell } from '../common/NotificationBell';
 import { BrandWordmark } from '../common/BrandWordmark';
-import { LanguageSwitch } from '../common/LanguageSwitch';
+import { LanguageSetting } from './LanguageSetting';
 import { useLang } from '../../i18n/LanguageContext';
 import {
   Home,
@@ -197,8 +197,6 @@ export const CustomerApp: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 relative">
-            {/* Language Switch: visible for guests and logged-in users */}
-            <LanguageSwitch />
 
             {/* Notification Bell: directly to the left of profile icon, logged-in only */}
             {isCustomerVerified && (
