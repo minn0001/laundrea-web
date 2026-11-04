@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useId } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PlanType, HandoverMethod, ReturnMethod, PaymentMethod, CustomerVoucher, RecycleMode } from '../../types';
+import { useTr } from '../../i18n/useTr';
 import {
   Check,
   Calendar,
@@ -59,6 +60,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     recycleSettings,
     orders,
   } = useApp();
+  const tr = useTr();
   const { t, lang } = useLang();
 
   // Laundrea Peduli recycle state
