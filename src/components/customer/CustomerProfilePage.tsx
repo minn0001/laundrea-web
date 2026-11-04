@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useTr } from '../../i18n/useTr';
 import {
   User,
   Building2,
@@ -30,6 +31,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   onAddressModalHandled,
 }) => {
   const { customerPhone, customerName, customerAddress, stampsCount, updateCustomerProfile } = useApp();
+  const tr = useTr();
 
   // State profil pengguna
   const [userName, setUserName] = useState<string>(customerName || 'Pelanggan');
