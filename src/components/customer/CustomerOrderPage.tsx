@@ -191,27 +191,27 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     setVoucherSuccess(null);
     const cleanCode = codeToApply.trim().toUpperCase();
     if (!cleanCode) {
-      setVoucherError('Silakan masukkan kode voucher terlebih dahulu.');
+      setVoucherError(tr('Silakan masukkan kode voucher terlebih dahulu.', 'Please enter a voucher code first.'));
       return;
     }
     const found = customerVouchers.find((v) => v.code.toUpperCase() === cleanCode);
     if (!found) {
-      setVoucherError('Kode voucher tidak ditemukan atau tidak valid.');
+      setVoucherError(tr('Kode voucher tidak ditemukan atau tidak valid.', 'Voucher code not found or invalid.'));
       return;
     }
     if (found.isUsed) {
-      setVoucherError('Voucher ini sudah pernah digunakan pada pesanan lain.');
+      setVoucherError(tr('Voucher ini sudah pernah digunakan pada pesanan lain.', 'This voucher has already been used on another order.'));
       return;
     }
     if (found.minOrderValue && currentPrice < found.minOrderValue) {
-      setVoucherError(`Minimal nilai pesanan untuk voucher ini adalah Rp ${found.minOrderValue.toLocaleString('id-ID')}.`);
+      setVoucherError(tr(`Minimal nilai pesanan untuk voucher ini adalah Rp ${found.minOrderValue.toLocaleString('id-ID')}.`, `The minimum order value for this voucher is Rp ${found.minOrderValue.toLocaleString('id-ID')}.`));
       return;
     }
 
     setAppliedVoucher(found);
     setVoucherInputCode(found.code);
     const disc = calculateDiscount(found, currentPrice);
-    setVoucherSuccess(`Voucher ${found.title} berhasil diterapkan! Hemat Rp ${disc.toLocaleString('id-ID')}`);
+    setVoucherSuccess(tr(`Voucher ${found.title} berhasil diterapkan! Hemat Rp ${disc.toLocaleString('id-ID')}`, `Voucher ${found.title} applied! You save Rp ${disc.toLocaleString('id-ID')}`));
   };
 
   const handleRemoveVoucher = () => {
@@ -983,22 +983,21 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
                   6
                 </span>
-                <span>Gunakan Voucher / Kupon Diskon</span>
-                <span className="text-xs font-normal text-gray-500">(Opsional)</span>
+                <span>{tr('Gunakan Voucher / Kupon Diskon', 'Use Voucher / Discount Coupon')}</span>
+                <span className="text-xs font-normal text-gray-500">{tr('(Opsional)', '(Optional)')}</span>
               </h2>
               {appliedVoucher && (
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   <Check className="w-3 h-3 stroke-[3]" />
-                  Voucher Diterapkan
+                  {tr('Voucher Diterapkan', 'Voucher Applied')}
                 </span>
               )}
             </div>
 
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 space-y-3.5 shadow-xs">
-              {/* Voucher input form */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-[#254117]">
-                  Punya Kode Voucher?
+                  {tr('Punya Kode Voucher?', 'Have a Voucher Code?')}
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <div className="relative flex-1">
@@ -1013,7 +1012,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                         setVoucherInputCode(e.target.value.toUpperCase());
                         setVoucherError(null);
                       }}
-                      placeholder="Masukkan kode voucher (cth: STEMPEL10-FREE)"
+                      placeholder={tr('Masukkan kode voucher (cth: STEMPEL10-FREE)', 'Enter voucher code (e.g. STEMPEL10-FREE)')}
                       className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-[#254117] focus:outline-none focus:border-[#cd6184]"
                     />
                   </div>
@@ -1025,7 +1024,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       onClick={() => handleApplyVoucherCode(voucherInputCode)}
                       className="px-5 py-2.5 rounded-xl bg-[#cd6184] hover:bg-[#b85373] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                     >
-                      Terapkan
+                      {tr('Terapkan', 'Apply')}
                     </button>
 
                     {appliedVoucher && (
@@ -1034,17 +1033,16 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                         id="btn-remove-voucher"
                         onClick={handleRemoveVoucher}
                         className="px-3 py-2.5 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                        title="Batalkan Voucher"
+                        title={tr('Batalkan Voucher', 'Cancel Voucher')}
                       >
                         <X className="w-3.5 h-3.5" />
-                        <span>Hapus</span>
+                        <span>{tr('Hapus', 'Remove')}</span>
                       </button>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Error or Success feedback */}
               {voucherError && (
                 <p className="text-xs text-rose-600 font-semibold flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 shrink-0" />
@@ -1060,9 +1058,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       <span className="font-bold text-[#254117] block">
                         {appliedVoucher.title} ({appliedVoucher.code})
                       </span>
-                      <span className="text-[11px] text-[#254117]/70">
-                        {appliedVoucher.description}
-                      </span>
+                      <span className="text-[11px] text-[#254117]/70">{appliedVoucher.description}</span>
                     </div>
                   </div>
                   <span className="font-black text-[#97a273] text-sm shrink-0">
@@ -1071,11 +1067,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
               )}
 
-              {/* Quick-select Customer Vouchers List */}
               {activeCustomerVouchers.length > 0 && (
                 <div className="pt-2 border-t border-gray-100 space-y-2">
                   <span className="text-[11px] font-bold text-[#254117]/70 block">
-                    Voucher Aktif Anda ({activeCustomerVouchers.length} tersedia, klik untuk pakai):
+                    {tr(
+                      `Voucher Aktif Anda (${activeCustomerVouchers.length} tersedia, klik untuk pakai):`,
+                      `Your Active Vouchers (${activeCustomerVouchers.length} available, tap to use):`
+                    )}
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {activeCustomerVouchers.map((v) => {
@@ -1085,11 +1083,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           key={v.id}
                           type="button"
                           onClick={() => {
-                            if (isSelected) {
-                              handleRemoveVoucher();
-                            } else {
-                              handleApplyVoucherCode(v.code);
-                            }
+                            if (isSelected) handleRemoveVoucher();
+                            else handleApplyVoucherCode(v.code);
                           }}
                           className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                             isSelected
@@ -1100,7 +1095,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           <Ticket className="w-3.5 h-3.5" />
                           <span>{v.code}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${isSelected ? 'bg-white/25 text-white' : 'bg-[#ffecf2] text-[#cd6184]'}`}>
-                            {v.discountType === 'free_wash' ? 'Cuci Gratis' : 'Diskon'}
+                            {v.discountType === 'free_wash' ? tr('Cuci Gratis', 'Free Wash') : tr('Diskon', 'Discount')}
                           </span>
                         </button>
                       );
@@ -1109,16 +1104,17 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
               )}
 
-              {/* Price calculation with discount summary */}
               <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-[#254117]/60 block text-[11px]">Estimasi biaya (bukan harga final)</span>
+                  <span className="text-[#254117]/60 block text-[11px]">
+                    {tr('Estimasi biaya (bukan harga final)', 'Estimated cost (not the final price)')}
+                  </span>
                   <span className="font-bold text-[#254117]">
                     {estimatedQuantity} {selectedPlan.unit} × Rp {selectedPlan.price.toLocaleString('id-ID')}
                   </span>
                   {recycleWashPrice > 0 && (
                     <span className="block text-[11px] font-semibold text-emerald-800">
-                      + Cuci baju daur ulang {recycleWashKg} kg × Rp {washRate.toLocaleString('id-ID')}
+                      + {tr('Cuci baju daur ulang', 'Recycling clothes wash')} {recycleWashKg} kg × Rp {washRate.toLocaleString('id-ID')}
                     </span>
                   )}
                 </div>
@@ -1134,13 +1130,11 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                         </span>
                       </div>
                       <span className="text-[10px] text-[#cd6184] font-bold block">
-                        Hemat Rp {discountAmount.toLocaleString('id-ID')}
+                        {tr('Hemat', 'You save')} Rp {discountAmount.toLocaleString('id-ID')}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-base font-black text-[#97a273]">
-                      Rp {currentPrice.toLocaleString('id-ID')}
-                    </span>
+                    <span className="text-base font-black text-[#97a273]">Rp {currentPrice.toLocaleString('id-ID')}</span>
                   )}
                 </div>
               </div>
@@ -1154,9 +1148,9 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 <span className="w-6 h-6 rounded-full bg-[#254117] text-white text-xs flex items-center justify-center font-bold">
                   <Leaf className="w-3.5 h-3.5" />
                 </span>
-                <span>Laundrea Peduli · Daur Ulang Pakaian</span>
-                <span className="text-xs font-normal text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full font-semibold">
-                  Gratis
+                <span>{tr('Laundrea Peduli · Daur Ulang Pakaian', 'Laundrea Peduli · Clothes Recycling')}</span>
+                <span className="text-xs text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full font-semibold">
+                  {tr('Gratis', 'Free')}
                 </span>
               </h2>
               {onGoToPeduli && (
@@ -1165,14 +1159,14 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   onClick={onGoToPeduli}
                   className="text-xs font-bold text-[#254117] hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  Pelajari programnya
+                  {tr('Pelajari programnya', 'Learn about the program')}
                 </button>
               )}
             </div>
 
             {recycleSettings && !recycleSettings.programActive ? (
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium">
-                Program daur ulang sedang penuh, coba lagi nanti.
+                {tr('Program daur ulang sedang penuh, coba lagi nanti.', 'The recycling program is currently full, please try again later.')}
               </div>
             ) : (
               <div className="space-y-4">
@@ -1186,27 +1180,27 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <div className="flex-1">
                     <span className="text-sm font-bold text-[#254117] flex items-center gap-1.5">
                       <Leaf className="w-4 h-4 text-emerald-600" />
-                      Ada baju tidak terpakai yang mau didaur ulang?
+                      {tr('Ada baju tidak terpakai yang mau didaur ulang?', 'Have unused clothes you want to recycle?')}
                     </span>
                     <p className="text-xs text-[#254117]/70 mt-0.5">
-                      Baju Anda akan diolah menjadi karya bernilai tinggi oleh para perajin lokal binaan Laundrea.
+                      {tr(
+                        'Baju Anda akan diolah menjadi karya bernilai tinggi oleh para perajin lokal binaan Laundrea.',
+                        'Your clothes will be turned into high-value creations by Laundrea’s local artisan partners.'
+                      )}
                     </p>
                   </div>
                 </label>
 
                 {recycleEnabled && (
                   <div className="p-4 sm:p-5 bg-white rounded-2xl border border-emerald-200 space-y-4 animate-in fade-in duration-200">
-                    {/* Mode selection */}
                     <div className="space-y-2">
                       <span className="text-xs font-bold text-[#254117] block">
-                        Pilihan Kondisi Baju Daur Ulang:
+                        {tr('Pilihan Kondisi Baju Daur Ulang:', 'Recycling Clothes Condition:')}
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <label
                           className={`p-3 rounded-xl border-2 flex items-start gap-2.5 cursor-pointer transition-all ${
-                            recycleMode === 'clean'
-                              ? 'border-[#254117] bg-[#f0fdf4]'
-                              : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
+                            recycleMode === 'clean' ? 'border-[#254117] bg-[#f0fdf4]' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
                           }`}
                         >
                           <input
@@ -1219,19 +1213,17 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           />
                           <div>
                             <span className="text-xs font-bold text-[#254117] block">
-                              Baju sudah bersih & kering
+                              {tr('Baju sudah bersih & kering', 'Clothes are clean & dry')}
                             </span>
                             <span className="text-[11px] text-gray-500">
-                              Langsung diserahkan ke perajin mitra.
+                              {tr('Langsung diserahkan ke perajin mitra.', 'Handed straight to our partner artisans.')}
                             </span>
                           </div>
                         </label>
 
                         <label
                           className={`p-3 rounded-xl border-2 flex items-start gap-2.5 cursor-pointer transition-all ${
-                            recycleMode === 'wash_first'
-                              ? 'border-[#254117] bg-[#f0fdf4]'
-                              : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
+                            recycleMode === 'wash_first' ? 'border-[#254117] bg-[#f0fdf4]' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'
                           }`}
                         >
                           <input
@@ -1244,24 +1236,23 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           />
                           <div>
                             <span className="text-xs font-bold text-[#254117] block">
-                              Baju masih kotor, cuci dulu
+                              {tr('Baju masih kotor, cuci dulu', 'Clothes are still dirty, wash first')}
                             </span>
                             <span className="text-[11px] text-amber-800 font-semibold block mt-0.5">
-                              Baju yang dicuci tetap dikenai tarif sesuai berat.
+                              {tr('Baju yang dicuci tetap dikenai tarif sesuai berat.', 'Washed clothes are still charged by weight.')}
                             </span>
                           </div>
                         </label>
                       </div>
                     </div>
 
-                    {/* Estimated weight input */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-[#254117]">
-                          Perkiraan berat pakaian daur ulang (min. 1 kg):
+                          {tr('Perkiraan berat pakaian daur ulang (min. 1 kg):', 'Estimated weight of recycling clothes (min. 1 kg):')}
                         </label>
                         <span className="text-[11px] text-gray-500 font-medium">
-                          1 kg ≈ 4-5 potong baju
+                          {tr('1 kg ≈ 4-5 potong baju', '1 kg ≈ 4-5 pieces of clothing')}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1270,7 +1261,6 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           inputMode="decimal"
                           value={recycleKgText}
                           onChange={(e) => {
-                            // boleh kosong dan desimal, tidak dipaksa ke angka minimal saat mengetik
                             if (/^\d*[.,]?\d*$/.test(e.target.value)) setRecycleKgText(e.target.value);
                           }}
                           onBlur={() => {
@@ -1283,35 +1273,52 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                         <span className="text-xs font-bold text-[#254117]">kg</span>
                       </div>
                       {recycleKgText.trim() !== '' && recycleKgNumber < 1 && (
-                        <p className="text-[11px] text-red-500 font-medium">Minimal 1 kg.</p>
+                        <p className="text-[11px] text-red-500 font-medium">{tr('Minimal 1 kg.', 'Minimum 1 kg.')}</p>
                       )}
                       {recycleMode === 'wash_first' && recycleKgNumber >= 1 && (
                         <p className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-                          Biaya cuci baju daur ulang: {recycleKgNumber} kg × Rp {washRate.toLocaleString('id-ID')} = Rp {recycleWashPrice.toLocaleString('id-ID')}
+                          {tr('Biaya cuci baju daur ulang:', 'Recycling clothes wash fee:')} {recycleKgNumber} kg × Rp{' '}
+                          {washRate.toLocaleString('id-ID')} = Rp {recycleWashPrice.toLocaleString('id-ID')}
                         </p>
                       )}
                     </div>
 
-                    {/* Requirements box */}
                     <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl space-y-1.5 text-xs text-[#254117]">
-                      <span className="font-bold block text-emerald-900">Ketentuan pakaian daur ulang:</span>
+                      <span className="font-bold block text-emerald-900">
+                        {tr('Ketentuan pakaian daur ulang:', 'Recycling clothes requirements:')}
+                      </span>
                       <ul className="list-disc list-inside space-y-0.5 text-[11px] text-[#254117]/85">
-                        <li>Kering, tidak basah atau lembap</li>
-                        <li>Tidak berjamur atau berbau tajam</li>
-                        <li>Bukan barang non-tekstil (tas kulit, sepatu kaku, dll.)</li>
-                        <li className="font-semibold text-emerald-900">Baju boleh rusak, robek, atau pudar warnanya</li>
+                        <li>{tr('Kering, tidak basah atau lembap', 'Dry, not wet or damp')}</li>
+                        <li>{tr('Tidak berjamur atau berbau tajam', 'Free of mold and strong odors')}</li>
+                        <li>
+                          {tr(
+                            'Bukan barang non-tekstil (tas kulit, sepatu kaku, dll.)',
+                            'No non-textile items (leather bags, stiff shoes, etc.)'
+                          )}
+                        </li>
+                        <li className="font-semibold text-emerald-900">
+                          {tr('Baju boleh rusak, robek, atau pudar warnanya', 'Clothes may be damaged, torn, or faded')}
+                        </li>
                       </ul>
                     </div>
 
-                    {/* Tips and bonus information */}
                     <div className="space-y-2 text-xs">
                       <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-[#254117]/80 text-[11px]">
-                        💡 <strong>Tips:</strong> Pisahkan baju daur ulang di kantong tersendiri agar kurir mudah menimbang.
+                        💡 <strong>{tr('Tips:', 'Tip:')}</strong>{' '}
+                        {tr(
+                          'Pisahkan baju daur ulang di kantong tersendiri agar kurir mudah menimbang.',
+                          'Put the recycling clothes in a separate bag so the courier can weigh them easily.'
+                        )}
                       </div>
 
                       <div className="p-3 rounded-xl bg-emerald-100/60 border border-emerald-200 text-emerald-900 font-semibold text-xs flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span>Dapat +1 stempel setiap menyerahkan baju daur ulang (min. 1 kg).</span>
+                        <span>
+                          {tr(
+                            'Dapat +1 stempel setiap menyerahkan baju daur ulang (min. 1 kg).',
+                            'Earn +1 stamp each time you hand in recycling clothes (min. 1 kg).'
+                          )}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1324,38 +1331,41 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
           <div className="bg-[#ffecf2] border border-[#cd6184]/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#254117]">
             <Info className="w-4 h-4 text-[#cd6184] shrink-0 mt-0.5" />
             <p className="leading-relaxed font-medium">
-              Berat sebenarnya dan total biaya ditentukan setelah kurir menjemput.
+              {tr(
+                'Berat sebenarnya dan total biaya ditentukan setelah kurir menjemput.',
+                'The actual weight and total cost are determined after the courier picks up your laundry.'
+              )}
             </p>
           </div>
 
-          {/* Validation warning if required fields are not filled yet */}
+          {/* Validation warning */}
           {(!isFormValid || formAttempted) && !isFormValid && (
             <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 flex items-start gap-3 text-xs shadow-xs animate-in fade-in duration-200">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-bold text-amber-900 flex items-center gap-1.5">
                   <span className="text-red-500 font-bold text-sm leading-none select-none">*</span>
-                  <span>Lengkapi kolom bertanda bintang (*) untuk melanjutkan:</span>
+                  <span>{tr('Lengkapi kolom bertanda bintang (*) untuk melanjutkan:', 'Complete the fields marked with (*) to continue:')}</span>
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {!isDateValid && (
                     <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
-                      • Tanggal Penjemputan
+                      • {tr('Tanggal Penjemputan', 'Pickup Date')}
                     </span>
                   )}
                   {!isTimeValid && (
                     <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
-                      • Jam Layanan
+                      • {tr('Jam Layanan', 'Service Hours')}
                     </span>
                   )}
                   {!isNameValid && (
                     <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
-                      • Nama Lengkap
+                      • {tr('Nama Lengkap', 'Full Name')}
                     </span>
                   )}
                   {!isAddressValid && (
                     <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
-                      • Alamat Lengkap
+                      • {tr('Alamat Lengkap', 'Full Address')}
                     </span>
                   )}
                 </div>
@@ -1375,12 +1385,15 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   : 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300 shadow-none'
               }`}
             >
-              <span>Lanjut ke Konfirmasi Pesanan</span>
+              <span>{tr('Lanjut ke Konfirmasi Pesanan', 'Continue to Order Confirmation')}</span>
               <ChevronRight className="w-5 h-5" />
             </button>
             {!isFormValid && (
               <p className="text-center text-[11px] text-gray-500 mt-2 font-medium">
-                Pilih jadwal penjemputan dan lengkapi data pemesan untuk mengaktifkan tombol ini
+                {tr(
+                  'Pilih jadwal penjemputan dan lengkapi data pemesan untuk mengaktifkan tombol ini',
+                  'Choose a pickup schedule and complete your details to enable this button'
+                )}
               </p>
             )}
           </div>
@@ -1390,26 +1403,34 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
         <div className="space-y-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#254117] tracking-tight">
-              Konfirmasi Pesanan
+              {tr('Konfirmasi Pesanan', 'Order Confirmation')}
             </h1>
             <p className="text-[#254117]/75 text-sm mt-1">
-              Silakan periksa ringkasan pesanan Laundrea Anda sebelum mengirim pesanan.
+              {tr(
+                'Silakan periksa ringkasan pesanan Laundrea Anda sebelum mengirim pesanan.',
+                'Please review your Laundrea order summary before submitting.'
+              )}
             </p>
           </div>
 
-          {/* Order Summary Card */}
           <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#ffecf2] shadow-md space-y-5">
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
               <div>
                 <span className="text-xs font-bold text-[#cd6184] uppercase tracking-wider">
-                  Paket Terpilih
+                  {tr('Paket Terpilih', 'Selected Plan')}
                 </span>
-                <h3 className="text-xl font-bold text-[#254117] mt-0.5">{selectedPlan.name}</h3>
-                <span className="text-xs text-[#97a273] font-semibold">{selectedPlan.turnaroundTime}</span>
+                <h3 className="text-xl font-bold text-[#254117] mt-0.5">
+                  {lang === 'en' && PLAN_LOCALIZATIONS[selectedPlan.id] ? PLAN_LOCALIZATIONS[selectedPlan.id].nameEn : selectedPlan.name}
+                </h3>
+                <span className="text-xs text-[#97a273] font-semibold">
+                  {lang === 'en' && PLAN_LOCALIZATIONS[selectedPlan.id]
+                    ? PLAN_LOCALIZATIONS[selectedPlan.id].turnaroundTimeEn
+                    : selectedPlan.turnaroundTime}
+                </span>
               </div>
               <div className="text-right">
                 <span className="text-xs text-[#254117]/60 block font-medium">
-                  Estimasi biaya (bukan harga final)
+                  {tr('Estimasi biaya (bukan harga final)', 'Estimated cost (not the final price)')}
                 </span>
                 <span className="text-2xl font-black text-[#97a273]">
                   Rp {finalEstimatedPrice.toLocaleString('id-ID')}
@@ -1428,56 +1449,53 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <Tag className="w-4 h-4 text-[#97a273]" />
                   <div>
                     <span className="font-bold text-[#254117] block">
-                      Voucher Digunakan ({appliedVoucher.code})
+                      {tr('Voucher Digunakan', 'Voucher Used')} ({appliedVoucher.code})
                     </span>
-                    <span className="text-[11px] text-[#254117]/70">
-                      {appliedVoucher.title}
-                    </span>
+                    <span className="text-[11px] text-[#254117]/70">{appliedVoucher.title}</span>
                   </div>
                 </div>
-                <span className="font-black text-[#97a273] text-sm">
-                  - Rp {discountAmount.toLocaleString('id-ID')}
-                </span>
+                <span className="font-black text-[#97a273] text-sm">- Rp {discountAmount.toLocaleString('id-ID')}</span>
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="space-y-2 bg-[#ffecf2]/40 p-3.5 rounded-2xl">
-                <p className="font-semibold text-[#254117] text-sm">Rincian Layanan</p>
+                <p className="font-semibold text-[#254117] text-sm">{tr('Rincian Layanan', 'Service Details')}</p>
                 <p className="text-[#254117]/80">
-                  <span className="font-medium">Perkiraan Jumlah:</span> {estimatedQuantity} {selectedPlan.unit}
+                  <span className="font-medium">{tr('Perkiraan Jumlah:', 'Estimated Quantity:')}</span> {estimatedQuantity} {selectedPlan.unit}
                 </p>
                 <p className="text-[#254117]/80">
-                  <span className="font-medium">Tarif Satuan:</span> Rp {selectedPlan.price.toLocaleString('id-ID')}/{selectedPlan.unit}
+                  <span className="font-medium">{tr('Tarif Satuan:', 'Unit Rate:')}</span> Rp {selectedPlan.price.toLocaleString('id-ID')}/{selectedPlan.unit}
                 </p>
                 {recycleWashPrice > 0 && (
                   <p className="text-[#254117]/80">
-                    <span className="font-medium">Cuci Baju Daur Ulang:</span> {recycleWashKg} kg × Rp {washRate.toLocaleString('id-ID')} = Rp {recycleWashPrice.toLocaleString('id-ID')}
+                    <span className="font-medium">{tr('Cuci Baju Daur Ulang:', 'Recycling Clothes Wash:')}</span> {recycleWashKg} kg × Rp{' '}
+                    {washRate.toLocaleString('id-ID')} = Rp {recycleWashPrice.toLocaleString('id-ID')}
                   </p>
                 )}
                 <p className="text-[#254117]/80">
-                  <span className="font-medium">Penyerahan:</span>{' '}
-                  {handoverMethod === 'pickup_by_courier' ? 'Dijemput oleh kurir' : 'Antar ke gerai'}
+                  <span className="font-medium">{tr('Penyerahan:', 'Handover:')}</span>{' '}
+                  {handoverMethod === 'pickup_by_courier' ? tr('Dijemput oleh kurir', 'Picked up by courier') : tr('Antar ke gerai', 'Drop off at store')}
                 </p>
                 <p className="text-[#254117]/80">
-                  <span className="font-medium">Pengembalian:</span>{' '}
-                  {returnMethod === 'deliver_to_me' ? 'Diantar ke alamat saya' : 'Ambil sendiri di gerai'}
+                  <span className="font-medium">{tr('Pengembalian:', 'Return:')}</span>{' '}
+                  {returnMethod === 'deliver_to_me' ? tr('Diantar ke alamat saya', 'Delivered to my address') : tr('Ambil sendiri di gerai', 'Self pickup at store')}
                 </p>
               </div>
 
               <div className="space-y-2 bg-[#ffecf2]/40 p-3.5 rounded-2xl">
-                <p className="font-semibold text-[#254117] text-sm">Jadwal & Data Pemesan</p>
+                <p className="font-semibold text-[#254117] text-sm">{tr('Jadwal & Data Pemesan', 'Schedule & Contact Details')}</p>
                 <p className="text-[#254117]/80">
-                  <span className="font-medium">Tanggal:</span> {scheduleDate}
+                  <span className="font-medium">{tr('Tanggal:', 'Date:')}</span> {isDropoff ? tr('Langsung ke gerai', 'Directly to the store') : scheduleDate}
                 </p>
                 <p className="text-[#254117]/80">
-                  <span className="font-medium">Waktu:</span> {scheduleTime}
+                  <span className="font-medium">{tr('Waktu:', 'Time:')}</span> {isDropoff ? '07:00 - 20:00' : scheduleTime}
                 </p>
                 <p className="text-[#254117]/80">
-                  <span className="font-medium">Penerima/Kontak:</span> {orderRecipientName} ({orderContactPhone})
+                  <span className="font-medium">{tr('Penerima/Kontak:', 'Recipient/Contact:')}</span> {orderRecipientName} ({orderContactPhone})
                 </p>
                 <p className="text-[#254117]/80 line-clamp-2">
-                  <span className="font-medium">Alamat:</span> {effectiveAddress}
+                  <span className="font-medium">{tr('Alamat:', 'Address:')}</span> {effectiveAddress}
                 </p>
               </div>
             </div>
@@ -1488,19 +1506,26 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-emerald-900">
-                      Laundrea Peduli (Daur Ulang Pakaian):
+                      {tr('Laundrea Peduli (Daur Ulang Pakaian):', 'Laundrea Peduli (Clothes Recycling):')}
                     </span>
                     <span className="font-semibold text-emerald-800">
-                      Perkiraan {recycleKgNumber} kg 
+                      {tr('Perkiraan', 'Estimated')} {recycleKgNumber} kg
                     </span>
                   </div>
                   <p className="text-[#254117]/80 text-[11px]">
-                    Mode: {recycleMode === 'clean'
-                      ? 'Baju Bersih & Kering (Langsung diserahkan)'
-                      : `Baju Kotor (Cuci dulu): Rp ${recycleWashPrice.toLocaleString('id-ID')} masuk ke estimasi biaya`}
+                    {tr('Mode:', 'Mode:')}{' '}
+                    {recycleMode === 'clean'
+                      ? tr('Baju Bersih & Kering (Langsung diserahkan)', 'Clean & Dry Clothes (Handed over directly)')
+                      : tr(
+                          `Baju Kotor (Cuci dulu): Rp ${recycleWashPrice.toLocaleString('id-ID')} masuk ke estimasi biaya`,
+                          `Dirty Clothes (Wash first): Rp ${recycleWashPrice.toLocaleString('id-ID')} included in the estimated cost`
+                        )}
                   </p>
                   <p className="text-[#254117]/70 text-[11px]">
-                    Dapat +1 stempel bonus setelah baju diverifikasi (min. 1 kg).
+                    {tr(
+                      'Dapat +1 stempel bonus setelah baju diverifikasi (min. 1 kg).',
+                      'Earn +1 bonus stamp after the clothes are verified (min. 1 kg).'
+                    )}
                   </p>
                 </div>
               </div>
@@ -1508,27 +1533,28 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
 
             {notes && (
               <div className="text-xs text-[#254117]/80 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <span className="font-semibold text-[#254117]">Catatan:</span> {notes}
+                <span className="font-semibold text-[#254117]">{tr('Catatan:', 'Notes:')}</span> {notes}
               </div>
             )}
           </div>
 
-          {/* Mandated note */}
           <div className="bg-[#ffecf2] border border-[#cd6184]/30 rounded-2xl p-4 flex items-start gap-3 text-xs text-[#254117]">
             <Info className="w-4 h-4 text-[#cd6184] shrink-0 mt-0.5" />
             <p className="leading-relaxed font-medium">
-              Berat sebenarnya dan total biaya akhir ditentukan setelah kurir menimbang cucian. Anda dapat memilih metode pembayaran setelah penimbangan.
+              {tr(
+                'Berat sebenarnya dan total biaya akhir ditentukan setelah kurir menimbang cucian. Anda dapat memilih metode pembayaran setelah penimbangan.',
+                'The actual weight and final total are determined after the courier weighs your laundry. You can choose a payment method after weighing.'
+              )}
             </p>
           </div>
 
-          {/* Confirm Button */}
           <div className="pt-2 flex flex-col sm:flex-row gap-3">
             <button
               type="button"
               onClick={() => setCheckoutStep('select')}
               className="py-3.5 px-5 rounded-2xl border border-gray-300 text-[#254117] font-bold text-sm hover:bg-gray-50 transition-all cursor-pointer"
             >
-              Ubah Rincian
+              {tr('Ubah Rincian', 'Edit Details')}
             </button>
             <button
               id="btn-confirm-order"
@@ -1538,10 +1564,10 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               className="flex-1 py-4 px-6 rounded-2xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-base shadow-lg shadow-[#cd6184]/30 flex items-center justify-center gap-3 transition-all disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? (
-                <span>Memproses Pesanan...</span>
+                <span>{tr('Memproses Pesanan...', 'Processing Order...')}</span>
               ) : (
                 <>
-                  <span>Konfirmasi Pesanan</span>
+                  <span>{tr('Konfirmasi Pesanan', 'Confirm Order')}</span>
                   <Check className="w-5 h-5 stroke-[3]" />
                 </>
               )}
