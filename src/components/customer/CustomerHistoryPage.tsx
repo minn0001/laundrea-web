@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Order, OrderStatus, PlanType } from '../../types';
 import { earnsRecycleStamp } from '../../utils/recycle';
+import { useTr } from '../../i18n/useTr';
 import {
   Clock,
   Package,
@@ -34,6 +35,7 @@ export const CustomerHistoryPage: React.FC<CustomerHistoryPageProps> = ({
   onNewOrderClick,
 }) => {
   const { orders, setActiveCustomerOrderId, customerPhone, earnsRecycleStamp } = useApp();
+  const tr = useTr();    
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
