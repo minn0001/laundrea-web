@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { LanguageSetting } from './LanguageSetting';
 import { useApp } from '../../context/AppContext';
 import { useTr } from '../../i18n/useTr';
+import { useLang } from '../../i18n/LanguageContext';
 import {
+  Globe, 
+  ChevronRight, 
+  Check,
   User,
   Building2,
   Phone,
@@ -32,6 +36,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
   onAddressModalHandled,
 }) => {
   const { customerPhone, customerName, customerAddress, stampsCount, updateCustomerProfile } = useApp();
+  const { lang, setLang } = useLang();
   const tr = useTr();
 
   // State profil pengguna
@@ -49,7 +54,7 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
 
   // State modal interaktif
   const [activeModal, setActiveModal] = useState<
-    'account' | 'address' | 'contact' | 'policy' | null
+  'account' | 'address' | 'contact' | 'policy' | 'language' | null
   >(null);
 
   // Form edit states
@@ -154,20 +159,24 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
             Ubah Alamat
           </span>
         </button>
-      </div>
 
-      {/* Language Settings */}
-        <button
-          type="button"
-          id="btn-language"
-          onClick={() => setActiveModal('language')}
-          className="w-full flex items-center gap-4 py-3.5 text-left hover:text-[#cd6184] transition-colors cursor-pointer group"
-        >
-          <Phone className="w-5 h-5 text-[#254117]/80 stroke-[2] group-hover:text-[#cd6184] transition-colors shrink-0" />
-          <span className="text-sm font-bold text-[#254117] group-hover:text-[#cd6184] transition-colors">
-            Bahasa
-          </span>
-        </button>
+      {/* Bahasa */}
+      <button
+        type="button"
+        id="btn-language"
+        onClick={() => setActiveModal('language')}
+        className="w-full flex items-center gap-4 py-3.5 text-left hover:text-[#cd6184] transition-colors cursor-pointer group"
+      >
+        <Globe className="w-5 h-5 text-[#254117]/80 stroke-[2] group-hover:text-[#cd6184] transition-colors shrink-0" />
+        <span className="flex-1 text-sm font-bold text-[#254117] group-hover:text-[#cd6184] transition-colors">
+          Bahasa
+        </span>
+        <span className="text-xs font-semibold text-[#254117]/50">
+          {lang === 'en' ? 'English' : 'Indonesia'}
+        </span>
+        <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+      </button>
+      </div>
 
       {/* Pembatas Garis Halus */}
       <hr className="border-t border-gray-100" />
@@ -507,6 +516,50 @@ export const CustomerProfilePage: React.FC<CustomerProfilePageProps> = ({
           </div>
         </div>
       )}
+      {/* MODAL: Bahasa */}
+{activeModal === 'language' && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+    <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <Globe className="w-5 h-5 text-[#cd6184]" />
+          <h3 className="text-base font-black text-[#254117]">Bahasa</h3>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveModal(null)}
+          className="text-gray-400 hover:text-gray-600 p-1 rounded-full cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {[
+          { code: 'id', label: 'Bahasa Indonesia' },
+          { code: 'en', label: 'English' },
+        ].map((opt) => (
+          <button
+            key={opt.code}
+            type="button"
+            onClick={() => {
+              setLang(opt.code as 'id' | 'en');
+              setActiveModal(null);
+            }}
+            className={`w-full p-3 rounded-2xl border flex items-center justify-between text-sm font-bold cursor-pointer transition-all ${
+              lang === opt.code
+                ? 'border-[#cd6184] bg-[#ffecf2] text-[#cd6184]'
+                : 'border-gray-200 text-[#254117] hover:bg-gray-50'
+            }`}
+          >
+            <span>{opt.label}</span>
+            {lang === opt.code && <Check className="w-4 h-4" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
