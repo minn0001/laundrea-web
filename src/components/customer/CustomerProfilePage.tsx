@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LanguageSetting } from './LanguageSetting';
 import { useApp } from '../../context/AppContext';
 import { useTr } from '../../i18n/useTr';
 import {
