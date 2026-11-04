@@ -323,6 +323,8 @@ export async function sendOrUpdateNotification(params: {
   orderNumber: string;
   title: string;
   body: string;
+  titleEn?: string;
+  bodyEn?: string;
   type?: AppNotification['type'];
   isPaymentOpening?: boolean;
 }): Promise<void> {
@@ -343,6 +345,8 @@ export async function sendOrUpdateNotification(params: {
           orderNumber: params.orderNumber,
           title: params.title,
           body: params.body,
+          ...(params.titleEn ? { titleEn: params.titleEn } : {}),
+          ...(params.bodyEn ? { bodyEn: params.bodyEn } : {}),
           type: 'payment_opened',
           createdAt: new Date().toISOString(),
           read: false,
@@ -362,6 +366,8 @@ export async function sendOrUpdateNotification(params: {
         orderNumber: params.orderNumber,
         title: params.title,
         body: params.body,
+        ...(params.titleEn ? { titleEn: params.titleEn } : {}),
+        ...(params.bodyEn ? { bodyEn: params.bodyEn } : {}),
         type: params.type || 'status_changed',
         createdAt: new Date().toISOString(),
         read: false,

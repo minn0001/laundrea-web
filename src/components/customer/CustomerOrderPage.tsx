@@ -29,6 +29,8 @@ import {
 import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
 import { StructuredAddressData } from '../../services/wilayahService';
 import { SERVICE_SLOTS } from '../../data/serviceSlots';
+import { useLang } from '../../i18n/LanguageContext';
+import { PLAN_LOCALIZATIONS } from '../../i18n/translations';
 
 interface CustomerOrderPageProps {
   onOrderSuccess: (orderId: string) => void;
@@ -57,6 +59,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
     recycleSettings,
     orders,
   } = useApp();
+  const { t, lang } = useLang();
 
   // Laundrea Peduli recycle state
   const [recycleEnabled, setRecycleEnabled] = useState<boolean>(Boolean(initialRecycleChecked));
@@ -287,8 +290,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
 
   const scheduleLabel =
     handoverMethod === 'pickup_by_courier'
-      ? 'Jadwal Penjemputan'
-      : 'Informasi Antar ke Gerai';
+      ? (lang === 'en' ? 'Pickup Schedule' : 'Jadwal Penjemputan')
+      : (lang === 'en' ? 'Store Drop-off Info' : 'Informasi Antar ke Gerai');
 
   return (
     <div id="customer-order-flow" className="w-full">
@@ -301,7 +304,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
             className="inline-flex items-center gap-1.5 text-xs font-bold text-[#cd6184] hover:underline cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Kembali ke Pilihan Paket</span>
+            <span>{t('order.back_to_plans')}</span>
           </button>
         ) : onBackToLanding ? (
           <button
@@ -310,13 +313,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
             className="inline-flex items-center gap-1.5 text-xs font-bold text-[#254117]/70 hover:text-[#cd6184] cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Kembali ke Beranda</span>
+            <span>{t('order.back_to_home')}</span>
           </button>
         ) : null}
 
         <div className="sm:text-right">
           <span className="text-[11px] sm:text-xs font-semibold text-[#cd6184] bg-[#ffecf2] px-2.5 sm:px-3 py-1 rounded-full inline-block whitespace-nowrap">
-            {checkoutStep === 'select' ? 'Langkah 1 dari 2: Konfigurasi Pesanan' : 'Langkah 2 dari 2: Konfirmasi Pesanan'}
+            {checkoutStep === 'select' ? t('order.step1_header_pill') : t('order.step2_header_pill')}
           </span>
         </div>
       </div>
@@ -326,10 +329,10 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
           {/* Header */}
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#254117] tracking-tight">
-              Pilih Paket Layanan
+              {t('order.title')}
             </h1>
             <p className="text-[#254117]/75 text-sm mt-1">
-              Tentukan jenis layanan, perkiraan berat/jumlah, dan jadwalkan waktu penjemputan atau pengantaran Anda.
+              {t('order.subtitle')}
             </p>
           </div>
 
@@ -339,7 +342,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
                 1
               </span>
-              <span>Pilihan Paket Layanan</span>
+              <span>{t('order.section1_title')}</span>
               <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
             </h2>
 
@@ -347,6 +350,11 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               {plans.map((plan) => {
                 const isSelected = plan.id === selectedPlanId;
                 const isExpress = plan.id === 'express';
+                const loc = lang === 'en' && PLAN_LOCALIZATIONS[plan.id] ? PLAN_LOCALIZATIONS[plan.id] : null;
+                const pName = loc ? loc.nameEn : plan.name;
+                const pTurnaround = loc ? loc.turnaroundTimeEn : plan.turnaroundTime;
+                const pFeatures = loc ? loc.featuresEn : plan.features;
+                const pUnit = loc ? loc.unitEn : plan.unit;
 
                 return (
                   <div
@@ -367,13 +375,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     {isExpress && (
                       <div className="absolute -top-3 right-4 bg-[#ffbd59] text-[#254117] text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-xs uppercase tracking-wider flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-[#254117]" />
-                        <span>PALING POPULER</span>
+                        <span>{t('order.most_popular')}</span>
                       </div>
                     )}
 
                     <div>
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-[#254117]">{plan.name}</h3>
+                        <h3 className="text-lg font-bold text-[#254117]">{pName}</h3>
                         <div
                           className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
                             isSelected
@@ -389,15 +397,15 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                         <span className="text-2xl font-black text-[#254117]">
                           Rp {plan.price.toLocaleString('id-ID')}
                         </span>
-                        <span className="text-xs text-[#254117]/60 font-medium">/{plan.unit}</span>
+                        <span className="text-xs text-[#254117]/60 font-medium">/{pUnit}</span>
                       </div>
 
                       <p className="text-xs font-semibold text-[#97a273] mt-1.5 bg-[#97a273]/15 inline-block px-2 py-0.5 rounded-md">
-                        {plan.turnaroundTime}
+                        {pTurnaround}
                       </p>
 
                       <div className="mt-4 pt-3.5 border-t border-[#254117]/10 space-y-2">
-                        {plan.features.map((feature, idx) => (
+                        {pFeatures.map((feature, idx) => (
                           <div key={idx} className="flex items-start gap-2 text-xs text-[#254117]/85">
                             <Check className="w-3.5 h-3.5 text-[#97a273] shrink-0 mt-0.5" />
                             <span>{feature}</span>
@@ -407,7 +415,9 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     </div>
 
                     <div className="mt-4 pt-3 text-[11px] text-[#254117]/60 font-medium border-t border-[#254117]/5">
-                      {plan.minOrder ? `Min. pemesanan ${plan.minOrder} ${plan.unit}` : 'Mulai dari 1 pakaian'}
+                      {plan.minOrder
+                        ? t('order.min_order', { min: plan.minOrder, unit: pUnit })
+                        : t('order.from_1_item')}
                     </div>
                   </div>
                 );
@@ -422,21 +432,21 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
                   2
                 </span>
-                <span>Perkiraan Berat / Jumlah</span>
+                <span>{t('order.section2_title')}</span>
                 <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
               </h2>
               <span className="text-xs font-bold text-[#cd6184]">
-                {selectedPlan.name}
+                {lang === 'en' && PLAN_LOCALIZATIONS[selectedPlan.id] ? PLAN_LOCALIZATIONS[selectedPlan.id].nameEn : selectedPlan.name}
               </span>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-[#254117]/80">
                 <label htmlFor={quantityInputId} className="font-semibold">
-                  Atur perkiraan {isKg ? 'berat (kg)' : 'jumlah satuan (pcs)'}:
+                  {isKg ? t('order.qty_label_kg') : t('order.qty_label_pcs')}
                 </label>
                 <span className="text-[11px] font-medium text-[#254117]/60">
-                  Minimal: {minQty} {selectedPlan.unit}
+                  {t('order.min_qty_hint', { min: minQty, unit: selectedPlan.unit })}
                 </span>
               </div>
 
@@ -490,7 +500,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
             <div className="bg-white rounded-2xl p-4 border border-[#cd6184]/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <span className="text-xs text-[#254117]/70 font-semibold uppercase tracking-wider block">
-                  Perkiraan Total Biaya
+                  {t('order.estimated_total_cost')}
                 </span>
                 <div className="text-3xl font-black text-[#97a273] mt-0.5">
                   Rp {currentPrice.toLocaleString('id-ID')}
@@ -498,14 +508,21 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               </div>
               <div className="text-xs text-[#254117]/70 space-y-0.5 text-left sm:text-right">
                 <p>
-                  {estimatedQuantity} {selectedPlan.unit} × Rp {selectedPlan.price.toLocaleString('id-ID')}
+                  {t('order.calc_plan_line', {
+                    qty: estimatedQuantity,
+                    unit: selectedPlan.unit,
+                    price: `Rp ${selectedPlan.price.toLocaleString('id-ID')}`,
+                  })}
                 </p>
                 {recycleWashPrice > 0 && (
                   <p>
-                    + Cuci baju daur ulang {recycleWashKg} kg × Rp {washRate.toLocaleString('id-ID')}
+                    {t('order.calc_recycle_line', {
+                      kg: recycleWashKg,
+                      rate: `Rp ${washRate.toLocaleString('id-ID')}`,
+                    })}
                   </p>
                 )}
-                <p className="text-[#97a273] font-bold">Sudah Termasuk Antar-Jemput Gratis</p>
+                <p className="text-[#97a273] font-bold">{t('order.free_delivery_included')}</p>
               </div>
             </div>
           </div>
@@ -516,7 +533,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
                 3
               </span>
-              <span>Metode Penyerahan Pakaian</span>
+              <span>{t('order.section3_title')}</span>
               <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
             </h2>
 
@@ -541,13 +558,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#254117]">Dijemput oleh kurir</span>
+                    <span className="text-sm font-bold text-[#254117]">{t('order.handover_pickup_title')}</span>
                     {handoverMethod === 'pickup_by_courier' && (
                       <Check className="w-4 h-4 text-[#cd6184] stroke-[3]" />
                     )}
                   </div>
                   <p className="text-xs text-[#254117]/70 mt-1">
-                    Kurir kami akan datang langsung ke alamat Anda dengan kantong bersih ramah lingkungan.
+                    {t('order.handover_pickup_desc')}
                   </p>
                 </div>
               </div>
@@ -572,13 +589,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#254117]">Antar ke gerai</span>
+                    <span className="text-sm font-bold text-[#254117]">{t('order.handover_dropoff_title')}</span>
                     {handoverMethod === 'store_dropoff' && (
                       <Check className="w-4 h-4 text-[#cd6184] stroke-[3]" />
                     )}
                   </div>
                   <p className="text-xs text-[#254117]/70 mt-1">
-                    Serahkan pakaian Anda secara mandiri di gerai pusat Laundrea terdekat kapan saja.
+                    {t('order.handover_dropoff_desc')}
                   </p>
                 </div>
               </div>
@@ -591,7 +608,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
                 4
               </span>
-              <span>Metode Pengembalian Pakaian</span>
+              <span>{t('order.section4_title')}</span>
               <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
             </h2>
 
@@ -616,13 +633,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#254117]">Diantar ke alamat saya</span>
+                    <span className="text-sm font-bold text-[#254117]">{t('order.return_deliver_title')}</span>
                     {returnMethod === 'deliver_to_me' && (
                       <Check className="w-4 h-4 text-[#cd6184] stroke-[3]" />
                     )}
                   </div>
                   <p className="text-xs text-[#254117]/70 mt-1">
-                    Pakaian bersih, wangi, dan rapi dilipat akan diantar kembali ke pintu rumah Anda.
+                    {t('order.return_deliver_desc')}
                   </p>
                 </div>
               </div>
@@ -647,13 +664,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#254117]">Ambil sendiri di gerai</span>
+                    <span className="text-sm font-bold text-[#254117]">{t('order.return_self_title')}</span>
                     {returnMethod === 'self_pickup' && (
                       <Check className="w-4 h-4 text-[#cd6184] stroke-[3]" />
                     )}
                   </div>
                   <p className="text-xs text-[#254117]/70 mt-1">
-                    Ambil langsung di konter kasir gerai kami saat Anda sedang senggang.
+                    {t('order.return_self_desc')}
                   </p>
                 </div>
               </div>
@@ -667,7 +684,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 <span className="w-6 h-6 rounded-full bg-[#cd6184] text-white text-xs flex items-center justify-center font-bold">
                   5
                 </span>
-                <span>{scheduleLabel} & Data Pemesan</span>
+                <span>{scheduleLabel} {lang === 'en' ? '& Contact Info' : '& Data Pemesan'}</span>
                 <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
               </div>
             </h2>
@@ -678,10 +695,10 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                 <div className="bg-[#ffecf2]/50 p-5 rounded-2xl border border-[#cd6184]/25 space-y-2 shadow-xs">
                   <div className="flex items-center gap-2 text-sm font-bold text-[#254117]">
                     <Store className="w-4 h-4 text-[#cd6184]" />
-                    <span>Antar Sendiri ke Gerai</span>
+                    <span>{t('order.dropoff_notice_title')}</span>
                   </div>
                   <p className="text-xs text-[#254117]/75 leading-relaxed">
-                    Tidak perlu memilih jadwal. Silakan datang langsung ke gerai Laundrea setiap hari pukul 07:00 - 20:00 WIB.
+                    {t('order.dropoff_notice_desc')}
                   </p>
                 </div>
               ) : (
@@ -690,12 +707,12 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <div className="flex items-center justify-between mb-1.5">
                     <label htmlFor={dateInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1.5">
                       <Calendar className="w-4 h-4 text-[#cd6184]" />
-                      <span>Pilihan Tanggal Penjemputan</span>
+                      <span>{t('order.pickup_date_label')}</span>
                       <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                     </label>
                     {isDateValid && (
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Check className="w-3 h-3 stroke-[3]" /> Terpilih
+                        <Check className="w-3 h-3 stroke-[3]" /> {t('order.selected_badge')}
                       </span>
                     )}
                   </div>
@@ -714,7 +731,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   />
                   {/* Quick Select Buttons */}
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-[11px] text-gray-500 font-medium">Pilihan cepat:</span>
+                    <span className="text-[11px] text-gray-500 font-medium">{t('order.quick_select_label')}</span>
                     <button
                       type="button"
                       onClick={() => setScheduleDate(getTomorrowStr())}
@@ -724,7 +741,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           : 'bg-gray-50 hover:bg-[#ffecf2] border-gray-200 text-[#254117]'
                       }`}
                     >
-                      Besok
+                      {t('order.quick_tomorrow')}
                     </button>
                     <button
                       type="button"
@@ -735,13 +752,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           : 'bg-gray-50 hover:bg-[#ffecf2] border-gray-200 text-[#254117]'
                       }`}
                     >
-                      Lusa
+                      {t('order.quick_day_after')}
                     </button>
                   </div>
                   {formAttempted && !isDateValid && (
                     <p className="text-[11px] text-red-500 font-medium mt-1.5 flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      Silakan tentukan tanggal penjemputan terlebih dahulu.
+                      {t('order.err_date_required')}
                     </p>
                   )}
                 </div>
@@ -750,12 +767,12 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-semibold text-[#254117] flex items-center gap-1.5">
                       <Clock className="w-4 h-4 text-[#cd6184]" />
-                      <span>Pilihan Jam Layanan</span>
+                      <span>{t('order.service_hours_label')}</span>
                       <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                     </label>
                     {isTimeValid && (
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <Check className="w-3 h-3 stroke-[3]" /> Terpilih
+                        <Check className="w-3 h-3 stroke-[3]" /> {t('order.selected_badge')}
                       </span>
                     )}
                   </div>
@@ -779,7 +796,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   {formAttempted && !isTimeValid && (
                     <p className="text-[11px] text-red-500 font-medium mt-1.5 flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      Silakan tentukan slot jam penjemputan di atas.
+                      {t('order.err_time_required')}
                     </p>
                   )}
                 </div>
@@ -790,10 +807,10 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
               <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4 shadow-xs">
                 <div className="border-b border-gray-100 pb-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#cd6184]">
-                    Informasi Penerima / Kontak Pesanan Ini
+                    {t('order.recipient_info_title')}
                   </h3>
                   <p className="text-[11px] text-[#254117]/60 mt-0.5">
-                    Data di bawah hanya berlaku untuk pesanan ini dan tidak akan mengubah profil akun Anda.
+                    {t('order.recipient_info_desc')}
                   </p>
                 </div>
 
@@ -801,7 +818,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <div>
                     <label htmlFor={nameInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1 mb-1">
                       <User className="w-3.5 h-3.5 text-[#cd6184]" />
-                      <span>Nama Penerima</span>
+                      <span>{t('order.recipient_name_label')}</span>
                       <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                     </label>
                     <input
@@ -809,7 +826,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                       type="text"
                       value={orderRecipientName}
                       onChange={(e) => setOrderRecipientName(e.target.value)}
-                      placeholder="Nama penerima pesanan"
+                      placeholder={t('order.recipient_name_placeholder')}
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-medium focus:outline-none transition-colors ${
                         formAttempted && !isNameValid
                           ? 'border-red-400 bg-red-50/20 focus:border-red-500'
@@ -820,7 +837,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     {formAttempted && !isNameValid && (
                       <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" />
-                        Silakan isi nama penerima pesanan.
+                        {t('order.err_name_required')}
                       </p>
                     )}
                   </div>
@@ -828,7 +845,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <div>
                     <label className="text-xs font-semibold text-[#254117] flex items-center gap-1 mb-1">
                       <Phone className="w-3.5 h-3.5 text-[#cd6184]" />
-                      <span>No. HP / WhatsApp Kontak</span>
+                      <span>{t('order.contact_phone_label')}</span>
                       <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                     </label>
                     <input
@@ -846,7 +863,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     {formAttempted && !isPhoneValid && (
                       <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" />
-                        Silakan isi no. kontak pesanan.
+                        {t('order.err_phone_required')}
                       </p>
                     )}
                   </div>
@@ -857,7 +874,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-[#254117] flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-[#cd6184]" />
-                      <span>Alamat Penjemputan & Pengantaran</span>
+                      <span>{t('order.order_address_label')}</span>
                       <span className="text-red-500 font-bold text-xs ml-0.5 align-super select-none">*</span>
                     </label>
                   </div>
@@ -873,7 +890,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           : 'text-gray-500 hover:text-gray-800'
                       }`}
                     >
-                      Alamat akun saya
+                      {t('order.addr_tab_account')}
                     </button>
                     <button
                       type="button"
@@ -884,7 +901,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                           : 'text-gray-500 hover:text-gray-800'
                       }`}
                     >
-                      Alamat lain
+                      {t('order.addr_tab_custom')}
                     </button>
                   </div>
 
@@ -892,24 +909,24 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                          Tersimpan di Akun (Hanya Baca)
+                          {t('order.addr_saved_readonly')}
                         </span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#97a273]/20 text-[#254117]">
-                          Akun Utama
+                          {t('order.addr_main_account')}
                         </span>
                       </div>
                       <p className="text-xs font-medium text-[#254117] leading-relaxed">
-                        {loggedInAddress || 'Belum ada alamat tersimpan di akun Anda. Silakan pilih "Alamat lain" di atas atau lengkapi di halaman Profil.'}
+                        {loggedInAddress || t('order.addr_empty_account')}
                       </p>
                       <p className="text-[10px] text-gray-400 italic">
-                        *Untuk mengubah alamat permanen akun, buka halaman Profil Saya.
+                        {t('order.addr_edit_hint')}
                       </p>
                     </div>
                   ) : (
                     <div className="p-3.5 rounded-2xl bg-[#ffecf2]/30 border border-[#cd6184]/30 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[#cd6184]">
-                          Alamat Khusus Pesanan Ini
+                          {t('order.addr_custom_title')}
                         </span>
                       </div>
                       <CascadingAddressSelector
@@ -926,12 +943,12 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   {formAttempted && !isAddressValid && (
                     <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3 shrink-0" />
-                      Silakan tentukan alamat lengkap untuk penjemputan/pengantaran.
+                      {t('order.err_address_required')}
                     </p>
                   )}
                   {!isRecycleKgValid && (
                     <span className="bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-semibold">
-                      • Berat Daur Ulang (min. 1 kg)
+                      {t('order.err_recycle_min_kg')}
                     </span>
                   )}
                 </div>
@@ -940,8 +957,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label htmlFor={notesInputId} className="text-xs font-semibold text-[#254117] flex items-center gap-1">
                       <FileText className="w-3.5 h-3.5 text-[#cd6184]" />
-                      <span>Catatan Cucian / Instruksi Khusus</span>
-                      <span className="text-[10px] font-normal text-gray-500">(Opsional)</span>
+                      <span>{t('order.notes_label')}</span>
+                      <span className="text-[10px] font-normal text-gray-500">{lang === 'en' ? '(Optional)' : '(Opsional)'}</span>
                     </label>
                   </div>
                   <input
@@ -949,7 +966,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Contoh: Pakaian katun & kemeja kerja, jangan gunakan pemutih"
+                    placeholder={t('order.notes_placeholder')}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#cd6184] transition-colors"
                   />
                 </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppNotification } from '../../types';
-import { Bell, Check, Clock, X, ExternalLink } from 'lucide-react';
+import { Bell, Clock, X } from 'lucide-react';
+import { useLang } from '../../i18n/LanguageContext';
 
 interface NotificationBellProps {
   notifications: AppNotification[];
@@ -13,23 +14,24 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   onNotificationClick,
   onMarkAllRead,
 }) => {
+  const { lang, t } = useLang();
   const [isOpen, setIsOpen] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const formatRelativeTime = (isoString?: string) => {
-    if (!isoString) return 'Baru saja';
+    if (!isoString) return t('notif.time_just_now');
     try {
       const diffSec = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
-      if (diffSec < 60) return 'Baru saja';
+      if (diffSec < 60) return t('notif.time_just_now');
       const diffMin = Math.floor(diffSec / 60);
-      if (diffMin < 60) return `${diffMin} mnt lalu`;
+      if (diffMin < 60) return t('notif.time_minutes_ago', { n: diffMin });
       const diffHour = Math.floor(diffMin / 60);
-      if (diffHour < 24) return `${diffHour} jam lalu`;
+      if (diffHour < 24) return t('notif.time_hours_ago', { n: diffHour });
       const diffDay = Math.floor(diffHour / 24);
-      return `${diffDay} hari lalu`;
+      return t('notif.time_days_ago', { n: diffDay });
     } catch {
-      return 'Baru saja';
+      return t('notif.time_just_now');
     }
   };
 
@@ -40,7 +42,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         id="btn-customer-notification-bell"
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        title="Notifikasi Pesanan"
+        title={t('notif.title')}
         className="relative w-9 h-9 rounded-full border border-white/20 bg-white/15 hover:bg-white/25 flex items-center justify-center transition-all cursor-pointer shadow-xs text-white"
       >
         <Bell className="w-4 h-4" />
@@ -71,10 +73,10 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2">
                 <Bell className="w-4 h-4 text-[#cd6184]" />
-                <h3 className="font-bold text-sm text-[#254117]">Notifikasi</h3>
+                <h3 className="font-bold text-sm text-[#254117]">{t('notif.title')}</h3>
                 {unreadCount > 0 && (
                   <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                    {unreadCount} baru
+                    {unreadCount} {t('notif.new')}
                   </span>
                 )}
               </div>
@@ -86,7 +88,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                     onClick={onMarkAllRead}
                     className="text-[11px] font-semibold text-[#cd6184] hover:underline cursor-pointer"
                   >
-                    Tandai semua dibaca
+                    {t('notif.mark_all_read')}
                   </button>
                 )}
                 <button
@@ -104,50 +106,55 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
               {notifications.length === 0 ? (
                 <div className="py-8 text-center text-xs text-gray-400">
                   <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                  <p className="font-semibold text-gray-500">Belum ada notifikasi</p>
+                  <p className="font-semibold text-gray-500">{t('notif.empty_title')}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    Update status timbangan & pembayaran pesanan Anda akan muncul di sini.
+                    {t('notif.empty_desc')}
                   </p>
                 </div>
               ) : (
-                notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    onClick={() => {
-                      onNotificationClick(n);
-                      setIsOpen(false);
-                    }}
-                    className={`p-3 rounded-2xl cursor-pointer transition-all flex items-start gap-2.5 ${
-                      !n.read
-                        ? 'bg-[#ffecf2]/60 hover:bg-[#ffecf2] border-l-3 border-[#cd6184]'
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span
-                          className={`text-xs ${
-                            !n.read ? 'font-black text-[#254117]' : 'font-bold text-gray-700'
-                          }`}
-                        >
-                          {n.title}
-                        </span>
-                        <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0 flex items-center gap-0.5">
-                          <Clock className="w-3 h-3" />
-                          <span>{formatRelativeTime(n.createdAt)}</span>
-                        </span>
+                notifications.map((n) => {
+                  const itemTitle = lang === 'en' ? (n.titleEn || n.title) : n.title;
+                  const itemBody = lang === 'en' ? (n.bodyEn || n.body) : n.body;
+
+                  return (
+                    <div
+                      key={n.id}
+                      onClick={() => {
+                        onNotificationClick(n);
+                        setIsOpen(false);
+                      }}
+                      className={`p-3 rounded-2xl cursor-pointer transition-all flex items-start gap-2.5 ${
+                        !n.read
+                          ? 'bg-[#ffecf2]/60 hover:bg-[#ffecf2] border-l-3 border-[#cd6184]'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <span
+                            className={`text-xs ${
+                              !n.read ? 'font-black text-[#254117]' : 'font-bold text-gray-700'
+                            }`}
+                          >
+                            {itemTitle}
+                          </span>
+                          <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0 flex items-center gap-0.5">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatRelativeTime(n.createdAt)}</span>
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1 leading-relaxed">{itemBody}</p>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1 leading-relaxed">{n.body}</p>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
             {/* Bottom info */}
             <div className="pt-2 border-t border-gray-100 text-center shrink-0">
               <span className="text-[10px] text-gray-400">
-                Ketuk notifikasi untuk membuka rincian pesanan terkait
+                {t('notif.footer_hint')}
               </span>
             </div>
           </div>

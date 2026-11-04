@@ -5,11 +5,15 @@ export type PlanType = 'regular' | 'express' | 'per_item';
 export interface Plan {
   id: PlanType;
   name: string;
+  nameEn?: string;
   price: number;
   unit: string;
+  unitEn?: string;
   turnaroundTime: string;
+  turnaroundTimeEn?: string;
   isPopular?: boolean;
   features: string[];
+  featuresEn?: string[];
   minOrder?: number;
 }
 
@@ -99,19 +103,25 @@ export interface RecycleOrderData {
 export interface ArtisanItem {
   id: string;
   name: string;
+  nameEn?: string;
   photo?: string;
   story: string;
+  storyEn?: string;
   location?: string;
+  locationEn?: string;
   order?: number;
 }
 
 export interface RecycleWorkItem {
   id: string;
   title: string;
+  titleEn?: string;
   imageUrl?: string;
   photo?: string;
   description?: string;
+  descriptionEn?: string;
   artisanName?: string;
+  artisanNameEn?: string;
   order?: number;
 }
 
@@ -132,7 +142,9 @@ export interface AppNotification {
   orderId: string;
   orderNumber: string;
   title: string;
+  titleEn?: string;
   body: string;
+  bodyEn?: string;
   createdAt: string;
   read: boolean;
   type?: 'payment_opened' | 'cash_received' | 'payment_verified' | 'status_changed' | 'stamp_earned';

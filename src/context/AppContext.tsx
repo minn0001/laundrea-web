@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   Role,
   Plan,
@@ -153,8 +153,9 @@ interface AppContextType {
   notifications: AppNotification[];
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  notificationToasts: AppNotification[];
   newNotificationToast: AppNotification | null;
-  dismissToast: () => void;
+  dismissToast: (id?: string) => void;
   // Laundrea Peduli / Recycle Program
   recycleSettings: RecycleProgramSettings;
   impactStats: ImpactStats | null;
@@ -271,7 +272,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [isFirestoreLoading, setIsFirestoreLoading] = useState<boolean>(true);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
-  const [newNotificationToast, setNewNotificationToast] = useState<AppNotification | null>(null);
+  const [notificationToasts, setNotificationToasts] = useState<AppNotification[]>([]);
+  const newNotificationToast = notificationToasts[notificationToasts.length - 1] || null;
+
+  const toastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const scheduledDelaysRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const seenToastKeysRef = useRef<Set<string>>(new Set());
+
+  const dismissToast = (id?: string) => {
+    if (!id) {
+      toastTimersRef.current.forEach((t) => clearTimeout(t));
+      toastTimersRef.current.clear();
+      setNotificationToasts([]);
+      return;
+    }
+    const timer = toastTimersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      toastTimersRef.current.delete(id);
+    }
+    setNotificationToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const enqueueToast = (notif: AppNotification) => {
+    setNotificationToasts((prev) => {
+      const exists = prev.some((t) => t.id === notif.id && t.createdAt === notif.createdAt);
+      let next = exists ? prev : [...prev, notif];
+
+      if (next.length > 3) {
+        const removed = next[0];
+        const oldTimer = toastTimersRef.current.get(removed.id);
+        if (oldTimer) {
+          clearTimeout(oldTimer);
+          toastTimersRef.current.delete(removed.id);
+        }
+        next = next.slice(1);
+      }
+      return next;
+    });
+
+    const existingTimer = toastTimersRef.current.get(notif.id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    const timer = setTimeout(() => {
+      toastTimersRef.current.delete(notif.id);
+      setNotificationToasts((prev) => prev.filter((t) => t.id !== notif.id));
+    }, 5000);
+
+    toastTimersRef.current.set(notif.id, timer);
+  };
 
   // Clean old localStorage keys on load as instructed
   useEffect(() => {
@@ -421,7 +472,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Real-time listeners for Customer-isolated data (stampHistory, customerVouchers, notifications)
   useEffect(() => {
-    if (!customerPhone) return;
+    if (!customerPhone) {
+      setNotifications([]);
+      setNotificationToasts([]);
+      seenToastKeysRef.current.clear();
+      toastTimersRef.current.forEach((t) => clearTimeout(t));
+      toastTimersRef.current.clear();
+      scheduledDelaysRef.current.forEach((t) => clearTimeout(t));
+      scheduledDelaysRef.current = [];
+      return;
+    }
+
+    // Reset seen keys and clear existing toasts on customer change
+    seenToastKeysRef.current.clear();
+    toastTimersRef.current.forEach((t) => clearTimeout(t));
+    toastTimersRef.current.clear();
+    scheduledDelaysRef.current.forEach((t) => clearTimeout(t));
+    scheduledDelaysRef.current = [];
+    setNotificationToasts([]);
+
     const unsubs: (() => void)[] = [];
 
     unsubs.push(
@@ -439,22 +508,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let initialNotifsLoaded = false;
     unsubs.push(
       subscribeToNotifications(customerPhone, (data) => {
-        if (initialNotifsLoaded) {
-          // Detect newly arrived notification
-          const latest = data[0];
-          if (latest && !latest.read) {
-            setNewNotificationToast(latest);
-            setTimeout(() => setNewNotificationToast(null), 5000);
-          }
-        } else {
+        // Dismiss any active toast that has been marked as read in Firestore
+        setNotificationToasts((prev) => {
+          return prev.filter((t) => {
+            const match = data.find((d) => d.id === t.id);
+            if (match && match.read) {
+              const timer = toastTimersRef.current.get(t.id);
+              if (timer) {
+                clearTimeout(timer);
+                toastTimersRef.current.delete(t.id);
+              }
+              return false;
+            }
+            return true;
+          });
+        });
+
+        if (!initialNotifsLoaded) {
+          // On FIRST snapshot only fill seen keys, show nothing
+          data.forEach((n) => {
+            seenToastKeysRef.current.add(`${n.id}|${n.createdAt || ''}`);
+          });
           initialNotifsLoaded = true;
+        } else {
+          // On every later snapshot, check ALL documents
+          const newItems: AppNotification[] = [];
+          data.forEach((n) => {
+            const key = `${n.id}|${n.createdAt || ''}`;
+            if (!n.read && !seenToastKeysRef.current.has(key)) {
+              seenToastKeysRef.current.add(key);
+              newItems.push(n);
+            }
+          });
+
+          if (newItems.length > 0) {
+            // Sort by createdAt ascending (oldest first)
+            newItems.sort((a, b) => {
+              const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return tA - tB;
+            });
+
+            // Show them one after another with 450 ms delay between each
+            newItems.forEach((notif, index) => {
+              const delayTimer = setTimeout(() => {
+                enqueueToast(notif);
+              }, index * 450);
+              scheduledDelaysRef.current.push(delayTimer);
+            });
+          }
         }
+
         setNotifications(data);
       })
     );
 
     return () => {
       unsubs.forEach((unsub) => unsub());
+      seenToastKeysRef.current.clear();
+      toastTimersRef.current.forEach((t) => clearTimeout(t));
+      toastTimersRef.current.clear();
+      scheduledDelaysRef.current.forEach((t) => clearTimeout(t));
+      scheduledDelaysRef.current = [];
+      setNotificationToasts([]);
     };
   }, [customerPhone]);
 
@@ -787,15 +903,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Notification actions
   const markNotificationRead = (id: string) => {
+    dismissToast(id);
     markNotificationAsRead(id).catch(() => {});
   };
 
   const markAllNotificationsRead = () => {
+    dismissToast();
     markAllNotificationsAsRead(customerPhone).catch(() => {});
-  };
-
-  const dismissToast = () => {
-    setNewNotificationToast(null);
   };
 
   // Orders Mutations (Requirement 1, 2, 3, 4, 5, 6, 7)
@@ -1039,7 +1153,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           orderId: ord.id,
           orderNumber: ord.orderNumber,
           title: 'Baju Daur Ulang Diterima',
+          titleEn: 'Recycled Clothes Received',
           body: `Terima kasih! Baju daur ulang ${recycleResult.recycle.finalKg} kg dari pesanan ${ord.orderNumber} sudah diterima. ${recycleResult.note}`,
+          bodyEn: `Thank you! ${recycleResult.recycle.finalKg} kg of recycled clothes from order ${ord.orderNumber} have been received. ${recycleResult.note}`,
           type: 'recycle_verified' as any,
         }).catch(() => {});
       }
@@ -1052,7 +1168,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         orderId: ord.id,
         orderNumber: ord.orderNumber,
         title: 'Pembayaran Menunggu',
+        titleEn: 'Payment Due',
         body: `Pembayaran Menunggu — berat aktual ${actualWeight} ${ord.unit}, total Rp${finalAmount.toLocaleString('id-ID')}. Silakan pilih metode pembayaran.`,
+        bodyEn: `Payment Due — actual weight ${actualWeight} ${ord.unit}, total Rp${finalAmount.toLocaleString('id-ID')}. Please select a payment method.`,
         isPaymentOpening: true,
       }).catch(() => {});
     }
@@ -1136,7 +1254,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       orderId: ord.id,
       orderNumber: ord.orderNumber,
       title: 'Baju Daur Ulang Diterima',
+      titleEn: 'Recycled Clothes Received',
       body: `Terima kasih! Baju daur ulang ${kg} kg dari pesanan ${ord.orderNumber} sudah diterima. ${built.note}`,
+      bodyEn: `Thank you! ${kg} kg of recycled clothes from order ${ord.orderNumber} have been received. ${built.note}`,
       type: 'recycle_verified' as any,
     }).catch(() => {});
 
@@ -1185,7 +1305,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       orderId: ord.id,
       orderNumber: ord.orderNumber,
       title: 'Baju Daur Ulang Tidak Memenuhi Syarat',
+      titleEn: 'Recycled Clothes Ineligible',
       body: `Pesanan ${ord.orderNumber}: ${reason.trim()}.`,
+      bodyEn: `Order ${ord.orderNumber}: ${reason.trim()}.`,
       type: 'recycle_rejected' as any,
     }).catch(() => {});
 
@@ -1229,7 +1351,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       orderId: ord.id,
       orderNumber: ord.orderNumber,
       title: `Pembayaran Tunai Diterima`,
+      titleEn: 'Cash Payment Received',
       body: `Pembayaran Tunai Diterima — Pesanan ${ord.orderNumber}.`,
+      bodyEn: `Cash Payment Received — Order ${ord.orderNumber}.`,
       type: 'cash_received',
     }).catch(() => {});
   };
@@ -1289,13 +1413,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       delivered: 'Selesai',
     };
 
+    const statusLabelsEn: Record<string, string> = {
+      pickup: 'Waiting for Pickup',
+      picked_up: 'Picked Up by Courier',
+      washing: 'Washing',
+      drying: 'Drying',
+      ironing: 'Ironing',
+      ready: 'Ready for Delivery',
+      delivered: 'Completed',
+    };
+
     // 1) Notifikasi status DULU
     sendOrUpdateNotification({
       customerPhone: ord.customerPhone,
       orderId: ord.id,
       orderNumber: ord.orderNumber,
       title: `Status Pesanan Diperbarui`,
+      titleEn: 'Order Status Updated',
       body: `Pesanan ${ord.orderNumber} sekarang: ${statusLabels[newStatus] || newStatus}`,
+      bodyEn: `Order ${ord.orderNumber} is now: ${statusLabelsEn[newStatus] || newStatus}`,
       type: 'status_changed',
     }).catch(() => {});
 
@@ -1313,13 +1449,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Pakai ord.customerPhone = akun pemilik pesanan, bukan nama di form pemesanan
       saveStampHistoryItem(ord.customerPhone, newStamp).catch(() => {});
 
-      
       sendOrUpdateNotification({
         customerPhone: ord.customerPhone,
         orderId: ord.id,
         orderNumber: ord.orderNumber,
         title: `Stempel Bertambah 🎉`,
+        titleEn: 'Stamp Earned 🎉',
         body: `Selamat! Kamu berhasil mendapatkan 1 stempel dari pesanan ${ord.orderNumber}.`,
+        bodyEn: `Congratulations! You earned 1 stamp from order ${ord.orderNumber}.`,
         type: 'stamp_earned',
       }).catch(() => {});
     }
@@ -1342,7 +1479,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         orderId: ord.id,
         orderNumber: ord.orderNumber,
         title: `Pembayaran Terverifikasi`,
+        titleEn: 'Payment Verified',
         body: `Pembayaran Terverifikasi — Pesanan ${ord.orderNumber} masuk antrean pencucian.`,
+        bodyEn: `Payment Verified — Order ${ord.orderNumber} is queued for washing.`,
         type: 'payment_verified',
       }).catch(() => {});
     }
@@ -1552,6 +1691,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notifications,
         markNotificationRead,
         markAllNotificationsRead,
+        notificationToasts,
         newNotificationToast,
         dismissToast,
         recycleSettings,

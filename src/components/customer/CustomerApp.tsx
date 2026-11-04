@@ -11,6 +11,8 @@ import { CustomerRecyclePeduliPage } from './CustomerRecyclePeduliPage';
 import { CustomerLoginPortal } from '../auth/CustomerLoginPortal';
 import { NotificationBell } from '../common/NotificationBell';
 import { BrandWordmark } from '../common/BrandWordmark';
+import { LanguageSwitch } from '../common/LanguageSwitch';
+import { useLang } from '../../i18n/LanguageContext';
 import {
   Home,
   Package,
@@ -27,6 +29,7 @@ import {
 } from 'lucide-react';
 
 export const CustomerApp: React.FC = () => {
+  const { lang, t } = useLang();
   const {
     isCustomerVerified,
     logoutCustomer,
@@ -36,6 +39,7 @@ export const CustomerApp: React.FC = () => {
     notifications,
     markNotificationRead,
     markAllNotificationsRead,
+    notificationToasts,
     newNotificationToast,
     dismissToast,
     orders,
@@ -147,31 +151,41 @@ export const CustomerApp: React.FC = () => {
 
   return (
     <div id="customer-app-container" className="min-h-screen bg-gray-50 flex flex-col w-full relative">
-      {/* Toast when new notification arrives while app is open */}
-      {newNotificationToast && (
-        <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 bg-[#254117] text-white p-3.5 rounded-2xl shadow-2xl border border-white/20 flex items-start gap-3 animate-in slide-in-from-top-3 duration-200">
-          <div className="w-8 h-8 rounded-xl bg-[#cd6184] flex items-center justify-center shrink-0">
-            <Bell className="w-4 h-4 text-white" />
-          </div>
-          <div
-            className="flex-1 min-w-0 cursor-pointer"
-            onClick={() => {
-              handleNotificationClick(newNotificationToast);
-              dismissToast();
-            }}
-          >
-            <p className="text-xs font-bold leading-tight">{newNotificationToast.title}</p>
-            <p className="text-[11px] text-white/80 line-clamp-2 mt-0.5">
-              {newNotificationToast.body}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={dismissToast}
-            className="p-1 text-white/60 hover:text-white cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+      {/* Toast notifications queue when new notifications arrive while app is open */}
+      {notificationToasts && notificationToasts.length > 0 && (
+        <div className="fixed top-16 sm:top-20 left-0 right-0 z-50 flex flex-col items-center gap-2 px-3 pointer-events-none">
+          {notificationToasts.map((toast) => (
+            <div
+              key={`${toast.id}|${toast.createdAt}`}
+              className="w-full sm:max-w-md pointer-events-auto bg-[#254117] text-white p-3.5 rounded-2xl shadow-2xl border border-white/20 flex items-start gap-3 animate-in slide-in-from-top-3 fade-in duration-200"
+            >
+              <div className="w-8 h-8 rounded-xl bg-[#cd6184] flex items-center justify-center shrink-0">
+                <Bell className="w-4 h-4 text-white" />
+              </div>
+              <div
+                className="flex-1 min-w-0 cursor-pointer"
+                onClick={() => {
+                  handleNotificationClick(toast);
+                  dismissToast(toast.id);
+                }}
+              >
+                <p className="text-xs font-bold leading-tight">
+                  {lang === 'en' ? toast.titleEn || toast.title : toast.title}
+                </p>
+                <p className="text-[11px] text-white/80 line-clamp-2 mt-0.5">
+                  {lang === 'en' ? toast.bodyEn || toast.body : toast.body}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => dismissToast(toast.id)}
+                className="p-1 text-white/60 hover:text-white cursor-pointer shrink-0"
+                aria-label={t('common.close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -183,6 +197,9 @@ export const CustomerApp: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 relative">
+            {/* Language Switch: visible for guests and logged-in users */}
+            <LanguageSwitch />
+
             {/* Notification Bell: directly to the left of profile icon, logged-in only */}
             {isCustomerVerified && (
               <NotificationBell
@@ -204,7 +221,7 @@ export const CustomerApp: React.FC = () => {
                     setIsProfileDropdownOpen((prev) => !prev);
                   }
                 }}
-                title={isCustomerVerified ? 'Menu Akun' : 'Masuk ke Akun'}
+                title={isCustomerVerified ? t('header.title_profile_menu') : t('header.title_login')}
                 className="w-9 h-9 rounded-full border border-white/20 bg-white/15 hover:bg-white/25 flex items-center justify-center transition-all cursor-pointer shadow-xs text-white"
               >
                 {isCustomerVerified ? (
@@ -230,7 +247,7 @@ export const CustomerApp: React.FC = () => {
                           {userName}
                         </span>
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-[#97a273]/20 text-[#254117] shrink-0">
-                          Pelanggan
+                          {t('header.role_customer')}
                         </span>
                       </div>
                       <span className="text-[11px] text-gray-500 font-medium block truncate">
@@ -251,7 +268,7 @@ export const CustomerApp: React.FC = () => {
                     >
                       <div className="flex items-center gap-2.5">
                         <User className="w-4 h-4 text-[#cd6184]" />
-                        <span>Profil & Alamat Saya</span>
+                        <span>{t('header.menu_profile')}</span>
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                     </button>
@@ -266,7 +283,7 @@ export const CustomerApp: React.FC = () => {
                     >
                       <div className="flex items-center gap-2.5">
                         <Clock className="w-4 h-4 text-[#cd6184]" />
-                        <span>Riwayat Pesanan</span>
+                        <span>{t('header.menu_history')}</span>
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                     </button>
@@ -281,7 +298,7 @@ export const CustomerApp: React.FC = () => {
                     >
                       <div className="flex items-center gap-2.5">
                         <Award className="w-4 h-4 text-[#cd6184]" />
-                        <span>Voucher & Poin Loyalitas</span>
+                        <span>{t('header.menu_loyalty')}</span>
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                     </button>
@@ -297,7 +314,7 @@ export const CustomerApp: React.FC = () => {
                       className="w-full p-2.5 rounded-xl hover:bg-red-50 text-xs font-bold text-red-600 flex items-center gap-2.5 cursor-pointer transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>Keluar dari Akun</span>
+                      <span>{t('header.menu_logout')}</span>
                     </button>
                   </div>
                 </div>
@@ -314,7 +331,9 @@ export const CustomerApp: React.FC = () => {
             <div className="flex items-center gap-2 text-xs">
               <CreditCard className="w-4 h-4 shrink-0 text-white animate-pulse" />
               <span className="font-medium">
-                Pembayaran menunggu: <strong>Rp {(awaitingPaymentOrder.actualPrice || awaitingPaymentOrder.estimatedPrice).toLocaleString('id-ID')}</strong>, pilih metode pembayaran sekarang.
+                {t('payment_banner.text', {
+                  amount: `Rp ${(awaitingPaymentOrder.actualPrice || awaitingPaymentOrder.estimatedPrice).toLocaleString('id-ID')}`,
+                })}
               </span>
             </div>
             <button
@@ -325,7 +344,7 @@ export const CustomerApp: React.FC = () => {
               }}
               className="py-1 px-3 rounded-lg bg-white text-[#cd6184] hover:bg-rose-50 text-xs font-black self-end sm:self-auto cursor-pointer shadow-xs transition-colors"
             >
-              Bayar Sekarang →
+              {t('payment_banner.cta')}
             </button>
           </div>
         </div>
@@ -423,7 +442,7 @@ export const CustomerApp: React.FC = () => {
             }`}
           >
             <Home className="w-4 h-4" />
-            <span className="truncate">Beranda</span>
+            <span className="truncate">{t('nav.home')}</span>
           </button>
 
           <button
@@ -436,7 +455,7 @@ export const CustomerApp: React.FC = () => {
             }`}
           >
             <Package className="w-4 h-4" />
-            <span className="truncate">Pesan</span>
+            <span className="truncate">{t('nav.order')}</span>
           </button>
 
           <button
@@ -447,10 +466,10 @@ export const CustomerApp: React.FC = () => {
                 ? 'text-[#cd6184] bg-[#ffecf2]'
                 : 'text-[#254117]/70 hover:text-[#254117]'
             }`}
-            title="Riwayat Pesanan"
+            title={t('header.menu_history')}
           >
             <Clock className="w-4 h-4" />
-            <span className="truncate">Riwayat</span>
+            <span className="truncate">{t('nav.history')}</span>
           </button>
 
           <button
@@ -463,7 +482,7 @@ export const CustomerApp: React.FC = () => {
             }`}
           >
             <Award className="w-4 h-4" />
-            <span className="truncate">Stempel</span>
+            <span className="truncate">{t('nav.stamps')}</span>
           </button>
 
           <button
@@ -476,7 +495,7 @@ export const CustomerApp: React.FC = () => {
             }`}
           >
             <User className="w-4 h-4" />
-            <span className="truncate">Profil</span>
+            <span className="truncate">{t('nav.profile')}</span>
           </button>
         </div>
       </nav>
@@ -504,9 +523,9 @@ export const CustomerApp: React.FC = () => {
               <LogOut className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#254117]">Keluar dari Akun?</h3>
+              <h3 className="text-base font-bold text-[#254117]">{t('header.logout_title')}</h3>
               <p className="text-xs text-[#254117]/70 mt-1.5 leading-relaxed">
-                Anda akan kembali ke halaman utama dan dapat masuk kembali kapan saja dengan nomor WhatsApp Anda.
+                {t('header.logout_desc')}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 pt-2">
@@ -515,7 +534,7 @@ export const CustomerApp: React.FC = () => {
                 onClick={() => setShowLogoutConfirm(false)}
                 className="py-2.5 px-4 rounded-xl text-xs font-bold text-[#254117] bg-gray-100 hover:bg-gray-200 transition-all cursor-pointer"
               >
-                Batal
+                {t('header.logout_cancel')}
               </button>
               <button
                 type="button"
@@ -523,7 +542,7 @@ export const CustomerApp: React.FC = () => {
                 onClick={handleConfirmLogout}
                 className="py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#cd6184] hover:bg-[#cd6184]/90 shadow-xs transition-all cursor-pointer"
               >
-                Ya, Keluar
+                {t('header.logout_confirm')}
               </button>
             </div>
           </div>

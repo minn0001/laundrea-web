@@ -11,6 +11,7 @@ import { CustomerApp } from './components/customer/CustomerApp';
 import { CourierApp } from './components/courier/CourierApp';
 import { AdminApp } from './components/admin/AdminApp';
 import { useRouter } from './utils/useRouter';
+import { LanguageProvider } from './i18n/LanguageContext';
 
 const AppContent: React.FC = () => {
   const { role, isCustomerVerified, isCourierLoggedIn, isAdminLoggedIn } = useApp();
@@ -69,9 +70,11 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <LanguageProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </LanguageProvider>
   );
 }
 

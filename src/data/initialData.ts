@@ -20,9 +20,12 @@ export const INITIAL_PLANS: Plan[] = [
   {
     id: 'regular',
     name: 'Regular',
+    nameEn: 'Regular',
     price: 12000,
     unit: 'kg',
+    unitEn: 'kg',
     turnaroundTime: 'Siap dalam 2 hari',
+    turnaroundTimeEn: 'Ready in 2 days',
     minOrder: 3,
     features: [
       'Cuci + keringkan + lipat',
@@ -30,13 +33,22 @@ export const INITIAL_PLANS: Plan[] = [
       'Antar-jemput gratis',
       'Min. pemesanan 3 kg',
     ],
+    featuresEn: [
+      'Wash + dry + fold',
+      'Eco-friendly detergent',
+      'Free pickup & delivery',
+      'Min. order 3 kg',
+    ],
   },
   {
     id: 'express',
     name: 'Express',
+    nameEn: 'Express',
     price: 24000,
     unit: 'kg',
+    unitEn: 'kg',
     turnaroundTime: 'Siap di hari yang sama',
+    turnaroundTimeEn: 'Same-day turnaround',
     isPopular: true,
     minOrder: 3,
     features: [
@@ -46,19 +58,35 @@ export const INITIAL_PLANS: Plan[] = [
       'Antrean prioritas pengerjaan',
       'Min. pemesanan 3 kg',
     ],
+    featuresEn: [
+      'Wash + dry + fold',
+      'Eco-friendly detergent',
+      'Free pickup & delivery',
+      'Priority processing queue',
+      'Min. order 3 kg',
+    ],
   },
   {
     id: 'per_item',
     name: 'Per Item',
+    nameEn: 'Per Item',
     price: 25000,
     unit: 'pcs',
+    unitEn: 'pcs',
     turnaroundTime: 'Siap dalam 2×24 jam',
+    turnaroundTimeEn: 'Ready in 2×24 hours',
     minOrder: 1,
     features: [
       'Jaket, jas, gaun, karpet',
       'Perawatan serat kain khusus',
       'Antar-jemput gratis',
       'Estimasi biaya sebelum proses cuci',
+    ],
+    featuresEn: [
+      'Jackets, suits, dresses, rugs',
+      'Special fabric care',
+      'Free pickup & delivery',
+      'Cost estimate before washing',
     ],
   },
 ];
@@ -770,19 +798,27 @@ export const INITIAL_ARTISANS: ArtisanItem[] = [
   {
     id: 'a1-up2k-gading-mas-barat',
     name: 'UP2K Gading Mas Barat',
+    nameEn: 'UP2K Gading Mas Barat',
     location: 'Komunitas Pengrajin Perca, Kelapa Gading.',
+    locationEn: 'Patchwork Artisan Community, Kelapa Gading.',
     photo: '',
     story:
       'Kelompok usaha warga Kelapa Gading yang memberdayakan ibu-ibu rumah tangga. Mereka mengolah kain perca sisa menjadi aneka tas jinjing (tote bag) dan kantung serut yang fungsional dan ramah lingkungan.',
+    storyEn:
+      'A community enterprise empowering local homemakers in Kelapa Gading. They upcycle textile scraps into functional, eco-friendly tote bags and drawstring pouches.',
     order: 1,
   },
   {
     id: 'a2-rini-dian-prasetyani',
     name: 'Rini Dian Prasetyani',
+    nameEn: 'Rini Dian Prasetyani',
     location: 'Pengrajin Perca & Tekstil, Cipayung (Depok/Jakarta)',
+    locationEn: 'Textile & Patchwork Artisan, Cipayung (Depok/Jakarta)',
     photo: '',
     story:
       'Pengrajin perca berpengalaman sejak 2010 yang aktif mengajarkan teknik jahit patchwork. Karyanya fokus pada estetika geometris, seperti sarung bantal dan keset unik dari limbah kain.',
+    storyEn:
+      'An experienced patchwork artisan since 2010 teaching textile sewing. Her work emphasizes geometric aesthetics, creating unique pillowcases and floor mats from reclaimed fabrics.',
     order: 2,
   },
 ];
@@ -791,41 +827,57 @@ export const INITIAL_RECYCLE_WORKS: RecycleWorkItem[] = [
   {
     id: 'w1-tote-bag-patchwork',
     title: 'Tote Bag Patchwork Perca',
+    titleEn: 'Patchwork Tote Bag',
     artisanName: 'UP2K Gading Mas Barat',
+    artisanNameEn: 'UP2K Gading Mas Barat',
     imageUrl: '',
     photo: '',
     description:
       'Tas jinjing kokoh dari kain perca bermotif kotak. Praktis untuk belanja harian sekaligus mengurangi limbah tekstil.',
+    descriptionEn:
+      'Sturdy tote bag crafted from checkered patchwork fabric. Convenient for daily shopping while cutting down textile waste.',
     order: 1,
   },
   {
     id: 'w2-pouch-serut',
     title: 'Pouch Serut Multifungsi',
+    titleEn: 'Multipurpose Drawstring Pouch',
     artisanName: 'UP2K Gading Mas Barat',
+    artisanNameEn: 'UP2K Gading Mas Barat',
     imageUrl: '',
     photo: '',
     description:
       'Kantong serut unik dari sisa kain perca. Cocok untuk menyimpan kosmetik, aksesori, atau perlengkapan kecil lainnya.',
+    descriptionEn:
+      'Unique drawstring pouch made from fabric offcuts. Perfect for storing cosmetics, accessories, or small essentials.',
     order: 2,
   },
   {
     id: 'w3-sarung-bantal',
     title: 'Sarung Bantal Patchwork Klasik',
+    titleEn: 'Classic Patchwork Pillowcase',
     artisanName: 'Ibu Rini Dian Prasetyani',
+    artisanNameEn: 'Ibu Rini Dian Prasetyani',
     imageUrl: '',
     photo: '',
     description:
       'Sarung bantal estetik dari olahan kain perca. Memberikan sentuhan warna hangat dan daur ulang pada dekorasi ruangan.',
+    descriptionEn:
+      'Aesthetic pillowcase made from upcycled fabric scraps. Adds a warm, sustainable touch to your home decor.',
     order: 3,
   },
   {
     id: 'w4-keset-geometris',
     title: 'Keset Geometris Perca Batik',
+    titleEn: 'Geometric Batik Floor Mat',
     artisanName: 'Ibu Rini Dian Prasetyani',
+    artisanNameEn: 'Ibu Rini Dian Prasetyani',
     imageUrl: '',
     photo: '',
     description:
       'Keset/alas meja dengan pola melingkar rapi. Hasil kreasi jahit tingkat lanjut dari limbah kain perca aneka warna.',
+    descriptionEn:
+      'Neatly circular patterned mat. Advanced patchwork craftsmanship from colorful scrap fabrics.',
     order: 4,
   },
 ];

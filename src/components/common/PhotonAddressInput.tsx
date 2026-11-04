@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Loader2, X } from 'lucide-react';
+import { useLang } from '../../i18n/LanguageContext';
 
 export interface PhotonAddressResult {
   formatted: string;
@@ -25,9 +26,12 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
   onChange,
   required = true,
   idPrefix = 'addr',
-  placeholder = 'Ketik nama jalan, komplek, atau area (min. 3 karakter)...',
-  helperText = 'Tulis ciri khas lokasi supaya kurir mudah menemukan, misalnya warna pagar atau bangunan terdekat.',
+  placeholder,
+  helperText,
 }) => {
+  const { t } = useLang();
+  const effectivePlaceholder = placeholder ?? t('address.search_placeholder');
+  const effectiveHelperText = helperText ?? t('address.helper_text');
   const [searchTerm, setSearchTerm] = useState(initialValue);
   const [patokan, setPatokan] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -151,7 +155,7 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
           htmlFor={`${idPrefix}-search`}
           className="block text-[11px] font-bold text-[#254117] mb-1"
         >
-          Cari Lokasi / Area (Autocomplete) {required && <span className="text-red-500">*</span>}
+          {t('address.search_label')} {required && <span className="text-red-500">*</span>}
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#254117]/50">
@@ -169,7 +173,7 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
             onFocus={() => {
               if (suggestions.length > 0) setIsDropdownOpen(true);
             }}
-            placeholder={placeholder}
+            placeholder={effectivePlaceholder}
             required={required}
             className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-[#254117] placeholder:text-gray-400 focus:outline-none focus:border-[#cd6184] focus:ring-1 focus:ring-[#cd6184]/20 transition-all shadow-xs"
           />
@@ -192,7 +196,7 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
           {isDropdownOpen && suggestions.length > 0 && (
             <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-40 animate-in fade-in max-h-56 overflow-y-auto">
               <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Pilih Saran Alamat:
+                {t('address.suggestions_title')}
               </div>
               {suggestions.map((item, idx) => (
                 <button
@@ -216,18 +220,18 @@ export const PhotonAddressInput: React.FC<PhotonAddressInputProps> = ({
           htmlFor={`${idPrefix}-patokan`}
           className="block text-[11px] font-bold text-[#254117] mb-1"
         >
-          Patokan
+          {t('address.patokan_label')}
         </label>
         <textarea
           id={`${idPrefix}-patokan`}
           rows={2}
           value={patokan}
           onChange={handlePatokanChange}
-          placeholder="Contoh: Dekat Indomaret, pagar hitam, lantai 2"
+          placeholder={t('address.patokan_placeholder')}
           className="w-full p-3 rounded-xl border border-gray-200 bg-white text-xs font-medium text-[#254117] placeholder:text-gray-400 focus:outline-none focus:border-[#cd6184] focus:ring-1 focus:ring-[#cd6184]/20 transition-all resize-none shadow-xs"
         />
         <p className="text-[11px] text-[#254117]/60 mt-1 leading-relaxed">
-          {helperText}
+          {effectiveHelperText}
         </p>
       </div>
     </div>

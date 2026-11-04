@@ -24,6 +24,7 @@ import {
 } from '../../services/firebaseService';
 import { CascadingAddressSelector } from '../common/CascadingAddressSelector';
 import { StructuredAddressData } from '../../services/wilayahService';
+import { useLang } from '../../i18n/LanguageContext';
 
 // Laundrea WhatsApp Number in international format without plus sign
 const LAUNDREA_WA_NUMBER = '6287790103092';
@@ -40,6 +41,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   onNavigateStaff,
 }) => {
   const { verifyCustomer } = useApp();
+  const { t, lang } = useLang();
 
   // Step state: 'options' | 'phone_input' | 'otp' | 'register' | 'success'
   const [step, setStep] = useState<'options' | 'phone_input' | 'otp' | 'register' | 'success'>('options');
@@ -240,10 +242,10 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
             {/* Title & Subtitle */}
             <div className="space-y-1 pt-1">
               <h2 className="text-xl sm:text-2xl font-bold text-[#254117]">
-                Masuk/Daftar
+                {lang === 'en' ? 'Sign In / Register' : 'Masuk/Daftar'}
               </h2>
               <p className="text-xs sm:text-sm text-gray-400 font-medium">
-                Masuk untuk melakukan pemesanan
+                {lang === 'en' ? 'Sign in to place an order' : 'Masuk untuk melakukan pemesanan'}
               </p>
             </div>
 
@@ -264,7 +266,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                 className="w-full py-3.5 px-5 rounded-full bg-[#97a273] hover:bg-[#889464] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2.5 shadow-xs transition-all cursor-pointer"
               >
                 <MessageSquare className="w-5 h-5" />
-                <span>Lanjut dengan WhatsApp</span>
+                <span>{t('auth.btn_whatsapp')}</span>
               </button>
 
               {/* Full-width pill outline button: "Gunakan nomor HP" (dark border, light background, dark bold text) */}
@@ -277,27 +279,27 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                 }}
                 className="w-full py-3.5 px-5 rounded-full border-2 border-[#254117] bg-white hover:bg-gray-50 active:scale-[0.99] text-[#254117] font-bold text-sm flex items-center justify-center transition-all cursor-pointer"
               >
-                <span>Gunakan nomor HP</span>
+                <span>{lang === 'en' ? 'Use mobile number' : 'Gunakan nomor HP'}</span>
               </button>
             </div>
 
             {/* Small centered gray footer text with clickable terms and privacy links */}
             <p className="text-[11px] text-gray-500 text-center leading-relaxed pt-2 px-2">
-              Dengan melanjutkan, Anda menyetujui{' '}
+              {lang === 'en' ? 'By continuing, you agree to Laundrea\'s ' : 'Dengan melanjutkan, Anda menyetujui '}
               <button
                 type="button"
                 onClick={() => setLegalModal('terms')}
                 className="underline text-gray-700 hover:text-black font-semibold cursor-pointer"
               >
-                Syarat & Ketentuan
+                {t('auth.terms_link')}
               </button>{' '}
-              dan{' '}
+              {lang === 'en' ? 'and ' : 'dan '}
               <button
                 type="button"
                 onClick={() => setLegalModal('privacy')}
                 className="underline text-gray-700 hover:text-black font-semibold cursor-pointer"
               >
-                Kebijakan Privasi
+                {t('auth.privacy_link')}
               </button>
               .
             </p>
@@ -321,10 +323,10 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h2 className="text-xl sm:text-2xl font-bold text-[#254117]">
-                Masuk/Daftar
+                {lang === 'en' ? 'Sign In / Register' : 'Masuk/Daftar'}
               </h2>
               <p className="text-xs sm:text-sm text-gray-400 font-medium">
-                Masuk untuk melakukan pemesanan
+                {lang === 'en' ? 'Sign in to place an order' : 'Masuk untuk melakukan pemesanan'}
               </p>
             </div>
 
@@ -338,7 +340,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
             <form onSubmit={handleSendPhoneOtp} className="space-y-4 pt-1">
               <div>
                 <label className="block text-xs font-semibold text-[#254117] mb-1">
-                  Nomor WhatsApp / HP
+                  {t('auth.phone_label')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
@@ -349,7 +351,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                     type="tel"
                     value={waPhone}
                     onChange={(e) => setWaPhone(e.target.value)}
-                    placeholder="Contoh: 081234567890"
+                    placeholder={t('auth.phone_placeholder')}
                     required
                     className="w-full pl-10 pr-4 py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
                   />
@@ -366,10 +368,10 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                 {isWaLoading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Mengirim OTP...</span>
+                    <span>{lang === 'en' ? 'Sending OTP...' : 'Mengirim OTP...'}</span>
                   </span>
                 ) : (
-                  <span>Kirim Kode OTP</span>
+                  <span>{t('auth.btn_send_otp')}</span>
                 )}
               </button>
 
@@ -384,27 +386,27 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                   className="inline-flex items-center gap-1 text-xs text-[#254117]/70 hover:text-[#254117] font-semibold cursor-pointer py-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Kembali ke pilihan masuk</span>
+                  <span>{lang === 'en' ? 'Back to sign-in options' : 'Kembali ke pilihan masuk'}</span>
                 </button>
               </div>
             </form>
 
             <p className="text-[11px] text-gray-500 text-center leading-relaxed pt-2 px-2">
-              Dengan melanjutkan, Anda menyetujui{' '}
+              {lang === 'en' ? 'By continuing, you agree to Laundrea\'s ' : 'Dengan melanjutkan, Anda menyetujui '}
               <button
                 type="button"
                 onClick={() => setLegalModal('terms')}
                 className="underline text-gray-700 hover:text-black font-semibold cursor-pointer"
               >
-                Syarat & Ketentuan
+                {t('auth.terms_link')}
               </button>{' '}
-              dan{' '}
+              {lang === 'en' ? 'and ' : 'dan '}
               <button
                 type="button"
                 onClick={() => setLegalModal('privacy')}
                 className="underline text-gray-700 hover:text-black font-semibold cursor-pointer"
               >
-                Kebijakan Privasi
+                {t('auth.privacy_link')}
               </button>
               .
             </p>
@@ -416,10 +418,11 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h2 className="text-xl sm:text-2xl font-bold text-[#254117]">
-                Verifikasi OTP
+                {t('auth.otp_title')}
               </h2>
               <p className="text-xs text-gray-500">
-                Kode 6-digit dikirimkan ke WhatsApp <span className="font-bold text-[#254117]">{waPhone}</span>
+                {lang === 'en' ? 'A 6-digit verification code was sent to WhatsApp ' : 'Kode 6-digit dikirimkan ke WhatsApp '}
+                <span className="font-bold text-[#254117]">{waPhone}</span>
               </p>
             </div>
 
@@ -435,12 +438,12 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
               <div className="flex items-center justify-between text-[11px] font-bold text-[#1e4620]/80">
                 <div className="flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5 text-[#25d366]" />
-                  <span>Simulasi WhatsApp Laundrea OTP</span>
+                  <span>{lang === 'en' ? 'Laundrea WhatsApp OTP Simulation' : 'Simulasi WhatsApp Laundrea OTP'}</span>
                 </div>
-                <span className="text-[10px] text-gray-500 font-normal">Baru saja</span>
+                <span className="text-[10px] text-gray-500 font-normal">{t('notif.time_just_now')}</span>
               </div>
               <p className="text-xs leading-relaxed">
-                Kode OTP verifikasi Laundrea Anda adalah:{' '}
+                {lang === 'en' ? 'Your Laundrea verification OTP code is: ' : 'Kode OTP verifikasi Laundrea Anda adalah: '}
                 <span className="font-mono font-bold text-sm text-[#1e4620] tracking-wider bg-white px-2 py-0.5 rounded-md border border-[#a2dfa7]">
                   {simulatedCode}
                 </span>
@@ -450,14 +453,14 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                 onClick={() => setOtpCode(simulatedCode)}
                 className="text-[11px] font-bold text-[#1e4620] underline hover:text-black cursor-pointer block text-left"
               >
-                Klik untuk isi otomatis
+                {lang === 'en' ? 'Click to auto-fill' : 'Klik untuk isi otomatis'}
               </button>
             </div>
 
             <form onSubmit={handleVerifyOtp} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-[#254117] mb-1">
-                  Masukkan 6-Digit Kode OTP
+                  {lang === 'en' ? 'Enter 6-Digit OTP Code' : 'Masukkan 6-Digit Kode OTP'}
                 </label>
                 <input
                   id="input-customer-otp"
@@ -465,7 +468,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                   maxLength={6}
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="6 digit angka"
+                  placeholder={lang === 'en' ? '6-digit code' : '6 digit angka'}
                   required
                   className="w-full text-center tracking-[0.4em] font-mono text-xl py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-bold focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
                 />
@@ -480,10 +483,10 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                 {isWaLoading || isCheckingAccount ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Memeriksa Akun...</span>
+                    <span>{t('auth.btn_verifying')}</span>
                   </span>
                 ) : (
-                  <span>Verifikasi & Lanjut</span>
+                  <span>{t('auth.btn_verify')}</span>
                 )}
               </button>
 
@@ -496,12 +499,12 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                   }}
                   className="text-gray-500 hover:text-gray-700 underline cursor-pointer text-[11px]"
                 >
-                  Ganti metode masuk
+                  {lang === 'en' ? 'Change sign-in method' : 'Ganti metode masuk'}
                 </button>
 
                 {countdown > 0 ? (
                   <span className="text-[11px] text-gray-400">
-                    Kirim ulang dalam {countdown}s
+                    {t('auth.resend_wait', { n: countdown })}
                   </span>
                 ) : (
                   <button
@@ -509,7 +512,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                     onClick={handleResendOtp}
                     className="text-[#cd6184] font-bold hover:underline cursor-pointer text-[11px]"
                   >
-                    Kirim Ulang OTP
+                    {t('auth.resend_btn')}
                   </button>
                 )}
               </div>
@@ -535,20 +538,22 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#cd6184] hover:text-[#b85373] hover:bg-[#ffecf2] px-2.5 py-1 -ml-1 rounded-lg transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Kembali</span>
+                <span>{t('common.back')}</span>
               </button>
 
               <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                Pendaftaran Baru
+                {lang === 'en' ? 'New Registration' : 'Pendaftaran Baru'}
               </span>
             </div>
 
             <div>
               <h2 className="text-base sm:text-lg font-bold text-[#254117]">
-                Halo! Silakan Lengkapi Data Anda
+                {t('auth.register_title')}
               </h2>
               <p className="text-xs text-[#254117]/70 mt-0.5">
-                Nomor <span className="font-bold text-[#254117]">{waPhone}</span> belum terdaftar. Isi data penjemputan untuk mulai memesan.
+                {lang === 'en'
+                  ? `Number ${waPhone} is not registered yet. Please provide your name and address for pickup convenience.`
+                  : `Nomor ${waPhone} belum terdaftar. Isi data penjemputan untuk mulai memesan.`}
               </p>
             </div>
 
@@ -562,7 +567,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
             <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-[#254117] mb-1">
-                  Nama Lengkap <span className="text-red-500">*</span>
+                  {t('auth.name_label')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
@@ -573,7 +578,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                     type="text"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    placeholder="Contoh: Yaya"
+                    placeholder={lang === 'en' ? 'e.g. Alex' : 'Contoh: Yaya'}
                     required
                     className="w-full pl-10 pr-4 py-2.5 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
                   />
@@ -603,11 +608,11 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                 {isWaLoading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Menyimpan Akun...</span>
+                    <span>{lang === 'en' ? 'Saving Account...' : 'Menyimpan Akun...'}</span>
                   </span>
                 ) : (
                   <>
-                    <span>Mulai</span>
+                    <span>{lang === 'en' ? 'Start' : 'Mulai'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -622,9 +627,11 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
             <div className="w-16 h-16 bg-[#97a273]/20 text-[#97a273] rounded-full flex items-center justify-center mx-auto animate-bounce">
               <CheckCircle2 className="w-9 h-9" />
             </div>
-            <h3 className="text-xl font-bold text-[#97a273]">Verifikasi Berhasil!</h3>
+            <h3 className="text-xl font-bold text-[#97a273]">{t('auth.success_title')}</h3>
             <p className="text-xs text-[#254117]/70">
-              Selamat datang di Laundrea. Melanjutkan pesanan Anda...
+              {lang === 'en'
+                ? 'Welcome to Laundrea. Continuing to your order...'
+                : 'Selamat datang di Laundrea. Melanjutkan pesanan Anda...'}
             </p>
           </div>
         )}
@@ -636,7 +643,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 space-y-3.5 text-[#254117] animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2">
               <h3 className="text-base font-bold text-[#254117]">
-                {legalModal === 'terms' ? 'Syarat & Ketentuan' : 'Kebijakan Privasi'}
+                {legalModal === 'terms' ? t('auth.terms_link') : t('auth.privacy_link')}
               </h3>
               <button
                 type="button"
@@ -650,11 +657,15 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
             <div className="text-xs leading-relaxed text-[#254117]/80 space-y-2">
               {legalModal === 'terms' ? (
                 <p>
-                  Dengan menggunakan layanan Laundrea, Anda menyetujui ketentuan penjemputan pakaian, estimasi waktu pengerjaan, standar penimbangan basah/kering, serta perawatan serat kain sesuai jenis layanan yang Anda pilih. Pembayaran dilakukan secara nontunai (QRIS/Transfer) atau COD saat serah terima.
+                  {lang === 'en'
+                    ? 'By using Laundrea services, you agree to our pickup terms, estimated turnaround times, weighing standards, and fabric care guidelines corresponding to your chosen service. Payment is processed via non-cash (QRIS/Bank Transfer) or Cash on Delivery upon handover.'
+                    : 'Dengan menggunakan layanan Laundrea, Anda menyetujui ketentuan penjemputan pakaian, estimasi waktu pengerjaan, standar penimbangan basah/kering, serta perawatan serat kain sesuai jenis layanan yang Anda pilih. Pembayaran dilakukan secara nontunai (QRIS/Transfer) atau COD saat serah terima.'}
                 </p>
               ) : (
                 <p>
-                  Laundrea menjaga kerahasiaan data pribadi Anda, termasuk nama lengkap, nomor kontak WhatsApp, dan alamat penjemputan. Informasi ini hanya digunakan untuk keperluan operasional penjemputan, pengantaran, dan pelacakan cucian Anda, serta tidak dibagikan kepada pihak ketiga.
+                  {lang === 'en'
+                    ? 'Laundrea maintains strict confidentiality of your personal information, including your full name, WhatsApp contact number, and pickup address. This information is solely used for operational pickup, delivery, and laundry tracking, and is never shared with third parties.'
+                    : 'Laundrea menjaga kerahasiaan data pribadi Anda, termasuk nama lengkap, nomor kontak WhatsApp, dan alamat penjemputan. Informasi ini hanya digunakan untuk keperluan operasional penjemputan, pengantaran, dan pelacakan cucian Anda, serta tidak dibagikan kepada pihak ketiga.'}
                 </p>
               )}
             </div>
@@ -665,7 +676,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                 onClick={() => setLegalModal(null)}
                 className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-[#cd6184] hover:bg-[#b85373] transition-colors cursor-pointer"
               >
-                Tutup
+                {t('common.close')}
               </button>
             </div>
           </div>
