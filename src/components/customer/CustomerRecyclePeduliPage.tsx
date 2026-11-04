@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useTr } from '../../i18n/useTr';
 import {
   ArrowLeft,
   Leaf,
@@ -51,6 +52,7 @@ export const CustomerRecyclePeduliPage: React.FC<CustomerRecyclePeduliPageProps>
 }) => {
   const { impactStats, artisans, recycleWorks, recycleSettings } = useApp();
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const tr = useTr();
 
   // Check if impact stats should be shown (hide if missing or all values <= 0)
   const hasValidStats = Boolean(
