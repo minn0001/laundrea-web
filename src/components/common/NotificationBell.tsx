@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppNotification } from '../../types';
 import { Bell, Clock, X } from 'lucide-react';
 import { useLang } from '../../i18n/LanguageContext';
+import { localizeNotification } from '../../i18n/notificationTranslate';
 
 interface NotificationBellProps {
   notifications: AppNotification[];
@@ -37,7 +38,6 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
 
   return (
     <div className="relative">
-      {/* Bell Button */}
       <button
         id="btn-customer-notification-bell"
         type="button"
@@ -56,20 +56,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         )}
       </button>
 
-      {/* Notifications Drawer / Dropdown */}
       {isOpen && (
         <>
-          {/* Backdrop for mobile & desktop */}
-          <div
-            className="fixed inset-0 z-40 bg-black/40 sm:bg-transparent"
-            onClick={() => setIsOpen(false)}
-          />
+          <div className="fixed inset-0 z-40 bg-black/40 sm:bg-transparent" onClick={() => setIsOpen(false)} />
 
-          {/* Container: Bottom Sheet on mobile, Dropdown panel on sm+ */}
-          <div
-            className="fixed inset-x-0 bottom-0 z-50 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 w-full sm:w-96 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-gray-100 p-4 text-[#254117] animate-in slide-in-from-bottom sm:slide-in-from-top-2 duration-200 max-h-[85vh] sm:max-h-[500px] flex flex-col"
-          >
-            {/* Header */}
+          <div className="fixed inset-x-0 bottom-0 z-50 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 w-full sm:w-96 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-gray-100 p-4 text-[#254117] animate-in slide-in-from-bottom sm:slide-in-from-top-2 duration-200 max-h-[85vh] sm:max-h-[500px] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2">
                 <Bell className="w-4 h-4 text-[#cd6184]" />
@@ -83,38 +74,26 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
 
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={onMarkAllRead}
-                    className="text-[11px] font-semibold text-[#cd6184] hover:underline cursor-pointer"
-                  >
+                  <button type="button" onClick={onMarkAllRead} className="text-[11px] font-semibold text-[#cd6184] hover:underline cursor-pointer">
                     {t('notif.mark_all_read')}
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-full text-gray-400 hover:text-gray-600 cursor-pointer sm:hidden"
-                >
+                <button type="button" onClick={() => setIsOpen(false)} className="p-1 rounded-full text-gray-400 hover:text-gray-600 cursor-pointer sm:hidden">
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* List */}
             <div className="flex-1 overflow-y-auto divide-y divide-gray-50 py-2 space-y-1">
               {notifications.length === 0 ? (
                 <div className="py-8 text-center text-xs text-gray-400">
                   <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                   <p className="font-semibold text-gray-500">{t('notif.empty_title')}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    {t('notif.empty_desc')}
-                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{t('notif.empty_desc')}</p>
                 </div>
               ) : (
                 notifications.map((n) => {
-                  const itemTitle = lang === 'en' ? (n.titleEn || n.title) : n.title;
-                  const itemBody = lang === 'en' ? (n.bodyEn || n.body) : n.body;
+                  const { title: itemTitle, body: itemBody } = localizeNotification(n as any, lang);
 
                   return (
                     <div
@@ -124,18 +103,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                         setIsOpen(false);
                       }}
                       className={`p-3 rounded-2xl cursor-pointer transition-all flex items-start gap-2.5 ${
-                        !n.read
-                          ? 'bg-[#ffecf2]/60 hover:bg-[#ffecf2] border-l-3 border-[#cd6184]'
-                          : 'hover:bg-gray-50'
+                        !n.read ? 'bg-[#ffecf2]/60 hover:bg-[#ffecf2] border-l-3 border-[#cd6184]' : 'hover:bg-gray-50'
                       }`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">
-                          <span
-                            className={`text-xs ${
-                              !n.read ? 'font-black text-[#254117]' : 'font-bold text-gray-700'
-                            }`}
-                          >
+                          <span className={`text-xs ${!n.read ? 'font-black text-[#254117]' : 'font-bold text-gray-700'}`}>
                             {itemTitle}
                           </span>
                           <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0 flex items-center gap-0.5">
@@ -151,11 +124,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
               )}
             </div>
 
-            {/* Bottom info */}
             <div className="pt-2 border-t border-gray-100 text-center shrink-0">
-              <span className="text-[10px] text-gray-400">
-                {t('notif.footer_hint')}
-              </span>
+              <span className="text-[10px] text-gray-400">{t('notif.footer_hint')}</span>
             </div>
           </div>
         </>
