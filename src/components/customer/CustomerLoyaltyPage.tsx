@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CustomerVoucher } from '../../types';
 import { earnsRecycleStamp } from '../../utils/recycle';
+import { useTr } from '../../i18n/useTr';
 import {
   Award,
   Sparkles,
@@ -35,6 +36,7 @@ export const CustomerLoyaltyPage: React.FC<CustomerLoyaltyPageProps> = ({ onOrde
     customers,
     orders,
   } = useApp();
+  const tr = useTr();
 
   const [claimedModalVoucher, setClaimedModalVoucher] = useState<CustomerVoucher | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
