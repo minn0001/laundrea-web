@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrandWordmark } from '../common/BrandWordmark';
+import { useTr } from '../../i18n/useTr';
 import {
   Phone,
   ArrowRight,
@@ -8,7 +9,6 @@ import {
   MessageSquare,
   ArrowLeft,
   User,
-  MapPin,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
@@ -33,6 +33,7 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
   onVerified,
   onBackToLanding,
 }) => {
+  const tr = useTr();
   const [step, setStep] = useState<'phone' | 'otp' | 'register' | 'success'>('phone');
   const [phone, setPhone] = useState('081234567890');
   const [otp, setOtp] = useState('');
@@ -41,12 +42,19 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
   const [countdown, setCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
-  // New registration fields for new numbers
   const [regName, setRegName] = useState('');
   const [regAddress, setRegAddress] = useState('');
   const [regStructured, setRegStructured] = useState<StructuredAddressData | undefined>(undefined);
-  const [authError, setAuthError] = useState<string | null>(null);
+  // Simpan "kode" error, bukan teks, supaya ikut berganti bahasa
+  const [authError, setAuthError] = useState<'connect' | 'fill_required' | null>(null);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
+
+  const errorText =
+    authError === 'connect'
+      ? tr('Gagal terhubung, coba lagi', 'Connection failed, please try again')
+      : authError === 'fill_required'
+      ? tr('Mohon isi nama lengkap dan alamat penjemputan.', 'Please fill in your full name and pickup address.')
+      : '';
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -95,23 +103,17 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
     const isDemoNumber = normPhone === normalizePhoneNumber(DEFAULT_DEMO_PHONE);
 
     try {
-      // Check customer account in Firestore
       const customerRecord: CustomerFirestoreData | null = await getCustomerFromFirestore(phone);
 
       setIsLoading(false);
       setIsCheckingAccount(false);
 
       if (customerRecord) {
-        // Account exists in Firestore: log in directly with saved name & address
         setStep('success');
         setTimeout(() => {
-          onVerified(phone, {
-            name: customerRecord.name,
-            address: customerRecord.address,
-          });
+          onVerified(phone, { name: customerRecord.name, address: customerRecord.address });
         }, 1000);
       } else {
-        // Account does not exist in Firestore: show "Lengkapi Profil"
         setStep('register');
       }
     } catch (err) {
@@ -119,19 +121,13 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
       setIsLoading(false);
       setIsCheckingAccount(false);
 
-      // Offline / connection fallback rule:
-      // The demo number 081234567890 must still log in using the built-in "Yaya" profile and default address as fallback!
       if (isDemoNumber) {
         setStep('success');
         setTimeout(() => {
-          onVerified(phone, {
-            name: DEFAULT_DEMO_NAME,
-            address: DEFAULT_DEMO_ADDRESS,
-          });
+          onVerified(phone, { name: DEFAULT_DEMO_NAME, address: DEFAULT_DEMO_ADDRESS });
         }, 1000);
       } else {
-        // Friendly Indonesian message instead of crashing
-        setAuthError('Gagal terhubung, coba lagi');
+        setAuthError('connect');
       }
     }
   };
@@ -139,7 +135,7 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
   const handleCompleteRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regName.trim() || !regAddress.trim()) {
-      setAuthError('Mohon isi nama lengkap dan alamat penjemputan.');
+      setAuthError('fill_required');
       return;
     }
 
@@ -150,31 +146,24 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
       const savedDoc = await saveCustomerToFirestore(phone, regName, regAddress, regStructured);
       setIsLoading(false);
       setStep('success');
-
       setTimeout(() => {
-        onVerified(phone, {
-          name: savedDoc.name,
-          address: savedDoc.address,
-        });
+        onVerified(phone, { name: savedDoc.name, address: savedDoc.address });
       }, 1000);
     } catch (err) {
       console.error('Error saving customer to Firestore:', err);
       setIsLoading(false);
-      setAuthError('Gagal terhubung, coba lagi');
+      setAuthError('connect');
     }
   };
 
-  const fillAutoOtp = () => {
-    setOtp(simulatedCode);
-  };
+  const fillAutoOtp = () => setOtp(simulatedCode);
 
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center p-4 max-w-lg mx-auto w-full">
-      {/* Brand Header */}
       <div className="text-center mb-6">
         <BrandWordmark size="xl" variant="pink" />
         <p className="text-[#254117]/80 text-sm mt-1.5 font-medium">
-          Jemput & antar Laundrea, lebih praktis.
+          {tr('Jemput & antar Laundrea, lebih praktis.', 'Laundrea pickup & delivery, made easy.')}
         </p>
       </div>
 
@@ -184,9 +173,9 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
             <div className="w-16 h-16 bg-[#97a273]/20 text-[#97a273] rounded-full flex items-center justify-center mx-auto animate-bounce">
               <CheckCircle2 className="w-10 h-10" />
             </div>
-            <h2 className="text-2xl font-bold text-[#97a273]">Terverifikasi!</h2>
+            <h2 className="text-2xl font-bold text-[#97a273]">{tr('Terverifikasi!', 'Verified!')}</h2>
             <p className="text-sm text-[#254117]/70">
-              Selamat datang di Laundrea. Membuka beranda pelanggan...
+              {tr('Selamat datang di Laundrea. Membuka beranda pelanggan...', 'Welcome to Laundrea. Opening your customer home...')}
             </p>
           </div>
         ) : step === 'register' ? (
@@ -204,33 +193,35 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#cd6184] hover:text-[#b85373] hover:bg-[#ffecf2] px-2.5 py-1 -ml-1 rounded-lg transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Kembali</span>
+                <span>{tr('Kembali', 'Back')}</span>
               </button>
               <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                Pendaftaran Baru
+                {tr('Pendaftaran Baru', 'New Registration')}
               </span>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-[#254117] mb-1">
-                Lengkapi Data Diri
-              </h2>
+              <h2 className="text-xl font-bold text-[#254117] mb-1">{tr('Lengkapi Data Diri', 'Complete Your Details')}</h2>
               <p className="text-xs text-[#254117]/70">
-                Nomor <span className="font-semibold text-[#254117]">{phone}</span> belum terdaftar. Silakan isi nama dan alamat penjemputan untuk mulai memesan.
+                {tr('Nomor', 'The number')} <span className="font-semibold text-[#254117]">{phone}</span>{' '}
+                {tr(
+                  'belum terdaftar. Silakan isi nama dan alamat penjemputan untuk mulai memesan.',
+                  'is not registered yet. Please enter your name and pickup address to start ordering.'
+                )}
               </p>
             </div>
 
             {authError && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{authError}</span>
+                <span>{errorText}</span>
               </div>
             )}
 
             <form onSubmit={handleCompleteRegistration} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#254117] mb-1.5">
-                  Nama Lengkap <span className="text-red-500">*</span>
+                  {tr('Nama Lengkap', 'Full Name')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
@@ -240,7 +231,7 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                     type="text"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    placeholder="Contoh: Budi Santoso"
+                    placeholder={tr('Contoh: Budi Santoso', 'Example: Budi Santoso')}
                     required
                     className="w-full pl-10 pr-4 py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
                   />
@@ -267,11 +258,11 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Menyimpan Akun...</span>
+                    <span>{tr('Menyimpan Akun...', 'Saving Account...')}</span>
                   </span>
                 ) : (
                   <>
-                    <span>Mulai</span>
+                    <span>{tr('Mulai', 'Start')}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -283,16 +274,12 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-[#cd6184] uppercase tracking-wider">
                 <ShieldCheck className="w-4 h-4" />
-                <span>Verifikasi WhatsApp</span>
+                <span>{tr('Verifikasi WhatsApp', 'WhatsApp Verification')}</span>
               </div>
               {onBackToLanding && step === 'phone' && (
-                <button
-                  type="button"
-                  onClick={onBackToLanding}
-                  className="text-xs text-[#254117]/60 hover:text-[#cd6184] flex items-center gap-1 cursor-pointer"
-                >
+                <button type="button" onClick={onBackToLanding} className="text-xs text-[#254117]/60 hover:text-[#cd6184] flex items-center gap-1 cursor-pointer">
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Beranda</span>
+                  <span>{tr('Beranda', 'Home')}</span>
                 </button>
               )}
             </div>
@@ -300,25 +287,24 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
             {authError && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{authError}</span>
+                <span>{errorText}</span>
               </div>
             )}
 
             {step === 'phone' ? (
               <form onSubmit={handleSendOtp} className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold text-[#254117] mb-1">
-                    Masukkan Nomor WhatsApp
-                  </h2>
+                  <h2 className="text-xl font-bold text-[#254117] mb-1">{tr('Masukkan Nomor WhatsApp', 'Enter Your WhatsApp Number')}</h2>
                   <p className="text-xs text-[#254117]/70">
-                    Tanpa password. Kami akan mengirimkan 6 digit kode verifikasi ke WhatsApp Anda.
+                    {tr(
+                      'Tanpa password. Kami akan mengirimkan 6 digit kode verifikasi ke WhatsApp Anda.',
+                      'No password needed. We will send a 6-digit verification code to your WhatsApp.'
+                    )}
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#254117] mb-1.5">
-                    Nomor WhatsApp
-                  </label>
+                  <label className="block text-xs font-semibold text-[#254117] mb-1.5">{tr('Nomor WhatsApp', 'WhatsApp Number')}</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#254117]/40">
                       <Phone className="w-4 h-4" />
@@ -327,13 +313,16 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="Contoh: 081234567890"
+                      placeholder={tr('Contoh: 081234567890', 'Example: 081234567890')}
                       required
                       className="w-full pl-10 pr-4 py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
                     />
                   </div>
                   <p className="text-[11px] text-[#254117]/60 mt-1">
-                    Nomor Anda hanya digunakan untuk pembaruan pesanan dan koordinasi kurir.
+                    {tr(
+                      'Nomor Anda hanya digunakan untuk pembaruan pesanan dan koordinasi kurir.',
+                      'Your number is only used for order updates and courier coordination.'
+                    )}
                   </p>
                 </div>
 
@@ -344,10 +333,10 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                   className="w-full py-3.5 px-6 rounded-xl bg-[#cd6184] hover:bg-[#b85373] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#cd6184]/25 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {isLoading ? (
-                    <span>Mengirim Kode...</span>
+                    <span>{tr('Mengirim Kode...', 'Sending Code...')}</span>
                   ) : (
                     <>
-                      <span>Kirim Kode OTP</span>
+                      <span>{tr('Kirim Kode OTP', 'Send OTP Code')}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -356,38 +345,31 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold text-[#254117] mb-1">
-                    Kode Verifikasi
-                  </h2>
+                  <h2 className="text-xl font-bold text-[#254117] mb-1">{tr('Kode Verifikasi', 'Verification Code')}</h2>
                   <p className="text-xs text-[#254117]/70">
-                    Kami mengirimkan kode ke WhatsApp <span className="font-semibold text-[#254117]">{phone}</span>
+                    {tr('Kami mengirimkan kode ke WhatsApp', 'We sent a code to WhatsApp')}{' '}
+                    <span className="font-semibold text-[#254117]">{phone}</span>
                   </p>
                 </div>
 
-                {/* Simulated WhatsApp notification pill */}
                 <div className="p-3.5 bg-[#ffecf2] border border-[#cd6184]/40 rounded-2xl flex items-start gap-3">
                   <div className="p-2 bg-[#97a273] text-white rounded-xl shrink-0 mt-0.5">
                     <MessageSquare className="w-4 h-4" />
                   </div>
                   <div className="flex-1 text-xs">
-                    <p className="font-semibold text-[#254117]">Simulasi Notifikasi WhatsApp:</p>
+                    <p className="font-semibold text-[#254117]">{tr('Simulasi Notifikasi WhatsApp:', 'WhatsApp Notification Simulation:')}</p>
                     <p className="text-[#254117]/80 mt-0.5">
-                      Kode Laundrea Anda adalah <span className="font-bold text-[#cd6184] text-sm tracking-wider">{simulatedCode}</span>
+                      {tr('Kode Laundrea Anda adalah', 'Your Laundrea code is')}{' '}
+                      <span className="font-bold text-[#cd6184] text-sm tracking-wider">{simulatedCode}</span>
                     </p>
-                    <button
-                      type="button"
-                      onClick={fillAutoOtp}
-                      className="mt-1 text-xs text-[#cd6184] font-semibold underline hover:text-[#254117] cursor-pointer"
-                    >
-                      Klik untuk isi otomatis kode ({simulatedCode})
+                    <button type="button" onClick={fillAutoOtp} className="mt-1 text-xs text-[#cd6184] font-semibold underline hover:text-[#254117] cursor-pointer">
+                      {tr('Klik untuk isi otomatis kode', 'Tap to auto-fill code')} ({simulatedCode})
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#254117] mb-1.5">
-                    6 Digit Kode OTP
-                  </label>
+                  <label className="block text-xs font-semibold text-[#254117] mb-1.5">{tr('6 Digit Kode OTP', '6-Digit OTP Code')}</label>
                   <input
                     id="input-otp"
                     type="text"
@@ -399,18 +381,14 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                     autoFocus
                   />
                   <div className="flex items-center justify-between text-xs mt-2 text-[#254117]/70">
-                    <span>Belum menerima kode?</span>
+                    <span>{tr('Belum menerima kode?', "Didn't receive the code?")}</span>
                     {canResend ? (
-                      <button
-                        type="button"
-                        onClick={handleResend}
-                        className="text-[#cd6184] font-semibold hover:underline cursor-pointer"
-                      >
-                        Kirim ulang kode
+                      <button type="button" onClick={handleResend} className="text-[#cd6184] font-semibold hover:underline cursor-pointer">
+                        {tr('Kirim ulang kode', 'Resend code')}
                       </button>
                     ) : (
                       <span className="text-[#254117]/50">
-                        Kirim ulang dalam {countdown}dtk
+                        {tr(`Kirim ulang dalam ${countdown}dtk`, `Resend in ${countdown}s`)}
                       </span>
                     )}
                   </div>
@@ -422,7 +400,7 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                     onClick={() => setStep('phone')}
                     className="w-1/3 py-3 px-3 rounded-xl border border-gray-200 text-[#254117] text-xs font-medium hover:bg-gray-50 transition-colors cursor-pointer"
                   >
-                    Ganti Nomor
+                    {tr('Ganti Nomor', 'Change Number')}
                   </button>
                   <button
                     id="btn-verify-otp"
@@ -433,11 +411,11 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
                     {isLoading ? (
                       <span className="flex items-center gap-1.5">
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>{isCheckingAccount ? 'Memeriksa...' : 'Memverifikasi...'}</span>
+                        <span>{isCheckingAccount ? tr('Memeriksa...', 'Checking...') : tr('Memverifikasi...', 'Verifying...')}</span>
                       </span>
                     ) : (
                       <>
-                        <span>Verifikasi</span>
+                        <span>{tr('Verifikasi', 'Verify')}</span>
                         <CheckCircle2 className="w-4 h-4" />
                       </>
                     )}
@@ -447,8 +425,8 @@ export const CustomerVerification: React.FC<CustomerVerificationProps> = ({
             )}
 
             <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-[#254117]/60">
-              <span>Sesi peramban aman</span>
-              <span className="font-semibold text-[#97a273]">Tanpa perlu password</span>
+              <span>{tr('Sesi peramban aman', 'Secure browser session')}</span>
+              <span className="font-semibold text-[#97a273]">{tr('Tanpa perlu password', 'No password needed')}</span>
             </div>
           </div>
         )}
