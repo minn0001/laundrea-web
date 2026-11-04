@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { OrderStatus } from '../../types';
+import { useTr } from '../../i18n/useTr';
 import {
   Check,
   Package,
@@ -45,6 +46,7 @@ export const CustomerTrackingPage: React.FC<CustomerTrackingPageProps> = ({
     updateOrderPaymentStatus,
     choosePaymentMethod,
   } = useApp();
+  const tr = useTr();
 
   // Filter orders strictly for the logged-in customer (all statuses), newest first
   const customerOrders = orders
