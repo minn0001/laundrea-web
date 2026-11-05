@@ -38,10 +38,9 @@ interface CustomerLoginPortalProps {
 export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
   onSuccess,
   onClose,
-  onNavigateStaff,
 }) => {
   const { verifyCustomer } = useApp();
-  const { t, lang, setLang } = useLang();
+  const { t, lang } = useLang();
 
   // Step state: 'options' | 'phone_input' | 'otp' | 'register' | 'success'
   const [step, setStep] = useState<'options' | 'phone_input' | 'otp' | 'register' | 'success'>('options');
@@ -235,47 +234,18 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-100/90 backdrop-blur-xs overflow-y-auto">
       {/* Centered White Card (rounded corners, soft shadow, light gray background, no logo) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-lg border border-gray-100 relative my-auto animate-in fade-in zoom-in-95 duration-150">
-        {/* Header bar: Language selector pills aligned to the left of the close "X" button */}
-        <div className="flex items-center justify-end gap-2.5 mb-3 -mt-1">
-          {/* Two pill buttons side by side: "Bahasa Indonesia" and "English" */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setLang('id')}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                lang === 'id'
-                  ? 'bg-[#254117] text-white shadow-2xs'
-                  : 'border border-[#254117]/30 bg-white text-[#254117] hover:bg-gray-50'
-              }`}
-            >
-              Bahasa Indonesia
-            </button>
-            <button
-              type="button"
-              onClick={() => setLang('en')}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                lang === 'en'
-                  ? 'bg-[#254117] text-white shadow-2xs'
-                  : 'border border-[#254117]/30 bg-white text-[#254117] hover:bg-gray-50'
-              }`}
-            >
-              English
-            </button>
-          </div>
-
-          {/* Small "×" at the card's top-right that closes the login and returns to Beranda */}
-          {onClose && (
-            <button
-              type="button"
-              id="btn-close-login"
-              onClick={onClose}
-              aria-label={lang === 'en' ? 'Close' : 'Tutup'}
-              className="text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
+        {/* Small "×" at the card's top-right that closes the login and returns to Beranda */}
+        {onClose && (
+          <button
+            type="button"
+            id="btn-close-login"
+            onClick={onClose}
+            aria-label={lang === 'en' ? 'Close' : 'Tutup'}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
 
         {/* ================= STEP 1: OPTIONS (Main Login Card) ================= */}
         {step === 'options' && (
@@ -344,18 +314,6 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
               </button>
               .
             </p>
-
-            {onNavigateStaff && (
-              <div className="pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={onNavigateStaff}
-                  className="text-[11px] text-[#254117]/60 hover:text-[#254117] font-semibold cursor-pointer"
-                >
-                  Portal Khusus Kurir & Admin →
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -394,8 +352,8 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                     onChange={(e) => setWaPhone(e.target.value)}
                     placeholder={
                       lang === 'en'
-                        ? 'Enter your WhatsApp / mobile number, e.g. 08123456789'
-                        : 'Masukkan nomor WhatsApp / HP Anda, contoh: 08123456789'
+                        ? 'Enter your WhatsApp / mobile number'
+                        : 'Masukkan nomor WhatsApp / HP Anda'
                     }
                     required
                     className="w-full pl-10 pr-4 py-3 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
@@ -623,7 +581,7 @@ export const CustomerLoginPortal: React.FC<CustomerLoginPortalProps> = ({
                     type="text"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    placeholder={lang === 'en' ? 'e.g. Alex' : 'Contoh: Yaya'}
+                    placeholder={lang === 'en' ? 'Your full name' : 'Nama lengkap Anda'}
                     required
                     className="w-full pl-10 pr-4 py-2.5 bg-[#ffecf2]/30 border border-[#cd6184]/30 rounded-xl text-[#254117] font-medium text-sm focus:outline-none focus:border-[#cd6184] focus:ring-2 focus:ring-[#cd6184]/20 transition-all"
                   />

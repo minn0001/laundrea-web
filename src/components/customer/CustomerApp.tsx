@@ -10,6 +10,7 @@ import { CustomerHistoryPage } from './CustomerHistoryPage';
 import { CustomerRecyclePeduliPage } from './CustomerRecyclePeduliPage';
 import { CustomerLoginPortal } from '../auth/CustomerLoginPortal';
 import { NotificationBell } from '../common/NotificationBell';
+import { LanguageSwitch } from '../common/LanguageSwitch';
 import { BrandWordmark } from '../common/BrandWordmark';
 import { LanguageSetting } from './LanguageSetting';
 import { useLang } from '../../i18n/LanguageContext';
@@ -201,6 +202,8 @@ export const CustomerApp: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 relative">
+            {/* Language Switch: rendered only when customer is NOT logged in, placed to the left of profile icon */}
+            {!isCustomerVerified && <LanguageSwitch />}
 
             {/* Notification Bell: directly to the left of profile icon, logged-in only */}
             {isCustomerVerified && (
